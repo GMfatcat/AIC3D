@@ -1,0 +1,72 @@
+/* 層塔藍圖：每個模型只提供「層組成 + 數字 + 說明」 */
+(function(){
+  const TYPE={
+    attn:{color:'teal',label:'全注意力（GQA / MLA）',link:'kvheads'}, swa:{color:'teal',label:'滑動視窗注意力',link:'transformer'}, sparse:{color:'blue',label:'稀疏注意力（CSA / HCA / DSA）',link:'kvheads'},
+    gdn:{color:'amber',label:'Gated DeltaNet / KDA（線性注意力）',link:'gdn'}, mamba:{color:'amber',label:'Mamba-2',link:'mamba'},
+    moe:{color:'violet',label:'MoE FFN',link:'deepseek-v4'}, hash:{color:'violet',label:'MoE FFN（hash 路由）',link:'engram'}, ffn:{color:'grey',label:'Dense FFN',link:'residual'},
+  };
+  function blueprint(ctx, spec){
+    const {THREE:T,P,root,ctrl,overlay}=ctx; const L=spec.layers.length; const h=Math.min(0.34, 14/L), gap=h*0.28; const W=2.6, D=1.7;
+    const tower=new T.Group(); tower.position.set(-2.2,-(L*(h+gap))/2,0); root.add(tower); const meshes=[];
+    spec.layers.forEach((ly,i)=>{ const t=TYPE[ly]; const m=new T.Mesh(new T.BoxGeometry(W,h,D),P.mat(t.color,{glow:0.2,opacity:0.95})); m.position.y=i*(h+gap); m.userData={i,type:ly}; tower.add(m); meshes.push(m); });
+    const tl=P.label(spec.title,{size:24}); tl.position.set(0,L*(h+gap)+0.6,0); tower.add(tl);
+    if(spec.mhc){ for(let s=0;s<4;s++){ const tube=new T.Mesh(new T.CylinderGeometry(0.04,0.04,L*(h+gap),8),P.mat('amber',{glow:0.4,opacity:0.7})); tube.position.set(-W/2-0.35,L*(h+gap)/2-h/2,(s-1.5)*0.35); tower.add(tube); } const ml=P.label('mHC ×4 殘差流',{size:15}); ml.position.set(-W/2-0.35,-0.6,0); tower.add(ml); }
+    // token travelling up
+    const tok=new T.Mesh(new T.SphereGeometry(0.16,16,12),P.mat('white',{glow:1})); tok.position.set(W/2+0.4,0,0); tower.add(tok); let ty=0;
+    // expert grid (if MoE)
+    let experts=null, expCells=[]; if(spec.experts){ experts=new T.Group(); experts.position.set(2.8,0,0); root.add(experts); const n=spec.expertsShown||64, cols=Math.ceil(Math.sqrt(n)); const cs=Math.min(0.32,4.2/cols);
+      for(let i=0;i<n;i++){ const m=new T.Mesh(new T.BoxGeometry(cs*0.85,cs*0.85,0.2),P.mat('violet',{glow:0.08,opacity:0.8})); m.position.set((i%cols-(cols-1)/2)*cs,((cols-1)/2-Math.floor(i/cols))*cs,0); experts.add(m); expCells.push(m); }
+      const el=P.label(`${spec.experts} 個專家（示意 ${n} 格）· 每 token 用 top-${spec.topk}${spec.shared?' + 1 共享':''}`,{size:16}); el.position.set(0,(cols/2)*cs+0.5,0); experts.add(el); }
+    // controls
+    ctrl.heading('組成'); const counts={}; spec.layers.forEach(l=>counts[l]=(counts[l]||0)+1);
+    ctrl.html(Object.entries(counts).map(([k,v])=>`<div style="display:flex;justify-content:space-between;font-size:13px"><span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--${TYPE[k].color});margin-right:6px"></i>${TYPE[k].label}</span><span style="font-family:var(--mono)">${v} 層</span></div>`).join(''));
+    const set=ctrl.readouts(spec.stats.map(([id,label])=>({id,label}))); spec.stats.forEach(([id,label,val])=>set(id,val));
+    const hoverInfo=ctrl.html('<span class="hint">滑鼠移到任一層看它是什麼、要到哪個 Block 場景。</span>');
+    if(spec.extraControls) spec.extraControls(ctrl,set);
+    ctrl.note(spec.note);
+    const legendItems=Object.keys(counts).map(k=>[TYPE[k].color,TYPE[k].label]); if(spec.mhc) legendItems.push(['amber','mHC 殘差流']); ctx.legend(legendItems);
+    ctx.setCamera({theta:0.35,phi:1.35,dist:Math.max(14,L*(h+gap)*1.65)});
+    let hovered=null, lastExp=-1;
+    return { update(dt){ ty=(ty+dt*(spec.speed||2.5))%(L*(h+gap)+1); tok.position.y=ty-0.5; const li=Math.min(L-1,Math.max(0,Math.floor((ty-0.5)/(h+gap))));
+        meshes.forEach((m,i)=>{ m.material.emissiveIntensity = (i===li?0.9:0.2) + (m===hovered?0.5:0); });
+        if(experts){ const isMoe=spec.layers[li]==='moe'||spec.layers[li]==='hash'; if(isMoe && li!==lastExp){ lastExp=li; expCells.forEach(c=>{c.material.emissiveIntensity=0.08;c.scale.setScalar(1);}); const k=Math.min(spec.topk,expCells.length); const used=new Set(); while(used.size<k){ used.add(Math.floor(Math.random()*expCells.length)); } used.forEach(i=>{expCells[i].material.emissiveIntensity=1;expCells[i].scale.setScalar(1.25);}); } experts.visible=true; }
+        const hv=App.hover(meshes); if(hv!==hovered){ hovered=hv; if(hv){ const t=TYPE[hv.userData.type]; hoverInfo.innerHTML=`第 ${hv.userData.i+1} 層：<b>${t.label}</b> <button class="btn" style="padding:2px 8px;font-size:12px;margin-left:6px" onclick="location.hash='${t.link}'">看 ${t.link} 場景 →</button>`; } } } };
+  }
+  const rep=(pattern,times)=>Array.from({length:times},()=>pattern).flat();
+  let dsVariant='flash';
+
+  App.register({ id:'deepseek-v4', tab:'model', question:'1.6T 參數的模型，一個 token 真正用到多少？',
+    init(ctx){ const build=()=>{ const flash=dsVariant==='flash'; const L=flash?43:61; const layers=[]; for(let i=0;i<L;i++) layers.push(i<2?'swa':(i%2?'sparse':'attn')); // 前 2 層 SWA，之後 CSA / HCA 交錯（這裡用 sparse / attn 兩色示意）
+        return blueprint(ctx,{title:flash?'DeepSeek-V4-Flash（284B / 13B active）':'DeepSeek-V4-Pro（1.6T / 49B active）',layers,mhc:true,experts:flash?256:384,topk:8,shared:true,expertsShown:64,
+          stats:[['total','總參數',flash?'284B':'1.6T'],['active','每 token 啟用',flash?'13B（4.6%）':'49B（3.1%）'],['layers','層數',String(L)],['moe','MoE','每層都是：1 共享 + '+(flash?256:384)+' 路由，前 3 層 hash 路由'],['attn','注意力','前 2 層滑動視窗，之後 CSA / HCA 交錯'],['ctx','context','1M tokens'],['mhc','殘差','mHC，4 條流，Sinkhorn 20 輪']],
+          extraControls:(c)=>{ c.segmented('版本',[{id:'flash',label:'Flash'},{id:'pro',label:'Pro'}],dsVariant,id=>{dsVariant=id;App.show(App.catalog.find(x=>x.id==='deepseek-v4'));}); },
+          note:`<p>這座塔上幾乎每個零件都在別的 Tab 出現過：<b>每一層都是 MoE</b>（右邊專家格，token 經過只亮 top-8 + 1 個共享專家——所以 1.6T 只用 49B）；殘差流是 <b>mHC</b>（左側四條管，Block Tab）；前 3 層 MoE 用 <b>hash 路由</b>（和 Engram 同一個「查表代替計算」的思路）。</p>
+            <p>注意力不再是 V3 的純 MLA：前 2 層滑動視窗，之後 <b>CSA</b>（壓縮 4 倍再做 top-512 稀疏選取）和 <b>HCA</b>（重度壓縮）交錯——這是 1M context 還能推論的原因，KV 不用全存。</p>
+            <p class="hint">數字來自 DeepSeek-V4 技術報告 §4.2.1；CSA / HCA 兩種注意力這裡用兩色交錯示意。</p>`}); };
+      this._inner=build(); }, update(dt){ this._inner.update(dt); } });
+
+  App.register({ id:'glm-flash', tab:'model', question:'Flash 級模型是怎麼省的？',
+    init(ctx){ const layers=[]; for(let i=0;i<45;i++) layers.push(i===44?'gdn':(i%4===3?'sparse':'gdn')); // 3 KDA + 1 DSA ×11 + 1 KDA；前 3 層 dense FFN 在說明裡講
+      this._inner=blueprint(ctx,{title:'GLM-5.3-Flash（320B / 18B active，多模態）',layers,mhc:true,experts:288,topk:8,shared:true,expertsShown:64,
+        stats:[['total','總參數','320B'],['active','每 token 啟用','18B'],['layers','層數','45（34 KDA + 11 DSA）'],['pattern','排列','3 層 KDA → 1 層 DSA，重複 11 次'],['moe','MoE','第 4 層起 288 路由 top-8 + 1 共享；前 3 層 dense'],['kv','KV','DSA 層共用 512 維 latent（MLA 式）'],['vision','視覺','24 層 ViT encoder → 4096 維'],['mtp','投機','內建 MTP draft 層']],
+        note:`<p>省在三個地方。<b>① 四分之三的層是 KDA</b>（Kimi Delta Attention，Gated DeltaNet 家族，基礎架構 Tab）：線性複雜度、固定大小狀態、不長 KV cache。<b>② 剩下的 11 層是 DSA</b>：先用 indexer 以 4 個 token 一組挑出最多 2048 個位置，再對一個 512 維的共享 K/V latent 做稀疏注意力——同時用了 MLA 的壓縮和 DSA 的稀疏。<b>③ MoE</b>：288 個專家只用 8 個。</p>
+          <p>殘差同樣是 <b>mHC 四條流</b>。這和 DeepSeek-V4、Qwen3.8 放在一起看會發現 2026 年的收斂：大部分層線性注意力 + 少數層稀疏/全注意力 + MoE + mHC。</p>
+          <p class="hint">規格來自 NVIDIA NeMo / SGLang 的 GLM-5.3-Flash 文件。</p>`}); }, update(dt){ this._inner.update(dt); } });
+
+  App.register({ id:'qwen3-27b', tab:'model', question:'dense 27B 為什麼 KV cache 可以只有 16 層？',
+    init(ctx){ let thinking=false; const layers=rep(['gdn','gdn','gdn','attn'],16);
+      this._inner=blueprint(ctx,{title:'Qwen3.8-27B（dense，多模態）',layers,
+        stats:[['total','總參數','27B（全部啟用）'],['layers','層數','64 = 16 × [3 GDN + 1 Attention]'],['attn','全注意力','16 層，GQA 24 Q / 4 KV 頭，head 256'],['ffn','FFN','每層 dense SwiGLU，中間維 17,408'],['kv','KV cache','≈ 64 KiB / token（只有 16 層要存）'],['ctx','context','262K 原生，可到 1M'],['think','thinking','關']],
+        extraControls:(c,set)=>{ c.segmented('thinking 模式',[{id:'off',label:'關'},{id:'on',label:'開'}],'off',id=>{ thinking=id==='on'; set('think',thinking?'開：輸出前先產生 <think> 推理 token':'關'); tnote.style.display=thinking?'':'none'; }); const tnote=c.html('<span class="hint">thinking 開啟時，模型先在 &lt;think&gt; 裡自言自語（這段也要 decode、也佔 context），再給答案。可以用 budget 限制長度。</span>'); tnote.style.display='none'; },
+        note:`<p><b>Dense</b> 代表 27B 每個 token 全部用到——沒有專家格。它省的不是計算，是 <b>KV cache</b>：64 層裡只有 16 層是全注意力，其他 48 層是 Gated DeltaNet，狀態固定大小。所以 262K context 的 cache 是 64 KiB × 262K ≈ 16 GB，而不是全注意力版本的四倍。</p>
+          <p>每 4 層一個全注意力層是 2026 年混合架構的常見比例（GLM-5.3 是 3:1、Nemotron 更稀）。全注意力層負責「精確回看某個 token」，線性層負責便宜地帶著摘要往前走。</p>
+          <p>在 DGX Spark 這類 128 GB 統一記憶體機器上，27B bf16 + 長 context 剛好塞得下，是這個尺寸受歡迎的原因。</p>`}); }, update(dt){ this._inner.update(dt); } });
+
+  App.register({ id:'nemotron', tab:'model', question:'為什麼要把 Mamba、Attention、MoE 三種 block 混在一起？',
+    init(ctx){ const layers=[]; let m=0,e=0,a=0; for(let i=0;i<52;i++){ if((i+4)%9===0 && a<6){ layers.push('attn'); a++; } else if(layers.length&&layers[layers.length-1]==='mamba'&&e<23){ layers.push('moe'); e++; } else if(m<23){ layers.push('mamba'); m++; } else { layers.push('moe'); e++; } }
+      this._inner=blueprint(ctx,{title:'Nemotron 3.5 Lightning（hybrid Mamba-Transformer-MoE）',layers,experts:128,topk:6,shared:true,expertsShown:64,
+        stats:[['layers','層數','52 = 23 Mamba-2 + 23 MoE + 6 Attention'],['attn','全注意力','6 層 GQA（2 KV 頭），約每 8 層一層'],['moe','MoE','128 路由 + 1 共享，每 token top-6'],['mamba','Mamba-2','state 128，取代大部分 token mixing'],['ctx','context','1M'],['fp','量化','官方 NVFP4 checkpoint，敏感層保高精度']],
+        note:`<p>三種 block 各做一件事：<b>Mamba-2</b>（橘）做便宜的序列混合，線性時間、固定狀態；<b>Attention</b>（青）只放 6 層，負責需要精確「指回某個 token」的任務；<b>MoE</b>（紫）取代 FFN，用 128 個專家擴參數但每 token 只算 6 個。</p>
+          <p>為什麼不全用 Mamba：純 SSM 在長距離精確檢索（needle-in-haystack、複製）上會輸；為什麼不全用 Attention：吞吐量和 context 成本。NVIDIA 的 Nemotron-H → 3 → 3.5 一路都在調這個比例，Qwen3.8 和 GLM-5.3 用 Gated DeltaNet / KDA 達到同一個目的。</p>
+          <p class="hint">層型態順序是依公開的數量與「約每 8 層一層注意力」規則排的示意，不是官方逐層表。</p>`}); }, update(dt){ this._inner.update(dt); } });
+})();

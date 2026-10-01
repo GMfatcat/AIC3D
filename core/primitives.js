@@ -1,0 +1,191 @@
+/* Shared 3D primitives. All scenes build from these. Global namespace: window.P */
+(function(){
+'use strict';
+const T = THREE;
+/* 3D 色票（深色固定）：每個語意角色三階 dim / base / hot */
+const ROLE = {
+  signal:   {dim:'#8A6A2C', base:'#F2B544', hot:'#FFC53A', label:'訊號 / token / 算力'},
+  memory:   {dim:'#34507F', base:'#5B8DEF', hot:'#78A6FF', label:'記憶體 / KV / Key'},
+  state:    {dim:'#5E4F8F', base:'#A98BFF', hot:'#BFA6FF', label:'狀態 / LLM / latent'},
+  flow:     {dim:'#2A6B60', base:'#3FBFA8', hot:'#5FE0C6', label:'連線 / 工具 / 共享'},
+  alert:    {dim:'#7E3A35', base:'#F0665C', hot:'#FF7F76', label:'爆炸 / 錯誤 / 通訊'},
+  moe:      {dim:'#7A4A7E', base:'#D97BD2', hot:'#EE92E8', label:'MoE 專家 / 稀疏'},
+  inactive: {dim:'#2E394B', base:'#4A5870', hot:'#7E8CA3', label:'不活躍 / 未算'},
+  structure:{dim:'#3A4658', base:'#7F8BA0', hot:'#C4CEDD', label:'外殼 / 座標 / 說明'},
+};
+// 舊色名 → 角色（讓既有場景不用改就套上新色票）
+const ALIAS = { amber:'signal', blue:'memory', violet:'state', teal:'flow', red:'alert', grey:'inactive', fg2:'structure', white:'structure', fg:'structure', bg2:'inactive' };
+const COL = {}; for(const [k,r] of Object.entries(ROLE)) COL[k]=r.base; for(const [k,r] of Object.entries(ALIAS)) COL[k]=ROLE[r].base; COL.white='#E8ECF3'; COL.fg='#E8ECF3';
+const roleOf = k => ROLE[k] ? k : (ALIAS[k] || null);
+const hex = (k, tier='base') => { const r=roleOf(k); return r ? ROLE[r][tier] : (COL[k] || k); };
+const C = (k, tier) => new T.Color(hex(k, tier));
+
+/* ---------- label: DOM 文字疊在 3D 座標上（由 App 每幀投影） ---------- */
+function label(text, opts={}){
+  const o = new T.Object3D(); o.isLabel = true;
+  const el = document.createElement('div'); el.className = 'l3d'; el.textContent = text;
+  if(opts.size) el.style.fontSize = Math.round(opts.size*0.55) + 'px';
+  if(opts.color) el.style.color = opts.color;
+  o.el = el; o.visible = true;
+  // 相容舊介面：label.material.opacity、label.userData.setText、label.scale
+  let op = 1; o.material = { get opacity(){ return op; }, set opacity(v){ op = v; el.style.opacity = v; } };
+  o.userData.setText = (t)=>{ el.textContent = t; };
+  (window.App && App.labels) ? App.labels.add(o) : (window.__pendingLabels = (window.__pendingLabels||[]).concat(o));
+  return o;
+}
+
+/* ---------- material helper ---------- */
+function mat(color, opts={}){
+  const col = C(color, opts.tier);
+  const m = new T.MeshStandardMaterial(Object.assign({ color: col, emissive: col, roughness: 0.7, metalness: 0.05,
+    transparent: opts.opacity !== undefined, opacity: opts.opacity ?? 1 }, opts.extra || {}));
+  // 場景裡到處有 emissiveIntensity = 0.9 / 1.2 這種值；統一壓到 0.06–0.38，避免過曝發白
+  let ei = 0.2; Object.defineProperty(m, 'emissiveIntensity', { get(){ return ei; }, set(v){ ei = 0.06 + 0.32 * Math.min(Math.max(v,0), 1.2) / 1.2; }, configurable:true });
+  m.emissiveIntensity = opts.glow ?? 0.25;
+  return m;
+}
+/* 白色邊線：hot 狀態的第二個維度 */
+function edges(mesh, opts={}){
+  const e = new T.LineSegments(new T.EdgesGeometry(mesh.geometry), new T.LineBasicMaterial({ color: opts.color ? C(opts.color) : new T.Color('#FFFFFF'), transparent:true, opacity: opts.opacity ?? 0.9 }));
+  e.name='__edges'; mesh.add(e); return e;
+}
+function highlight(mesh, on){ let e = mesh.children.find(c=>c.name==='__edges'); if(on && !e) e = edges(mesh); if(e) e.visible = !!on; return e; }
+
+/* ---------- TokenRow: sequence of cubes with labels ---------- */
+class TokenRow {
+  constructor(labels, opts={}){
+    this.group = new T.Group(); this.n = labels.length; this.gap = opts.gap || 0.9; this.size = opts.size || 0.6;
+    this.cubes = []; this.labels = [];
+    const geo = new T.BoxGeometry(this.size, this.size, this.size);
+    labels.forEach((t,i)=>{
+      const m = new T.Mesh(geo, mat(opts.color || 'blue', {glow:0.2, opacity:1}));
+      m.position.x = this.x(i); this.group.add(m); this.cubes.push(m);
+      const l = label(t, {size: 24}); l.position.set(this.x(i), (opts.labelBelow?-1:1)*(this.size/2+0.35), 0); this.group.add(l); this.labels.push(l);
+    });
+  }
+  x(i){ return (i - (this.n-1)/2) * this.gap; }
+  pos(i, target){ return (target||new T.Vector3()).set(this.x(i),0,0).applyMatrix4(this.group.matrixWorld); }
+  style(i, {color, opacity, glow, scale}={}){
+    const m = this.cubes[i]; if(!m) return;
+    if(color){ m.material.color.copy(C(color)); m.material.emissive.copy(C(color)); }
+    if(opacity !== undefined){ m.material.opacity = opacity; m.visible = opacity > 0.02; }
+    if(glow !== undefined) m.material.emissiveIntensity = glow;
+    if(scale !== undefined) m.scale.setScalar(scale);
+    if(this.labels[i]) this.labels[i].material.opacity = Math.max(0.25, opacity ?? 1);
+  }
+  styleAll(s){ for(let i=0;i<this.n;i++) this.style(i,s); }
+}
+
+/* ---------- BeamSet: pooled thin cylinders between points ---------- */
+class BeamSet {
+  constructor(count, opts={}){
+    this.group = new T.Group(); this.meshes = []; this.maxR = opts.maxR || 0.06; this.minR = opts.minR || 0.01;
+    const geo = new T.CylinderGeometry(1,1,1,8,1); geo.translate(0,0.5,0);
+    for(let i=0;i<count;i++){ const m = new T.Mesh(geo, mat(opts.color||'teal',{glow:0.35,opacity:0.7})); m.visible=false; this.group.add(m); this.meshes.push(m); }
+    this._a=new T.Vector3(); this._d=new T.Vector3(); this._q=new T.Quaternion(); this._up=new T.Vector3(0,1,0);
+  }
+  set(i, a, b, w=1, color){
+    const m = this.meshes[i]; if(!m) return;
+    this._d.subVectors(b,a); const len=this._d.length(); if(len<1e-6){m.visible=false;return;}
+    m.position.copy(a); this._q.setFromUnitVectors(this._up, this._d.normalize()); m.quaternion.copy(this._q);
+    const aw = Math.min(1, Math.abs(w)); const r = this.minR + (this.maxR-this.minR)*aw;
+    m.scale.set(r, len, r); m.visible = aw > 0.02; m.material.opacity = 0.15 + 0.8*aw;
+    if(color){ m.material.color.copy(C(color)); m.material.emissive.copy(C(color)); }
+  }
+  hideFrom(i){ for(let k=i;k<this.meshes.length;k++) this.meshes[k].visible=false; }
+  hideAll(){ this.hideFrom(0); }
+}
+
+/* ---------- TensorBrick: box sized by shape ---------- */
+class TensorBrick {
+  constructor(w,h,d, opts={}){
+    this.group = new T.Group();
+    this.mesh = new T.Mesh(new T.BoxGeometry(w,h,d), mat(opts.color||'blue',{glow:0.15,opacity:opts.opacity??0.9}));
+    this.group.add(this.mesh);
+    const e = new T.LineSegments(new T.EdgesGeometry(this.mesh.geometry), new T.LineBasicMaterial({color:C(opts.edge||'white'),transparent:true,opacity:0.35}));
+    this.group.add(e); this.edges = e;
+    if(opts.label){ const l=label(opts.label,{size:22}); l.position.y = h/2+0.35; this.group.add(l); this.label=l; }
+  }
+  color(c){ this.mesh.material.color.copy(C(c)); this.mesh.material.emissive.copy(C(c)); }
+}
+
+/* ---------- GPUBox: shell + HBM fill ---------- */
+class GPUBox {
+  constructor(opts={}){
+    const w=opts.w||3, h=opts.h||2.2, d=opts.d||2;
+    this.group = new T.Group(); this.w=w; this.h=h; this.d=d;
+    const shell = new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(w,h,d)), new T.LineBasicMaterial({color:C('fg2'),transparent:true,opacity:0.6}));
+    this.group.add(shell);
+    // HBM region: lower slab that fills along x
+    this.hbmH = opts.hbmH || 0.7;
+    const hbmBg = new T.Mesh(new T.BoxGeometry(w-0.3, this.hbmH, d-0.3), mat('grey',{glow:0.05,opacity:0.5}));
+    hbmBg.position.y = -h/2 + this.hbmH/2 + 0.15; this.group.add(hbmBg);
+    this.fillMesh = new T.Mesh(new T.BoxGeometry(1, this.hbmH-0.1, d-0.4), mat(opts.fillColor||'blue',{glow:0.35}));
+    this.fillMesh.position.y = hbmBg.position.y; this.group.add(this.fillMesh); this.setFill(0);
+    const l = label(opts.label||'GPU',{size:24}); l.position.y = h/2+0.35; this.group.add(l);
+    const l2 = label(opts.memLabel||'HBM',{size:18}); l2.position.set(-w/2+0.5, hbmBg.position.y, d/2+0.05); this.group.add(l2);
+    this.computeY = hbmBg.position.y + this.hbmH/2 + 0.2; // where "compute" content sits
+  }
+  setFill(frac, color){
+    const f = Math.max(0.001, Math.min(1, frac)); const W = this.w-0.4;
+    this.fillMesh.scale.x = W*f; this.fillMesh.position.x = -W/2 + W*f/2;
+    if(color){ this.fillMesh.material.color.copy(C(color)); this.fillMesh.material.emissive.copy(C(color)); }
+  }
+}
+
+/* ---------- Loop: ring of nodes + moving marker ---------- */
+class Loop {
+  constructor(names, opts={}){
+    this.group = new T.Group(); this.R = opts.R || 2.6; this.names = names; this.nodes=[]; this.pos=[];
+    names.forEach((nm,i)=>{
+      const a = -Math.PI/2 + i*2*Math.PI/names.length;
+      const p = new T.Vector3(Math.cos(a)*this.R, 0, Math.sin(a)*this.R); this.pos.push(p);
+      const node = new T.Mesh(new T.SphereGeometry(0.32,24,16), mat(opts.colors?.[i]||'blue',{glow:0.3})); node.position.copy(p); this.group.add(node); this.nodes.push(node);
+      const l = label(nm,{size:24}); l.position.copy(p).add(new T.Vector3(0,0.7,0)); this.group.add(l);
+    });
+    const ring = new T.Mesh(new T.TorusGeometry(this.R, 0.025, 8, 96), mat('grey',{glow:0.1})); ring.rotation.x=Math.PI/2; this.group.add(ring);
+    this.marker = new T.Mesh(new T.SphereGeometry(0.16,16,12), mat('amber',{glow:0.9})); this.group.add(this.marker);
+    this.t = 0; this.setT(0);
+  }
+  angle(t){ return -Math.PI/2 + t*2*Math.PI/this.names.length; }
+  setT(t){ this.t=t; const a=this.angle(t); this.marker.position.set(Math.cos(a)*this.R,0.05,Math.sin(a)*this.R);
+    const active = Math.round(t) % this.names.length;
+    this.nodes.forEach((n,i)=>{ n.material.emissiveIntensity = i===active?0.7:0.25; n.scale.setScalar(i===active?1.25:1); }); }
+}
+
+/* ---------- Grid1D: representable values on a number line (quantization) ---------- */
+class Grid1D {
+  constructor(values, opts={}){
+    this.group = new T.Group(); const len = opts.length || 8; this.len=len; this.min=opts.min??-1; this.max=opts.max??1;
+    const axis = new T.Mesh(new T.CylinderGeometry(0.015,0.015,len,6), mat('fg2',{glow:0.1})); axis.rotation.z=Math.PI/2; this.group.add(axis);
+    const g = new T.SphereGeometry(0.07,12,8); this.ticks=[];
+    values.forEach(v=>{ const m=new T.Mesh(g, mat(opts.color||'teal',{glow:0.5})); m.position.x=this.x(v); this.group.add(m); this.ticks.push(m); });
+  }
+  x(v){ return ((v-this.min)/(this.max-this.min)-0.5)*this.len; }
+}
+
+/* ---------- State: a scalar/matrix state body that can be written / decayed ---------- */
+class State {
+  constructor(opts={}){
+    this.group = new T.Group(); const r = opts.r || 0.6;
+    this.mesh = new T.Mesh(new T.SphereGeometry(r,32,24), mat(opts.color||'violet',{glow:0.4,opacity:0.95})); this.group.add(this.mesh);
+    if(opts.label){ const l=label(opts.label,{size:22}); l.position.y=r+0.4; this.group.add(l); }
+  }
+  set(level){ const l=Math.max(0,Math.min(1,level)); this.mesh.material.emissiveIntensity = 0.15+0.9*l; this.mesh.scale.setScalar(0.7+0.5*l); }
+}
+
+/* ---------- Tower: stacked layers coloured by block type (model blueprints) ---------- */
+class Tower {
+  constructor(layers, opts={}){ // layers: [{type:'attn'|'ffn'|'moe'|'mamba', label}]
+    this.group = new T.Group(); const w=opts.w||2.4, d=opts.d||1.6, h=opts.h||0.42, gap=0.1;
+    const colors = {attn:'teal', ffn:'blue', moe:'violet', mamba:'amber', embed:'grey', other:'grey'};
+    this.layers=[];
+    layers.forEach((L,i)=>{ const m=new T.Mesh(new T.BoxGeometry(w,h,d), mat(colors[L.type]||'grey',{glow:0.2,opacity:0.92})); m.position.y=i*(h+gap); this.group.add(m); this.layers.push(m); });
+    this.height = layers.length*(h+gap);
+    if(opts.label){ const l=label(opts.label,{size:24}); l.position.y=this.height+0.3; this.group.add(l); }
+  }
+}
+
+function wire(color='inactive', opacity=0.6){ return new T.MeshBasicMaterial({ color: C(color), wireframe:true, transparent:true, opacity }); }
+window.P = { ROLE, ALIAS, COL, C, hex, roleOf, label, mat, edges, highlight, wire, TokenRow, BeamSet, TensorBrick, GPUBox, Loop, Grid1D, State, Tower };
+})();
