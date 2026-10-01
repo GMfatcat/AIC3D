@@ -20,12 +20,14 @@ App.register({
     const lBlk=P.label('F(x)：Attention / FFN',{size:20}); lBlk.position.set(-2.2,L*H/2,0); g.add(lBlk); const lSk=P.label('x（旁路）',{size:20}); lSk.position.set(2.3,L*H/2,0); g.add(lSk);
     const AMBER=P.C('signal'), RED=P.C('alert'), GREY=P.C('inactive');
     const tint=(m,mag)=>{ const lg=Math.log10(Math.max(mag,1e-6)); const t=Math.max(-1,Math.min(1,lg/1.2)); const c=m.material.color.copy(AMBER); if(t>0.4)c.lerp(RED,(t-0.4)/0.6); else if(t<-0.4)c.lerp(GREY,(-t-0.4)/0.6); m.material.emissive.copy(c); m.material.emissiveIntensity=0.3+0.5*Math.max(0,Math.min(1,lg+0.6)); const r=0.09*Math.pow(10,Math.max(-0.5,Math.min(0.4,lg*0.5))); m.scale.x=m.scale.z=r; };
+    let lastXs=null, hovL=-1;
     const redraw=()=>{
       // forward: x_{l+1} = x_l + gain·x_l·0.1 (skip) or gain·x_l (no skip). gradient mirrors it: ∂/∂x = 1 + 0.1·gain or gain.
       let x=1, grad=1; const xs=[1], gs=[1];
-      for(let l=0;l<L;l++){ x = skip ? x*(1+0.1*gain) : x*gain; grad = skip ? grad*(1+0.1*gain) : grad*gain; xs.push(x); gs.push(grad); }
+      for(let l=0;l<L;l++){ x = skip ? x*(1+0.1*gain) : x*gain; grad = skip ? grad*(1+0.1*gain) : grad*gain; xs.push(x); gs.push(grad); } lastXs=xs;
       for(let l=0;l<L;l++){ tint(mains[l],xs[l]); tint(skips[l],xs[l]); skips[l].visible=skip; adders[l].visible=skip; tint(adders[l],xs[l+1]); adders[l].scale.setScalar(1);
-        blocks[l].material.emissiveIntensity = 0.3; blocks[l].material.color.copy(P.C('flow')); blocks[l].material.emissive.copy(P.C('flow')); }
+        blocks[l].material.emissiveIntensity = l===hovL?0.85:0.3; blocks[l].material.color.copy(P.C('flow')); blocks[l].material.emissive.copy(P.C('flow')); }
+      set('hov', hovL<0?'—':`第 ${hovL+1} 層：進入 ${xs[hovL].toFixed(3)} → 輸出 ${xs[hovL+1].toFixed(3)}`);
       g.children.forEach(c=>{ if(c.material && c.material.color && c.geometry===tubeGeo && c.rotation.z!==0) c.visible=skip; });
       set('fwd', xs[L].toFixed(3), xs[L]<0.3||xs[L]>3?'bad':'ok'); set('grad', gs[0]<=0?'—':(gs[L]).toExponential(2), gs[L]<0.1?'bad':'ok');
       set('jac', skip?`1 + ∂F/∂x（≈ ${(1+0.1*gain).toFixed(2)}）`:`∂F/∂x（= ${gain.toFixed(2)}）`);
@@ -36,7 +38,8 @@ App.register({
     ctrl.heading('旁路');
     ctrl.segmented(null,[{id:'on',label:'有 skip connection'},{id:'off',label:'沒有（純堆疊）'}],'on',id=>{skip=id==='on';redraw();});
     ctrl.slider('每層 block 的增益 ∂F/∂x',{min:0.5,max:1.3,step:0.05,value:0.8,fmt:v=>v.toFixed(2),onChange:v=>{gain=v;redraw();}});
-    const set=ctrl.readouts([{id:'jac',label:'每層導數'},{id:'fwd',label:`${L} 層後訊號幅度`},{id:'grad',label:`回傳到第 1 層的梯度`}]);
+    const set=ctrl.readouts([{id:'jac',label:'每層導數'},{id:'fwd',label:`${L} 層後訊號幅度`},{id:'grad',label:`回傳到第 1 層的梯度`},{id:'hov',label:'滑到的層'}]);
+    ctx.app.watchHover(blocks,(h,l)=>{ hovL=l; redraw(); },(m,l)=>`第 ${l+1} 層的 F(x) block`);
     const note=ctrl.note('');
     ctx.legend([['signal','訊號（粗 = 大）'],['flow','F(x) block'],['alert','爆炸'],['inactive','消失']]);
     ctx.setCamera({theta:0.45,phi:1.3});

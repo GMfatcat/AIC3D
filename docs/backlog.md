@@ -216,8 +216,8 @@
 | mamba | hover token、與 RNN 並排 | hover 追蹤；「RNN 對照」在上方多一排固定衰減 0.7 的狀態 | [x] 2026-10-02 |
 | jev | 打一段 state | textarea 自由輸入，關鍵字打分即時改槽位機率 | [x] 2026-10-02 |
 | embedding | 新點落下、cosine 弧 | 新點從上方落下，落定後連最近鄰；弧改用距離（P0 已改成歐氏距離） | [x] 2026-10-02 |
-| attention | 拖曳向量 | slider 取代 | [ ] |
-| engram | hover token | slider 取代 | [ ] |
+| attention | 拖曳向量 | 可直接拖 Q 箭頭（`App.dragTarget`，拖時不轉鏡頭）；滑過 token 就當 Query | [x] 2026-10-02 |
+| engram | hover token | hover / Tab 到 token 就選它 | [x] 2026-10-02 |
 | deepseek-v4 / glm / nemotron | 點層跳場景 | 只能 hover + 面板按鈕 | [ ] |
 | glm | tok/s 計 | 沒有 | [ ] |
 | qwen3-27b | thinking 有 3D 變化 | 只改文字 | [ ] |
@@ -230,7 +230,7 @@
 
 - [ ] 偏薄要加料：yolo-v10（一個切換）、glm-flash 與 nemotron（沒有控制元件）、residual 與 rnn（2 個控制）、qat（只有 stepper）、embedding。
 - [ ] 偏密要拆或收：stages（3 segmented + stepper + 2 slider + 9 readout + 2 bar + 3 段說明）、ocr（3 控制 + stepper + 6 readout + 4 段說明）、mhc、engram。
-- [ ] 沒有 hover 的 slider 場景補聚焦回饋：~~rnn、mamba、rwkv、gdn~~（2026-10-02，用 `App.watchHover`）、attention、engram、kvheads、residual、fp、exl3、imatrix、stages、ocr、tp/dp。
+- [ ] 沒有 hover 的 slider 場景補聚焦回饋：~~rnn、mamba、rwkv、gdn~~（2026-10-02，用 `App.watchHover`）、~~attention、engram、kvheads（滑到 Q 頭亮它的 K/V 組）、residual（滑到 block 看進出幅度）、mhc（滑到流看幅度）~~（2026-10-02）、fp、exl3、imatrix、stages、ocr、tp/dp。
 - [ ] hover 回饋位置統一：cnn/transformer 改 3D，gguf/towers 改面板 `info`。
 
 ---

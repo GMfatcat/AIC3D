@@ -33,7 +33,8 @@ App.register({
     const lossOf=e=>1.0+0.35*Math.pow(e-0.45,2)*4; // 最低點在 e=0.45，最高約 1.42
     const drawU=()=>{ const W=cv.width,H=cv.height; cg2.clearRect(0,0,W,H); const css=getComputedStyle(document.documentElement); const yOf=loss=>6+(H-24)*(1-(loss-1.0)/0.45); // loss 越低畫越下面
       cg2.strokeStyle=css.getPropertyValue('--line').trim(); cg2.strokeRect(10,6,W-20,H-24); cg2.beginPath(); for(let i=0;i<=40;i++){ const e=i/40; const x=10+e*(W-20), y=yOf(lossOf(e)); i?cg2.lineTo(x,y):cg2.moveTo(x,y);} cg2.strokeStyle=P.hex('flow'); cg2.lineWidth=2; cg2.stroke(); const lx=10+budget*(W-20), ly=yOf(lossOf(budget)); cg2.fillStyle=P.hex('signal'); cg2.beginPath(); cg2.arc(lx,ly,4,0,7); cg2.fill(); cg2.fillStyle=css.getPropertyValue('--fg3').trim(); cg2.font='10px IBM Plex Mono'; cg2.textAlign='left'; cg2.fillText('全 MoE',10,H-6); cg2.textAlign='right'; cg2.fillText('全 Engram',W-10,H-6); cg2.textAlign='center'; cg2.fillText('loss ↓',W/2,H-6); };
-    ctrl.heading('看一個 token 怎麼查表'); ctrl.slider('目前 token',{min:0,max:N-1,value:sel,fmt:v=>WORDS[v],onChange:v=>{sel=v;redraw();}});
+    ctrl.heading('看一個 token 怎麼查表'); const selSl=ctrl.slider('目前 token',{min:0,max:N-1,value:sel,fmt:v=>WORDS[v],onChange:v=>{sel=v;redraw();}});
+    ctx.app.watchHover(row.cubes,(h,i)=>{ if(i>=0){ sel=i; selSl.set(i); redraw(); } },(c,i)=>`token「${WORDS[i]}」`);
     ctrl.segmented('查到的記憶跟目前情境',[{id:'y',label:'相符'},{id:'n',label:'不符'}],'y',id=>{relevant=id==='y';redraw();});
     ctrl.slider('參數預算分給 Engram 的比例',{min:0,max:1,step:0.05,value:budget,fmt:v=>Math.round(v*100)+'%',onChange:v=>{budget=v;redraw();}});
     const set=ctrl.readouts([{id:'gram',label:'這個 token 的 n-gram'},{id:'lookup',label:'查表成本'},{id:'gate',label:'閘門'},{id:'mix',label:'目前分配'},{id:'loss',label:'對應的 loss'}]);

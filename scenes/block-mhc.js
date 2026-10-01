@@ -18,14 +18,17 @@ App.register({
 
     // ---- 3D ----
     const g=new T.Group(); root.add(g); g.position.y=-(L*LAYER_H)/2;
-    const segGeo=new T.CylinderGeometry(1,1,SEG_H,20,1); let segs=[]; let beams;
+    const segGeo=new T.CylinderGeometry(1,1,SEG_H,20,1); let segs=[]; let beams; let lastXs=null, hw=null;
+    const describeSeg=(m,idx)=>{ const k=segs.length/(L+1); const l=Math.floor(idx/k), i=idx%k; return `第 ${l} 層 第 ${i+1} 流`; };
+    const onSeg=(h,idx)=>{ if(idx<0){ set('hov','—'); return; } const k=segs.length/(L+1); const l=Math.floor(idx/k), i=idx%k; set('hov',`第 ${l} 層 第 ${i+1} 流：幅度 ${lastXs?short(Math.abs(lastXs[l][i])):'—'}`); };
     const sx=(i,k)=>(i-(k-1)/2)*DX;
     const build=k=>{ P.clear(g); segs=[];
       for(let l=0;l<=L;l++)for(let i=0;i<k;i++){const m=new T.Mesh(segGeo,P.mat('signal',{glow:0.5}));m.position.set(sx(i,k),l*LAYER_H,0);g.add(m);segs.push(m);}
       beams=new P.BeamSet(L*k*k,{maxR:0.07,minR:0.012}); g.add(beams.group);
+      if(hw) hw.set(segs); else hw=ctx.app.watchHover(segs,onSeg,describeSeg); // 重建後換掉 hover 目標
       const l0=P.label('輸入 x₀',{size:24}); l0.position.set(0,-0.9,0); g.add(l0); const l1=P.label('第 16 層 x₁₆',{size:24}); l1.position.set(0,L*LAYER_H+0.9,0); g.add(l1); };
     const a=new T.Vector3(), b=new T.Vector3();
-    const applyScene=(M,xs)=>{ const k=M.length;
+    const applyScene=(M,xs)=>{ const k=M.length; lastXs=xs;
       for(let l=0;l<=L;l++)for(let i=0;i<k;i++){const s=segs[l*k+i];const lg=Math.log10(Math.max(Math.abs(xs[l][i]),1e-6));const t=Math.max(-1,Math.min(1,lg/1.2));const r=0.16*Math.pow(10,Math.max(-0.6,Math.min(0.42,lg*0.5)));s.scale.set(r,1,r);const col=s.material.color.copy(AMBER);if(t>0.4)col.lerp(RED,(t-0.4)/0.6);else if(t<-0.4)col.lerp(GREY,(-t-0.4)/0.6);s.material.emissive.copy(col);s.material.emissiveIntensity=0.35+0.5*Math.max(0,Math.min(1,lg+0.6));}
       let q=0; for(let l=0;l<L;l++)for(let i=0;i<k;i++)for(let j=0;j<k;j++){const w=M[j][i];a.set(sx(i,k),l*LAYER_H+SEG_H/2,0);b.set(sx(j,k),(l+1)*LAYER_H-SEG_H/2,0);beams.set(q++,a,b,Math.abs(w)*(Math.abs(w)>0.015?1:0),w>=0?'flow':'alert');} };
 
@@ -41,7 +44,7 @@ App.register({
     const sink=ctrl.html('','sink');
     const replay=ctrl.buttons([{label:'重播 Sinkhorn',onClick:()=>commit()}])[0];
     ctrl.html('在格子上<b>上下拖曳</b>改值，或用滾輪。','hint');
-    const set=ctrl.readouts([{id:'norm',label:'‖H‖₂（譜範數）'},{id:'row',label:'列和範圍'},{id:'col',label:'欄和範圍'},{id:'out',label:'第 16 層幅度'}]);
+    const set=ctrl.readouts([{id:'norm',label:'‖H‖₂（譜範數）'},{id:'row',label:'列和範圍'},{id:'col',label:'欄和範圍'},{id:'out',label:'第 16 層幅度'},{id:'hov',label:'滑到的流'}]);
     const verdict=ctrl.note('');
     // energy chart in overlay (top-right)
     const chartWrap=h('div','ovl-card'); chartWrap.innerHTML='<div class="hint">每層訊號幅度（log₁₀，相對輸入）</div><canvas width="236" height="120" role="img" aria-label="每一條殘差流的訊號幅度隨層數變化的折線圖；數值見右側「第 16 層幅度」"></canvas>'; overlay.appendChild(chartWrap);

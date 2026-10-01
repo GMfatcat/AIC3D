@@ -22,19 +22,22 @@ App.register({
     const barBg=new T.Mesh(new T.BoxGeometry(0.5,4,0.5),P.mat('inactive',{glow:0.05,opacity:0.5})); barBg.position.set(3.9,0.2,0); root.add(barBg);
     const bar=new T.Mesh(new T.BoxGeometry(0.42,1,0.42),P.mat('memory',{glow:0.5})); bar.position.set(3.9,0.2,0); root.add(bar);
     const bl=P.label('每 token 的 KV cache',{size:20}); bl.position.set(3.9,2.6,0); root.add(bl); const bv=P.label('',{size:22,color:P.hex('white')}); bv.position.set(3.9,-2.3,0); root.add(bv);
-    const a=new T.Vector3(), b=new T.Vector3();
-    const apply=si=>{ const s=STAGES[si];
+    const a=new T.Vector3(), b=new T.Vector3(); let hov=-1, cur=0;
+    const apply=si=>{ const s=STAGES[si]; cur=si;
       kvs.forEach((m,i)=>{ m.visible=i<s.kv; m.position.x=(i-(s.kv-1)/2)*(s.kv===8?0.8:s.kv===2?2.4:0); });
       latent.visible=upProj.visible=s.id==='mla';
       root.updateMatrixWorld(true);
-      for(let i=0;i<NQ;i++){ a.copy(qs[i].position); a.y-=0.4; if(s.id==='mla'){ b.set(0,-1.4+0.7,0); } else { const g=Math.floor(i/(NQ/s.kv)); b.copy(kvs[g].position).applyMatrix4(kvG.matrixWorld); b.y+=0.4; } beams.set(i,a,b,0.6,s.id==='mla'?'state':'flow'); }
+      for(let i=0;i<NQ;i++){ a.copy(qs[i].position); a.y-=0.4; if(s.id==='mla'){ b.set(0,-1.4+0.7,0); } else { const g=Math.floor(i/(NQ/s.kv)); b.copy(kvs[g].position).applyMatrix4(kvG.matrixWorld); b.y+=0.4; } beams.set(i,a,b,hov<0?0.6:(i===hov?1.0:0.22),s.id==='mla'?'state':'flow'); qs[i].material.emissiveIntensity=i===hov?0.9:0.4; }
+      kvs.forEach((m,gi)=>{ m.material.emissiveIntensity=(hov>=0 && s.kv>0 && gi===Math.floor(hov/(NQ/s.kv)))?0.9:0.4; });
+      set('hov',hov<0?'—':`Q 頭 ${hov+1} → ${s.id==='mla'?'latent c（展開後的第 '+(hov+1)+' 組）':`第 ${Math.floor(hov/(NQ/s.kv))+1} 組 K/V`}`);
       bar.scale.y=Math.max(0.02,s.cache*4); bar.position.y=0.2-2+bar.scale.y/2; bar.material.color.copy(P.C(s.id==='mla'?'state':'memory')); bar.material.emissive.copy(bar.material.color);
       bv.userData.setText(`${Math.round(s.cache*100)}%`);
       kl.userData.setText(s.id==='mla'?'latent c（512 維）→ 上投影成 8 組 K/V':`K/V 頭 × ${s.kv}`);
       const kvDim = s.id==='mla'?512+64:2*s.kv*D; set('kv',s.id==='mla'?'8（展開後）':String(s.kv)); set('dim',`${kvDim} 維`); set('cache',`${Math.round(s.cache*100)}% of MHA`); set('q',s.id==='mqa'?'受限':s.id==='gqa'?'接近 MHA':'完整'); note.innerHTML=s.text; };
     ctrl.heading('一支滑桿從 MHA 拉到 MLA');
     ctrl.slider('KV 設計',{min:0,max:3,value:0,fmt:v=>STAGES[v].label,onChange:v=>apply(v)});
-    const set=ctrl.readouts([{id:'kv',label:'K/V 頭數'},{id:'dim',label:'每 token 存的維度'},{id:'cache',label:'cache 相對大小'},{id:'q',label:'表達力'}]);
+    const set=ctrl.readouts([{id:'kv',label:'K/V 頭數'},{id:'dim',label:'每 token 存的維度'},{id:'cache',label:'cache 相對大小'},{id:'q',label:'表達力'},{id:'hov',label:'滑到的頭'}]);
+    ctx.app.watchHover(qs,(h,i)=>{ hov=i; apply(cur); },(m,i)=>`Q 頭 ${i+1}`);
     const note=ctrl.note('');
     ctx.legend([['signal','Q 頭'],['memory','K/V 頭'],['flow','Q → 它用的 K/V'],['state','MLA 的 latent 與上投影']]);
     ctx.setCamera({theta:0.2,phi:1.35});
