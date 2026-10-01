@@ -4,7 +4,7 @@ App.register({
   init(ctx){
     const {THREE:T, P, root, ctrl} = ctx;
     const NAMES=['使用者訊息','LLM 推理','工具呼叫','工具結果'];
-    const loop=new P.Loop(NAMES,{R:3,colors:['amber','violet','teal','blue']}); root.add(loop.group);
+    const loop=new P.Loop(NAMES,{R:3,colors:['signal','state','flow','memory']}); root.add(loop.group);
     const SCRIPT=[ // Pi 修 CI 的一段
       {node:0,text:'使用者：CI 紅了，幫我看一下為什麼。',size:1},
       {node:1,text:'LLM：先看 CI log。→ 決定呼叫工具 read_file',size:2},
@@ -29,10 +29,10 @@ App.register({
       {node:3,text:'結果：committed',size:1},
     ];
     const CAP=40; let i=0, chunks=[], compactions=0, animFrom=0, animTo=0, animT=1;
-    const COLORS=['amber','violet','teal','blue'];
+    const COLORS=['signal','state','flow','memory'];
     const ctxBar=ctrl.html('','ctxbar'); const log=ctrl.html('','hint'); log.style.cssText='font-family:var(--mono);font-size:11.5px;max-height:120px;overflow:auto;white-space:pre-wrap';
     const total=()=>chunks.reduce((n,c)=>n+c.size,0);
-    const render=()=>{ ctxBar.innerHTML=''; const tot=total(); chunks.forEach(c=>{ const el=h('i'); el.style.width=(100*c.size/CAP)+'%'; el.style.background=c.summary?'var(--grey)':`var(--${COLORS[c.node]})`; el.title=c.text; ctxBar.appendChild(el); });
+    const render=()=>{ ctxBar.innerHTML=''; const tot=total(); chunks.forEach(c=>{ const el=h('i'); el.style.width=(100*c.size/CAP)+'%'; el.style.background=c.summary?'var(--structure)':`var(--${COLORS[c.node]})`; el.title=c.text; ctxBar.appendChild(el); });
       set('ctx',`${tot} / ${CAP}`,tot>CAP*0.85?'bad':'ok'); set('turns',String(i)); set('comp',String(compactions)); };
     const END='（腳本結束，按重置）';
     const step=()=>{ if(i>=SCRIPT.length){ if(!log.textContent.endsWith(END)) log.textContent+='\n'+END; return false; }
@@ -50,7 +50,7 @@ App.register({
     ctrl.note(`<p>Agent 不是一次問答，是一個<b>迴圈</b>：LLM 看完整個 context 決定下一步——回話，或呼叫工具；工具結果再被塞回 context，LLM 再看一次。</p>
       <p>注意吃 context 的不是 LLM 自己的話，而是<b>工具結果</b>（藍色）：一個 log 檔就能吃掉幾千 token。所以 Pi 這類 harness 一定要有 <b>compact</b>（舊訊息壓成摘要）和 <b>subagent</b>（把吃 context 的工作丟到另一個 context）。</p>
       <p class="hint">Compact 與 Subagent 在左邊有獨立場景（規劃中）。</p>`);
-    ctx.legend([['amber','使用者訊息'],['violet','LLM 推理'],['teal','工具呼叫'],['blue','工具結果'],['grey','compact 後的摘要']]);
+    ctx.legend([['signal','使用者訊息'],['state','LLM 推理'],['flow','工具呼叫'],['memory','工具結果'],['structure','compact 後的摘要']]);
     ctx.setCamera({theta:0.4,phi:0.95,dist:11});
     render();
     this.update=(dt)=>{ if(animT<1){ animT=Math.min(1,animT+(ctx.reduceMotion?1:dt*2.2)); const e=1-Math.pow(1-animT,3); loop.setT(animFrom+(animTo-animFrom)*e); } };

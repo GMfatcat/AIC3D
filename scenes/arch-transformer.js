@@ -9,8 +9,8 @@ App.register({
     const build = ()=>{
       while(root.children.length) root.remove(root.children[0]);
       const qLabels = this.mode==='encdec'?TGT:SRC, kLabels = SRC;
-      this.q = new P.TokenRow(qLabels,{color:'amber'}); this.q.group.position.y=1.8; root.add(this.q.group);
-      this.k = new P.TokenRow(kLabels,{color:'blue',labelBelow:true}); this.k.group.position.y=-1.8; root.add(this.k.group);
+      this.q = new P.TokenRow(qLabels,{color:'signal'}); this.q.group.position.y=1.8; root.add(this.q.group);
+      this.k = new P.TokenRow(kLabels,{color:'memory',labelBelow:true}); this.k.group.position.y=-1.8; root.add(this.k.group);
       this.qTitle = P.label(this.mode==='encdec'?'Query：目標序列（decoder）':'Query：每個 token 問「我該看誰？」',{size:22}); this.qTitle.position.set(0,2.9,0); root.add(this.qTitle);
       this.kTitle = P.label(this.mode==='encdec'?'Key/Value：來源序列（encoder 輸出）':'Key/Value：同一串 token',{size:22}); this.kTitle.position.set(0,-3.1,0); root.add(this.kTitle);
       this.beams = new P.BeamSet(qLabels.length*kLabels.length,{maxR:0.09}); root.add(this.beams.group);
@@ -30,7 +30,7 @@ App.register({
         const show = this.focus===0 || this.focus===i+1; const w=this.weights[i][j];
         if(!show || w<0.001){ this.beams.meshes[n++].visible=false; continue; }
         this.q.pos(i,a); a.y-=0.3; this.k.pos(j,b); b.y+=0.3;
-        this.beams.set(n++, a, b, this.focus===0? w*0.9 : w*1.6, this.mode==='encdec'?'violet':'teal');
+        this.beams.set(n++, a, b, this.focus===0? w*0.9 : w*1.6, this.mode==='encdec'?'state':'flow');
       }
       for(let i=0;i<this.nq;i++) this.q.style(i,{glow: this.focus===0||this.focus===i+1?0.5:0.1, opacity: this.focus===0||this.focus===i+1?1:0.35});
       for(let j=0;j<this.nk;j++){ let vis = this.focus===0 ? true : this.allowed(this.focus-1,j); this.k.style(j,{opacity:vis?1:0.25, glow:vis?0.3:0.05}); }
@@ -46,7 +46,7 @@ App.register({
       <p><b>Decoder-only</b>（GPT / Qwen / DeepSeek 類）：只能看左邊，所以能一顆一顆生成；訓練時整句一次算，靠的就是這個三角形 mask。</p>
       <p><b>Encoder-Decoder</b>（T5 / 翻譯 / Whisper 類）：decoder 內部仍是因果，但多了一層 cross attention 去看 encoder 的輸出。這裡畫的是 cross 那一層。</p>
       <p class="hint">連線束粗細 = softmax 後的權重，數值是示意，不是真實模型。</p>`);
-    ctx.legend([['amber','Query token'],['blue','Key/Value token'],['teal','attention 權重（粗 = 大）'],['violet','cross attention']]);
+    ctx.legend([['signal','Query token'],['memory','Key/Value token'],['flow','attention 權重（粗 = 大）'],['state','cross attention']]);
     ctx.setCamera({theta:0.15,phi:1.35,dist:12.5});
     build();
     this._hoverTargets = ()=> this.q.cubes;

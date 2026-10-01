@@ -12,19 +12,19 @@ App.register({
     const towerG=new T.Group(); towerG.position.set(-6.5,-2.6,0); root.add(towerG);
     const layers=[]; for(let i=0;i<6;i++){ layers.push({type:'attn'}); layers.push({type:'ffn'}); }
     const tower=new P.Tower(layers,{w:2.4,d:1.6,h:0.3,label:'all-MiniLM-L6（6 層 × [Attention, FFN]）'}); towerG.add(tower.group);
-    const pool=new T.Mesh(new T.SphereGeometry(0.28,20,14), P.mat('violet',{glow:0.6})); pool.position.set(0,tower.height+1.4,0); towerG.add(pool);
+    const pool=new T.Mesh(new T.SphereGeometry(0.28,20,14), P.mat('state',{glow:0.6})); pool.position.set(0,tower.height+1.4,0); towerG.add(pool);
     const poolL=P.label('mean pooling → 384 維向量',{size:20}); poolL.position.set(0,tower.height+2.0,0); towerG.add(poolL);
     let tokens=null; const beams=new P.BeamSet(12,{maxR:0.03}); root.add(beams.group); // world-space endpoints → must live under root
     // right: cloud
     const cloudG=new T.Group(); cloudG.position.set(3.2,0,0); root.add(cloudG);
     const cloud=EmbedCloud.build(ctx, cloudG);
-    const flyer=new T.Mesh(new T.SphereGeometry(0.2,16,12), P.mat('violet',{glow:1})); flyer.visible=false; root.add(flyer);
+    const flyer=new T.Mesh(new T.SphereGeometry(0.2,16,12), P.mat('state',{glow:1})); flyer.visible=false; root.add(flyer);
     let anim=null;
     const a=new T.Vector3(), b=new T.Vector3();
     const run=(s)=>{
-      if(tokens){ towerG.remove(tokens.group); } tokens=new P.TokenRow(s.tokens,{color:'blue',gap:0.6,size:0.4,labelBelow:true}); tokens.group.position.y=-1.1; towerG.add(tokens.group);
+      if(tokens){ towerG.remove(tokens.group); } tokens=new P.TokenRow(s.tokens,{color:'memory',gap:0.6,size:0.4,labelBelow:true}); tokens.group.position.y=-1.1; towerG.add(tokens.group);
       towerG.updateMatrixWorld(true); beams.hideAll();
-      for(let i=0;i<s.tokens.length;i++){ tokens.pos(i,a); a.y+=0.2; b.copy(pool.position).applyMatrix4(towerG.matrixWorld); beams.set(i,a,b,0.5,'violet'); }
+      for(let i=0;i<s.tokens.length;i++){ tokens.pos(i,a); a.y+=0.2; b.copy(pool.position).applyMatrix4(towerG.matrixWorld); beams.set(i,a,b,0.5,'state'); }
       cloud.clear(); flyer.visible=true; flyer.position.copy(pool.position).applyMatrix4(towerG.matrixWorld);
       const target=new T.Vector3(...s.pos).add(cloudG.position); anim={t:0,from:flyer.position.clone(),to:target,s};
       set('tok',String(s.tokens.length)); set('dim','384'); set('out','1 個點');
@@ -38,7 +38,7 @@ App.register({
     ctrl.note(`<p>不管一句話有幾個 token，進去是 N 個向量，<b>mean pooling</b> 把它們平均成一個，再做 L2 正規化。這就是為什麼它適合做檢索：一句話 = 一個點，比距離就好。</p>
       <p>6 層、384 維、約 22M 參數，CPU 跑一句話幾毫秒。它不是生成模型，是 Encoder-only（看 Tab 1 的 Transformer 場景，mask 是「全部可見」）。</p>
       <p class="hint">右邊點雲和 Tab 1 的 Embedding 場景是同一個。</p>`);
-    ctx.legend([['teal','Attention 層'],['blue','FFN 層'],['violet','pooling 後的句向量']]);
+    ctx.legend([['flow','Attention 層'],['memory','FFN 層'],['state','pooling 後的句向量']]);
     ctx.setCamera({theta:0.25,phi:1.3,dist:19,target:new T.Vector3(-1,0,0)});
   },
 });

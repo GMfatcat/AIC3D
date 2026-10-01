@@ -1,9 +1,9 @@
 /* Semantic point cloud. Coordinates are hand-placed illustrations, not real embeddings. */
 window.EmbedCloud = (function(){
   const CLUSTERS = {
-    animal:{color:'amber', center:[-3.2,0.4,0], words:['貓','狗','老虎','兔子','鯨魚','麻雀','金魚','獅子']},
-    food:{color:'teal', center:[3.0,-0.3,0.6], words:['牛肉麵','壽司','蘋果','咖啡','披薩','水餃','豆漿','蛋糕']},
-    tech:{color:'blue', center:[0.2,0.3,-3.4], words:['GPU','編譯器','資料庫','Transformer','光學鏡頭','感測器','韌體','演算法']},
+    animal:{color:'signal', center:[-3.2,0.4,0], words:['貓','狗','老虎','兔子','鯨魚','麻雀','金魚','獅子']},
+    food:{color:'flow', center:[3.0,-0.3,0.6], words:['牛肉麵','壽司','蘋果','咖啡','披薩','水餃','豆漿','蛋糕']},
+    tech:{color:'memory', center:[0.2,0.3,-3.4], words:['GPU','編譯器','資料庫','Transformer','光學鏡頭','感測器','韌體','演算法']},
   };
   const QUERIES = [
     {label:'「柴犬」', pos:[-2.6,0.9,0.5], c:'animal'},
@@ -21,13 +21,13 @@ window.EmbedCloud = (function(){
     }
     const axes=new T.AxesHelper(1.2); axes.material.transparent=true; axes.material.opacity=0.35; g.add(axes);
     const beams=new P.BeamSet(4,{maxR:0.035,minR:0.02}); g.add(beams.group);
-    const q=new T.Mesh(new T.SphereGeometry(0.2,16,12), P.mat('violet',{glow:1})); q.visible=false; g.add(q);
-    const qLabel=P.label('',{size:22,color:'#B48CFF'}); qLabel.visible=false; g.add(qLabel);
+    const q=new T.Mesh(new T.SphereGeometry(0.2,16,12), P.mat('state',{glow:1})); q.visible=false; g.add(q);
+    const qLabel=P.label('',{size:22,color:P.hex('state')}); qLabel.visible=false; g.add(qLabel);
     return { group:g, pts, beams, q, qLabel,
       nearest(pos,k=3){ return pts.map(p=>({p,d:p.pos.distanceTo(pos)})).sort((a,b)=>a.d-b.d).slice(0,k); },
       highlight(pos, text){ q.visible=true; q.position.copy(pos); qLabel.visible=true; qLabel.userData.setText(text); qLabel.position.copy(pos).add(new T.Vector3(0,0.45,0));
         const nn=this.nearest(pos); pts.forEach(p=>{p.mesh.material.emissiveIntensity=0.15;p.mesh.scale.setScalar(1);}); beams.hideAll();
-        nn.forEach((x,i)=>{ x.p.mesh.material.emissiveIntensity=1; x.p.mesh.scale.setScalar(1.5); beams.set(i,pos,x.p.pos,1-i*0.25,'violet'); });
+        nn.forEach((x,i)=>{ x.p.mesh.material.emissiveIntensity=1; x.p.mesh.scale.setScalar(1.5); beams.set(i,pos,x.p.pos,1-i*0.25,'state'); });
         return nn; },
       clear(){ q.visible=false; qLabel.visible=false; beams.hideAll(); pts.forEach(p=>{p.mesh.material.emissiveIntensity=0.5;p.mesh.scale.setScalar(1);}); },
     };
@@ -53,7 +53,7 @@ App.register({
     const note = ctrl.note(`<p>每個詞是空間裡的一個點（這裡是 3 維示意，真實模型是 384～4096 維）。訓練目標是讓語境相似的詞靠近。</p>
       <p><b>word2vec</b>：一個詞一個固定點。<b>sentence embedding</b>（如 all-MiniLM）：整句話壓成一個點。<b>late interaction</b>（如 ColBERT）：每個 token 各留一個點，查詢時逐 token 比對再加總。</p>
       <p class="hint">座標是手排的示意，不是真實向量。</p>`);
-    ctx.legend([['amber','動物'],['teal','食物'],['blue','技術'],['violet','新詞與最近鄰']]);
+    ctx.legend([['signal','動物'],['flow','食物'],['memory','技術'],['state','新詞與最近鄰']]);
     ctx.setCamera({theta:0.7,phi:1.15,dist:12});
   },
 });

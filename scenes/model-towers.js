@@ -1,30 +1,30 @@
 /* 層塔藍圖：每個模型只提供「層組成 + 數字 + 說明」 */
 (function(){
   const TYPE={
-    attn:{color:'teal',label:'全注意力（GQA / MLA）',link:'kvheads'}, swa:{color:'teal',label:'滑動視窗注意力',link:'transformer'}, sparse:{color:'blue',label:'稀疏注意力（CSA / HCA / DSA）',link:'kvheads'},
-    gdn:{color:'amber',label:'Gated DeltaNet / KDA（線性注意力）',link:'gdn'}, mamba:{color:'amber',label:'Mamba-2',link:'mamba'},
-    moe:{color:'violet',label:'MoE FFN',link:'deepseek-v4'}, hash:{color:'violet',label:'MoE FFN（hash 路由）',link:'engram'}, ffn:{color:'grey',label:'Dense FFN',link:'residual'},
+    attn:{color:'flow',label:'全注意力（GQA / MLA）',link:'kvheads'}, swa:{color:'flow:dim',label:'滑動視窗注意力',link:'transformer'}, sparse:{color:'memory',label:'稀疏注意力（CSA / HCA / DSA）',link:'kvheads'},
+    gdn:{color:'state',label:'Gated DeltaNet / KDA（線性注意力）',link:'gdn'}, mamba:{color:'state',label:'Mamba-2',link:'mamba'}, // 線性注意力 / SSM 帶著狀態走 → state
+    moe:{color:'moe',label:'MoE FFN',link:'deepseek-v4'}, hash:{color:'moe:dim',label:'MoE FFN（hash 路由）',link:'engram'}, ffn:{color:'structure',label:'Dense FFN',link:'residual'},
   };
   function blueprint(ctx, spec){
     const {THREE:T,P,root,ctrl,overlay}=ctx; const L=spec.layers.length; const h=Math.min(0.34, 14/L), gap=h*0.28; const W=2.6, D=1.7;
     const tower=new T.Group(); tower.position.set(-2.2,-(L*(h+gap))/2,0); root.add(tower); const meshes=[];
     spec.layers.forEach((ly,i)=>{ const t=TYPE[ly]; const m=new T.Mesh(new T.BoxGeometry(W,h,D),P.mat(t.color,{glow:0.2,opacity:0.95})); m.position.y=i*(h+gap); m.userData={i,type:ly}; tower.add(m); meshes.push(m); });
     const tl=P.label(spec.title,{size:24}); tl.position.set(0,L*(h+gap)+0.6,0); tower.add(tl);
-    if(spec.mhc){ for(let s=0;s<4;s++){ const tube=new T.Mesh(new T.CylinderGeometry(0.04,0.04,L*(h+gap),8),P.mat('amber',{glow:0.4,opacity:0.7})); tube.position.set(-W/2-0.35,L*(h+gap)/2-h/2,(s-1.5)*0.35); tower.add(tube); } const ml=P.label('mHC ×4 殘差流',{size:15}); ml.position.set(-W/2-0.35,-0.6,0); tower.add(ml); }
+    if(spec.mhc){ for(let s=0;s<4;s++){ const tube=new T.Mesh(new T.CylinderGeometry(0.04,0.04,L*(h+gap),8),P.mat('signal',{glow:0.4,opacity:0.7})); tube.position.set(-W/2-0.35,L*(h+gap)/2-h/2,(s-1.5)*0.35); tower.add(tube); } const ml=P.label('mHC ×4 殘差流',{size:15}); ml.position.set(-W/2-0.35,-0.6,0); tower.add(ml); }
     // token travelling up
     const tok=new T.Mesh(new T.SphereGeometry(0.16,16,12),P.mat('white',{glow:1})); tok.position.set(W/2+0.4,0,0); tower.add(tok); let ty=0;
     // expert grid (if MoE)
     let experts=null, expCells=[]; if(spec.experts){ experts=new T.Group(); experts.position.set(2.8,0,0); root.add(experts); const n=spec.expertsShown||64, cols=Math.ceil(Math.sqrt(n)); const cs=Math.min(0.32,4.2/cols);
-      for(let i=0;i<n;i++){ const m=new T.Mesh(new T.BoxGeometry(cs*0.85,cs*0.85,0.2),P.mat('violet',{glow:0.08,opacity:0.8})); m.position.set((i%cols-(cols-1)/2)*cs,((cols-1)/2-Math.floor(i/cols))*cs,0); experts.add(m); expCells.push(m); }
+      for(let i=0;i<n;i++){ const m=new T.Mesh(new T.BoxGeometry(cs*0.85,cs*0.85,0.2),P.mat('moe',{glow:0.08,opacity:0.8})); m.position.set((i%cols-(cols-1)/2)*cs,((cols-1)/2-Math.floor(i/cols))*cs,0); experts.add(m); expCells.push(m); }
       const el=P.label(`${spec.experts} 個專家（示意 ${n} 格）· 每 token 用 top-${spec.topk}${spec.shared?' + 1 共享':''}`,{size:16}); el.position.set(0,(cols/2)*cs+0.5,0); experts.add(el); }
     // controls
     ctrl.heading('組成'); const counts={}; spec.layers.forEach(l=>counts[l]=(counts[l]||0)+1);
-    ctrl.html(Object.entries(counts).map(([k,v])=>`<div style="display:flex;justify-content:space-between;font-size:13px"><span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--${TYPE[k].color});margin-right:6px"></i>${TYPE[k].label}</span><span style="font-family:var(--mono)">${v} 層</span></div>`).join(''));
+    ctrl.html(Object.entries(counts).map(([k,v])=>`<div style="display:flex;justify-content:space-between;font-size:13px"><span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${P.css(TYPE[k].color)};margin-right:6px"></i>${TYPE[k].label}</span><span style="font-family:var(--mono)">${v} 層</span></div>`).join(''));
     const set=ctrl.readouts(spec.stats.map(([id,label])=>({id,label}))); spec.stats.forEach(([id,label,val])=>set(id,val));
     const hoverInfo=ctrl.html('<span class="hint">滑鼠移到任一層看它是什麼、要到哪個 Block 場景。</span>');
     if(spec.extraControls) spec.extraControls(ctrl,set);
     ctrl.note(spec.note);
-    const legendItems=Object.keys(counts).map(k=>[TYPE[k].color,TYPE[k].label]); if(spec.mhc) legendItems.push(['amber','mHC 殘差流']); ctx.legend(legendItems);
+    const legendItems=Object.keys(counts).map(k=>[TYPE[k].color,TYPE[k].label]); if(spec.mhc) legendItems.push(['signal','mHC 殘差流']); if(spec.experts && !counts.moe && !counts.hash) legendItems.push(['moe','MoE 專家格（亮 = 這個 token 用到的）']); /* 有 MoE 層型時圖例已經有 moe 色 */ ctx.legend(legendItems);
     ctx.setCamera({theta:0.35,phi:1.35,dist:Math.max(14,L*(h+gap)*1.65)});
     let hovered=null, lastExp=-1;
     return { dispose(){ root.remove(tower); if(experts) root.remove(experts); },

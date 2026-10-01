@@ -1,7 +1,7 @@
 :root{
   --bg:#0E1420; --bg2:#151D2C; --bg3:#1C2637; --panel:rgba(21,29,44,.88); --line:#2A3446;
   --fg:#E8ECF3; --fg2:#9AA6BA; --fg3:#5F6C83;
-  --amber:#F2B544; --teal:#49B6A3; --red:#E2554F; --blue:#6F8CFF; --grey:#3A4455; --violet:#B48CFF;
+  /* 語意色（--signal、--memory、--state、--flow、--alert、--moe、--inactive、--structure 與 -dim / -hot）由 core/primitives.js 的 P.ROLE 產生，這裡不另外定義 */
   --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
   --side:220px; --ctrl:320px;
@@ -25,7 +25,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px
 #tabs button{appearance:none;border:0;background:transparent;color:var(--fg2);font:inherit;padding:7px 12px;border-radius:7px;cursor:pointer;white-space:nowrap;}
 #tabs button:hover{background:var(--bg3);}
 #tabs button[aria-selected="true"]{background:var(--bg3);color:var(--fg);font-weight:500;}
-#tabs button:focus-visible,.seg button:focus-visible,.btn:focus-visible,#items button:focus-visible{outline:2px solid var(--amber);outline-offset:-2px;}
+#tabs button:focus-visible,.seg button:focus-visible,.btn:focus-visible,#items button:focus-visible{outline:2px solid var(--signal);outline-offset:-2px;}
 #progress{font-family:var(--mono);font-size:12px;color:var(--fg3);white-space:nowrap;}
 
 /* side list */
@@ -57,7 +57,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px
 .ctl{display:flex;flex-direction:column;gap:6px;}
 .ctl label{font-size:13px;color:var(--fg2);display:flex;justify-content:space-between;}
 .ctl label output{font-family:var(--mono);color:var(--fg);}
-input[type=range]{accent-color:var(--amber);width:100%;margin:0;}
+input[type=range]{accent-color:var(--signal);width:100%;margin:0;}
 .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
 .seg button{appearance:none;border:0;background:transparent;color:var(--fg2);font:inherit;font-size:13px;padding:6px 8px;cursor:pointer;flex:1;border-right:1px solid var(--line);}
 .seg button:last-child{border-right:0;}
@@ -66,11 +66,11 @@ input[type=range]{accent-color:var(--amber);width:100%;margin:0;}
 .btn{appearance:none;font:inherit;font-size:13px;border:1px solid var(--line);background:var(--bg3);color:var(--fg);border-radius:7px;padding:5px 10px;cursor:pointer;}
 .btn:hover{border-color:var(--fg3);}
 .btn[disabled]{opacity:.45;cursor:default;}
-.btn.primary{background:var(--amber);color:#1a1200;border-color:transparent;}
+.btn.primary{background:var(--signal);color:#1a1200;border-color:transparent;}
 select.sel{font:inherit;font-size:13px;background:var(--bg3);color:var(--fg);border:1px solid var(--line);border-radius:7px;padding:5px 8px;}
 .readouts{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px;}
 .readouts dt{color:var(--fg2);} .readouts dd{margin:0;font-family:var(--mono);text-align:right;}
-.readouts dd.bad{color:var(--red);} .readouts dd.ok{color:var(--teal);}
+.readouts dd.bad{color:var(--alert);} .readouts dd.ok{color:var(--flow);}
 .note{font-size:13px;color:var(--fg2);border-top:1px solid var(--line);padding-top:12px;}
 .note b{color:var(--fg);font-weight:500;}
 .note p{margin:0 0 8px;}
@@ -88,7 +88,7 @@ select.sel{font:inherit;font-size:13px;background:var(--bg3);color:var(--fg);bor
 .mat .cell.sum{background:transparent;color:var(--fg3);font-size:11px;border:0;height:16px;}
 .mat .cell.corner{height:16px;border:0;}
 .cap{font-size:12.5px;color:var(--fg2);margin-bottom:6px;} .cap b{color:var(--fg);font-weight:500;}
-.sink{font-family:var(--mono);font-size:12px;color:var(--teal);min-height:18px;}
+.sink{font-family:var(--mono);font-size:12px;color:var(--flow);min-height:18px;}
 
 /* context bar (agent) */
 .ctxbar{display:flex;gap:2px;height:22px;background:var(--bg3);border-radius:6px;padding:2px;overflow:hidden;}
@@ -120,12 +120,12 @@ select.sel{font:inherit;font-size:13px;background:var(--bg3);color:var(--fg);bor
 #tourbar .tb-exit{margin-left:auto;appearance:none;border:0;background:transparent;color:#7F8BA0;cursor:pointer;font-size:14px;}
 #tourbar .tb-exit:hover{color:#fff;}
 #tourbar .tb-note{font-size:13px;line-height:1.5;}
-#tourbar .tb-note b{color:#F2B544;font-weight:600;}
+#tourbar .tb-note b{color:var(--signal);font-weight:600;}
 #tourbar .tb-dots{display:flex;gap:4px;}
 #tourbar .tb-dots i{display:block;flex:1;height:4px;border-radius:2px;background:#2A3446;cursor:pointer;}
-#tourbar .tb-dots i.done{background:#3FBFA8;} #tourbar .tb-dots i.cur{background:#F2B544;}
+#tourbar .tb-dots i.done{background:var(--flow);} #tourbar .tb-dots i.cur{background:var(--signal);}
 #tourbar .tb-nav{display:flex;justify-content:space-between;gap:8px;}
-#tourbar .btn{background:#1C2637;border-color:#2A3446;color:#E8ECF3;} #tourbar .btn.primary{background:#F2B544;color:#1a1200;border-color:transparent;}
+#tourbar .btn{background:#1C2637;border-color:#2A3446;color:#E8ECF3;} #tourbar .btn.primary{background:var(--signal);color:#1a1200;border-color:transparent;}
 @media (max-width:900px){ #tourmenu{right:12px;} #tourbar{bottom:8px;} }
 #stage:has(#tourbar.on) #legend{bottom:160px;}
 #stage:has(#tourbar.on) #camhint{bottom:160px;}

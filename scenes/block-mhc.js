@@ -4,7 +4,7 @@ App.register({
   init(ctx){
     const {THREE:T, P, root, ctrl, overlay} = ctx;
     const L=16, C_INJECT=0.05, ROUNDS=20, LAYER_H=1.15, SEG_H=0.72, DX=0.95;
-    const AMBER=P.C('amber'), RED=P.C('red'), GREY=P.C('grey'), TEAL=P.C('teal');
+    const AMBER=P.C('signal'), RED=P.C('alert'), GREY=P.C('inactive'), TEAL=P.C('flow');
     let mode='mhc', n=4, Ht=[[1.2,0.3,-0.5,0.0],[0.0,1.5,0.4,-0.8],[0.6,-0.2,1.0,0.3],[-0.4,0.5,0.2,1.3]], H, timer=null;
     const ident=k=>Array.from({length:k},(_,i)=>Array.from({length:k},(_,j)=>i===j?1:0));
     const clone=M=>M.map(r=>r.slice());
@@ -21,13 +21,13 @@ App.register({
     const segGeo=new T.CylinderGeometry(1,1,SEG_H,20,1); let segs=[]; let beams;
     const sx=(i,k)=>(i-(k-1)/2)*DX;
     const build=k=>{ while(g.children.length) g.remove(g.children[0]); segs=[];
-      for(let l=0;l<=L;l++)for(let i=0;i<k;i++){const m=new T.Mesh(segGeo,P.mat('amber',{glow:0.5}));m.position.set(sx(i,k),l*LAYER_H,0);g.add(m);segs.push(m);}
+      for(let l=0;l<=L;l++)for(let i=0;i<k;i++){const m=new T.Mesh(segGeo,P.mat('signal',{glow:0.5}));m.position.set(sx(i,k),l*LAYER_H,0);g.add(m);segs.push(m);}
       beams=new P.BeamSet(L*k*k,{maxR:0.07,minR:0.012}); g.add(beams.group);
       const l0=P.label('輸入 x₀',{size:24}); l0.position.set(0,-0.9,0); g.add(l0); const l1=P.label('第 16 層 x₁₆',{size:24}); l1.position.set(0,L*LAYER_H+0.9,0); g.add(l1); };
     const a=new T.Vector3(), b=new T.Vector3();
     const applyScene=(M,xs)=>{ const k=M.length;
       for(let l=0;l<=L;l++)for(let i=0;i<k;i++){const s=segs[l*k+i];const lg=Math.log10(Math.max(Math.abs(xs[l][i]),1e-6));const t=Math.max(-1,Math.min(1,lg/1.2));const r=0.16*Math.pow(10,Math.max(-0.6,Math.min(0.42,lg*0.5)));s.scale.set(r,1,r);const col=s.material.color.copy(AMBER);if(t>0.4)col.lerp(RED,(t-0.4)/0.6);else if(t<-0.4)col.lerp(GREY,(-t-0.4)/0.6);s.material.emissive.copy(col);s.material.emissiveIntensity=0.35+0.5*Math.max(0,Math.min(1,lg+0.6));}
-      let q=0; for(let l=0;l<L;l++)for(let i=0;i<k;i++)for(let j=0;j<k;j++){const w=M[j][i];a.set(sx(i,k),l*LAYER_H+SEG_H/2,0);b.set(sx(j,k),(l+1)*LAYER_H-SEG_H/2,0);beams.set(q++,a,b,Math.abs(w)*(Math.abs(w)>0.015?1:0),w>=0?'teal':'red');} };
+      let q=0; for(let l=0;l<L;l++)for(let i=0;i<k;i++)for(let j=0;j<k;j++){const w=M[j][i];a.set(sx(i,k),l*LAYER_H+SEG_H/2,0);b.set(sx(j,k),(l+1)*LAYER_H-SEG_H/2,0);beams.set(q++,a,b,Math.abs(w)*(Math.abs(w)>0.015?1:0),w>=0?'flow':'alert');} };
 
     // ---- controls ----
     ctrl.heading('模式');
@@ -48,12 +48,12 @@ App.register({
     chartWrap.innerHTML='<div class="hint" style="margin-bottom:4px">每層訊號幅度（log₁₀，相對輸入）</div><canvas width="236" height="120" style="display:block;width:100%"></canvas>'; overlay.appendChild(chartWrap);
     const chart=chartWrap.querySelector('canvas'), cg=chart.getContext('2d');
     const drawChart=xs=>{const W=chart.width,Hh=chart.height;cg.clearRect(0,0,W,Hh);const css=getComputedStyle(document.documentElement);const x0=28,x1=W-6,y0=6,y1=Hh-16;const yOf=v=>y1-(Math.max(-2,Math.min(3,v))+2)/5*(y1-y0);
-      cg.fillStyle='rgba(242,181,68,0.10)';cg.fillRect(x0,yOf(0.5),x1-x0,yOf(-0.5)-yOf(0.5));cg.strokeStyle=css.getPropertyValue('--line').trim();cg.lineWidth=1;cg.font='10px IBM Plex Mono, monospace';
+      cg.fillStyle=P.rgba('signal',0.10);cg.fillRect(x0,yOf(0.5),x1-x0,yOf(-0.5)-yOf(0.5));cg.strokeStyle=css.getPropertyValue('--line').trim();cg.lineWidth=1;cg.font='10px IBM Plex Mono, monospace';
       for(const gl of [-2,-1,0,1,2,3]){cg.beginPath();cg.moveTo(x0,yOf(gl));cg.lineTo(x1,yOf(gl));cg.stroke();cg.fillStyle=css.getPropertyValue('--fg3').trim();cg.textAlign='right';cg.fillText(gl>0?'+'+gl:gl,x0-4,yOf(gl)+3);}
-      for(let i=0;i<xs[0].length;i++){cg.beginPath();for(let l=0;l<=L;l++){const v=Math.log10(Math.max(Math.abs(xs[l][i]),1e-9));const px=x0+(l/L)*(x1-x0);l?cg.lineTo(px,yOf(v)):cg.moveTo(px,yOf(v));}const lv=Math.log10(Math.max(Math.abs(xs[L][i]),1e-9));cg.strokeStyle=lv>0.5?'#E2554F':lv<-0.5?'#7C8799':'#F2B544';cg.lineWidth=1.6;cg.stroke();}
+      for(let i=0;i<xs[0].length;i++){cg.beginPath();for(let l=0;l<=L;l++){const v=Math.log10(Math.max(Math.abs(xs[l][i]),1e-9));const px=x0+(l/L)*(x1-x0);l?cg.lineTo(px,yOf(v)):cg.moveTo(px,yOf(v));}const lv=Math.log10(Math.max(Math.abs(xs[L][i]),1e-9));cg.strokeStyle=lv>0.5?P.hex('alert'):lv<-0.5?P.hex('structure'):P.hex('signal');cg.lineWidth=1.6;cg.stroke();}
       cg.fillStyle=css.getPropertyValue('--fg3').trim();cg.textAlign='left';cg.fillText('層 0',x0,Hh-4);cg.textAlign='right';cg.fillText('層 16',x1,Hh-4);};
 
-    const cellColor=v=>{const a=Math.min(1,Math.abs(v)/(mode==='mhc'?1:1.5));return v>=0?`rgba(73,182,163,${0.12+0.7*a})`:`rgba(226,85,79,${0.12+0.7*a})`;};
+    const cellColor=v=>{const a=Math.min(1,Math.abs(v)/(mode==='mhc'?1:1.5));return P.rgba(v>=0?'flow':'alert',(0.12+0.7*a).toFixed(2));};
     const fmt=v=>(Math.abs(v)<0.005?0:v).toFixed(2);
     // 回傳格子元素的引用，讓拖曳時只改值、不重建 DOM（重建會把正在拖的格子刪掉，pointer capture 跟著失效）
     const renderGrid=(el,M,editable,sums)=>{const k=M.length;el.innerHTML='';el.style.gridTemplateColumns=`repeat(${k+(sums?1:0)},36px)`;const rs=sums?rowSums(M):null,cs=sums?colSums(M):null;const refs={cells:[],rowSum:[],colSum:[]};
@@ -82,7 +82,7 @@ App.register({
       const lim=m==='mhc'?3:1.5;Ht=Ht.map(r=>r.map(v=>Math.max(-lim,Math.min(lim,v))));renderEdit();commit();};
     const setN=(k,doCommit=true)=>{n=k;Ht=resize(Ht,k);build(k);renderEdit();if(doCommit)commit();};
 
-    ctx.legend([['amber','訊號幅度正常'],['red','幅度爆炸（> 3×）'],['grey','幅度熄滅（< ⅓）'],['teal','層間混合權重 Hᵢⱼ（粗 = 大）']]);
+    ctx.legend([['signal','訊號幅度正常'],['alert','幅度爆炸（> 3×）'],['inactive','幅度熄滅（< ⅓）'],['flow','層間混合權重 Hᵢⱼ（粗 = 大）']]);
     ctx.setCamera({theta:0.55,phi:1.3,dist:31});
     build(4); setMode('mhc');
     this._timerRef=()=>timer;

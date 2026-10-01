@@ -48,7 +48,7 @@ class Controls {
   bar(label){ // stacked bar: set([{frac,color}])
     const w=el('div','ctl'); if(label) w.appendChild(el('label',null,`<span>${label}</span>`));
     const b=el('div','bar'); w.appendChild(b); this.c.appendChild(w);
-    return (segs)=>{ b.innerHTML=''; segs.forEach(s=>{ const i=el('i'); i.style.width=(100*s.frac)+'%'; i.style.background=`var(--${s.color})`; b.appendChild(i); }); };
+    return (segs)=>{ b.innerHTML=''; segs.forEach(s=>{ const i=el('i'); i.style.width=(100*s.frac)+'%'; i.style.background=P.css(s.color); b.appendChild(i); }); };
   }
   html(html, cls){ const d=el('div',cls||'ctl',html); this.c.appendChild(d); return d; }
   note(html){ return this.html(html,'note'); }
