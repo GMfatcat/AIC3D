@@ -78,11 +78,12 @@ def test_no_empty_text_labels_in_dom(site, scene_id):
 
 
 def test_towers_expert_choice_is_reproducible(site):
-    site.goto("nemotron", settle=3000)
-    a = site.ev("(() => { const o = []; App.root.traverse(m => { if (m.isMesh && Math.abs(m.scale.x - 1.25) < 1e-6) o.push(m.position.x.toFixed(2) + ',' + m.position.y.toFixed(2)); }); return o.sort(); })()")
-    site.goto("cnn"); site.goto("nemotron", settle=3000)
-    b = site.ev("(() => { const o = []; App.root.traverse(m => { if (m.isMesh && Math.abs(m.scale.x - 1.25) < 1e-6) o.push(m.position.x.toFixed(2) + ',' + m.position.y.toFixed(2)); }); return o.sort(); })()")
-    assert a and a == b, "expert highlight uses Math.random, so two visits differ"
+    site.goto("nemotron")
+    a = site.ev("App.current._inner.highlightLayer(10)")
+    site.ev("App.current._inner.highlightLayer(12)")
+    b = site.ev("App.current._inner.highlightLayer(10)")
+    assert a and a == b, "the experts lit for a given layer must not depend on history (no Math.random)"
+    assert a != site.ev("App.current._inner.highlightLayer(12)")
 
 
 def test_scene_can_register_cleanup_with_on_dispose(site):

@@ -27,11 +27,14 @@
     ctrl.note(spec.note);
     const legendItems=Object.keys(counts).map(k=>[TYPE[k].color,TYPE[k].label]); if(spec.mhc) legendItems.push(['signal','mHC 殘差流']); if(spec.experts && !counts.moe && !counts.hash) legendItems.push(['moe','MoE 專家格（亮 = 這個 token 用到的）']); /* 有 MoE 層型時圖例已經有 moe 色 */ ctx.legend(legendItems);
     ctx.setCamera({theta:0.35,phi:1.35});
-    let hovered=null, lastExp=-1; let eseed=spec.layers.length; const erand=()=>{ eseed=(eseed*9301+49297)%233280; return eseed/233280; }; // 固定種子：每次看到的專家一樣
-    return { dispose(){ P.drop(tower); if(experts) P.drop(experts); },
+    let hovered=null, lastExp=-1; let eseed=1; const erand=()=>{ eseed=(eseed*9301+49297)%233280; return eseed/233280; };
+    const isMoeLayer=li=>{ const ly=spec.layers[li]; return spec.isMoe?spec.isMoe(li,ly):(ly==='moe'||ly==='hash'); };
+    // 第 li 層亮哪幾個專家由層數決定（種子 = 層數），同一層每次看到的都一樣
+    const highlightLayer=li=>{ lastExp=li; eseed=(li+1)*7919; expCells.forEach(c=>{c.material.emissiveIntensity=0.08;c.scale.setScalar(1);}); const k=Math.min(spec.topk,expCells.length); const used=new Set(); while(used.size<k){ used.add(Math.floor(erand()*expCells.length)); } used.forEach(i=>{expCells[i].material.emissiveIntensity=1;expCells[i].scale.setScalar(1.25);}); return [...used].sort((a,b)=>a-b); };
+    return { highlightLayer, dispose(){ P.drop(tower); if(experts) P.drop(experts); },
       update(dt){ if(ctx.reduceMotion){ const park=Math.max(0,spec.layers.findIndex((ly,i)=>spec.isMoe?spec.isMoe(i,ly):(ly==='moe'||ly==='hash'))); ty=0.5+(park+0.5)*(h+gap); } else ty=(ty+dt*(spec.speed||2.5))%(L*(h+gap)+1); tok.position.y=ty-0.5; const li=Math.min(L-1,Math.max(0,Math.floor((ty-0.5)/(h+gap))));
         meshes.forEach((m,i)=>{ m.material.emissiveIntensity = (i===li?0.9:0.2) + (m===hovered?0.5:0); });
-        if(experts){ const ly=spec.layers[li]; const isMoe=spec.isMoe?spec.isMoe(li,ly):(ly==='moe'||ly==='hash'); if(isMoe && li!==lastExp){ lastExp=li; expCells.forEach(c=>{c.material.emissiveIntensity=0.08;c.scale.setScalar(1);}); const k=Math.min(spec.topk,expCells.length); const used=new Set(); while(used.size<k){ used.add(Math.floor(erand()*expCells.length)); } used.forEach(i=>{expCells[i].material.emissiveIntensity=1;expCells[i].scale.setScalar(1.25);}); } }
+        if(experts && isMoeLayer(li) && li!==lastExp) highlightLayer(li);
         const hv=ctx.app.hover(meshes); if(hv!==hovered){ hovered=hv; if(hv){ const t=TYPE[hv.userData.type]; const target=ctx.app.catalog.find(x=>x.id===t.link); hoverInfo.innerHTML=`第 ${hv.userData.i+1} 層：<b>${t.label}</b> `; const go=window.h('button','btn sm',`看「${target?target.title:t.link}」→`); go.addEventListener('click',()=>{ location.hash=t.link; }); hoverInfo.appendChild(go); } } } };
   }
   const rep=(pattern,times)=>Array.from({length:times},()=>pattern).flat();

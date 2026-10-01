@@ -34,13 +34,13 @@ const theme = name => getComputedStyle(document.documentElement).getPropertyValu
 /* ---------- label: DOM 文字疊在 3D 座標上（由 App 每幀投影） ---------- */
 function label(text, opts={}){
   const o = new T.Object3D(); o.isLabel = true;
-  const el = document.createElement('div'); el.className = 'l3d'; el.textContent = text;
-  if(opts.size) el.style.fontSize = Math.round(opts.size*0.55) + 'px';
+  const size = opts.size || 20; const tier = opts.tier || (size >= 24 ? 'title' : size >= 19 ? 'axis' : 'value'); // 三個字級層級，CSS 定大小
+  const el = document.createElement('div'); el.className = 'l3d l3d-' + tier; el.textContent = text;
   if(opts.color) el.style.color = opts.color;
   o.el = el; o.visible = true;
   // 相容舊介面：label.material.opacity、label.userData.setText、label.scale
   let op = 1; o.material = { get opacity(){ return op; }, set opacity(v){ op = v; el.style.opacity = v; } };
-  o.userData.setText = (t)=>{ el.textContent = t; };
+  o.userData.setText = (t)=>{ el.textContent = t; o._dirty = true; };
   (window.App && App.labels) ? App.labels.add(o) : (window.__pendingLabels = (window.__pendingLabels||[]).concat(o));
   return o;
 }
@@ -48,7 +48,7 @@ function label(text, opts={}){
 /* ---------- material helper ---------- */
 function mat(color, opts={}){
   const col = C(color, opts.tier);
-  const m = new T.MeshStandardMaterial(Object.assign({ color: col, emissive: col, roughness: 0.7, metalness: 0.05,
+  const m = new T.MeshStandardMaterial(Object.assign({ color: col, emissive: col, roughness: 0.55, metalness: 0.12, envMap: P.env || null, envMapIntensity: 0.55,
     transparent: opts.opacity !== undefined, opacity: opts.opacity ?? 1 }, opts.extra || {}));
   // 場景裡到處有 emissiveIntensity = 0.9 / 1.2 這種值；統一壓到 0.06–0.38，避免過曝發白
   let ei = 0.2; Object.defineProperty(m, 'emissiveIntensity', { get(){ return ei; }, set(v){ ei = 0.06 + 0.32 * Math.min(Math.max(v,0), 1.2) / 1.2; }, configurable:true });
@@ -72,7 +72,7 @@ class TokenRow {
       const m = new T.Mesh(geo, mat(opts.color || 'memory', {glow:0.2, opacity:1}));
       m.position.x = this.x(i); this.group.add(m); this.cubes.push(m);
       if(t===''){ this.labels.push(null); return; } // 沒字就不產生 DOM 標籤
-      const l = label(t, {size: 24}); l.position.set(this.x(i), (opts.labelBelow?-1:1)*(this.size/2+0.35), 0); this.group.add(l); this.labels.push(l);
+      const l = label(t, {size: opts.labelSize || 20}); l.position.set(this.x(i), (opts.labelBelow?-1:1)*(this.size/2+0.35), 0); // token 字用 axis 階層，不要粗體 this.group.add(l); this.labels.push(l);
     });
   }
   x(i){ return (i - (this.n-1)/2) * this.gap; }
@@ -80,9 +80,10 @@ class TokenRow {
   style(i, {color, opacity, glow, scale}={}){
     const m = this.cubes[i]; if(!m) return;
     if(color){ m.material.color.copy(C(color)); m.material.emissive.copy(C(color)); }
-    if(opacity !== undefined){ m.material.opacity = opacity; m.visible = opacity > 0.02; }
-    if(glow !== undefined) m.material.emissiveIntensity = glow;
-    if(scale !== undefined) m.scale.setScalar(scale);
+    // 亮度 / 透明度 / 大小用補間，slider 一拉不會瞬跳（減少動態時瞬間完成）
+    if(opacity !== undefined){ m.visible = m.visible || opacity > 0.02; Motion.tween(m.material,{opacity},{ms:300,onDone:()=>{ m.visible = opacity > 0.02; }}); }
+    if(glow !== undefined){ const s={g:m.userData.glow ?? 0.2}; m.userData.glow=glow; Motion.tween(s,{g:glow},{ms:300,onUpdate:o=>{ m.material.emissiveIntensity=o.g; }}); }
+    if(scale !== undefined) Motion.tween(m.scale,{x:scale,y:scale,z:scale},{ms:300});
     if(this.labels[i]) this.labels[i].material.opacity = Math.max(0.25, opacity ?? 1);
   }
   styleAll(s){ for(let i=0;i<this.n;i++) this.style(i,s); }
@@ -200,6 +201,22 @@ class Tower {
   }
 }
 
+/* ---------- 環境貼圖：程式畫的漸層天空（上冷下暖、地平線一道亮），材質因此有一點反光 ---------- */
+function makeEnvMap(renderer){
+  const cv=document.createElement('canvas'); cv.width=256; cv.height=128; const g=cv.getContext('2d');
+  const grad=g.createLinearGradient(0,0,0,128); grad.addColorStop(0,'#2A3A5C'); grad.addColorStop(0.45,'#5A6C8C'); grad.addColorStop(0.52,'#C9B48A'); grad.addColorStop(0.6,'#3A3326'); grad.addColorStop(1,'#07090E');
+  g.fillStyle=grad; g.fillRect(0,0,256,128);
+  const tex=new T.CanvasTexture(cv); tex.mapping=T.EquirectangularReflectionMapping; tex.encoding=T.sRGBEncoding;
+  const pmrem=new T.PMREMGenerator(renderer); const env=pmrem.fromEquirectangular(tex).texture; pmrem.dispose(); tex.dispose(); return env;
+}
+/* ---------- 地面網格：畫在貼圖上、往遠處淡出，取代硬邊的 GridHelper ---------- */
+function makeGrid(size=200, cells=200){
+  const cv=document.createElement('canvas'); cv.width=cv.height=1024; const g=cv.getContext('2d'); const step=1024/cells;
+  g.strokeStyle='rgba(120,145,190,0.55)'; g.lineWidth=1; g.beginPath(); for(let i=0;i<=cells;i++){ const p=Math.round(i*step)+0.5; g.moveTo(p,0); g.lineTo(p,1024); g.moveTo(0,p); g.lineTo(1024,p); } g.stroke();
+  g.globalCompositeOperation='destination-in'; const fade=g.createRadialGradient(512,512,0,512,512,512); fade.addColorStop(0,'rgba(0,0,0,0.8)'); fade.addColorStop(0.3,'rgba(0,0,0,0.35)'); fade.addColorStop(0.6,'rgba(0,0,0,0.05)'); fade.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=fade; g.fillRect(0,0,1024,1024);
+  const tex=new T.CanvasTexture(cv); tex.anisotropy=4;
+  const m=new T.Mesh(new T.PlaneGeometry(size,size), new T.MeshBasicMaterial({map:tex, transparent:true, opacity:0.16, depthWrite:false})); m.rotation.x=-Math.PI/2; m.renderOrder=-1; return m;
+}
 function wire(color='inactive', opacity=0.6){ return new T.MeshBasicMaterial({ color: C(color), wireframe:true, transparent:true, opacity }); }
 
 /* ---------- 釋放：three.js 不會自動回收 geometry / material，移除物件時要一起 dispose ---------- */
@@ -208,5 +225,5 @@ function disposeOf(obj){
 }
 function drop(obj){ if(obj.parent) obj.parent.remove(obj); disposeOf(obj); } // 從場景移除並釋放
 function clear(group){ while(group.children.length) drop(group.children[group.children.length-1]); }
-window.P = { ROLE, ALIAS, COL, C, hex, rgba, css, theme, roleOf, label, mat, edges, highlight, wire, disposeOf, drop, clear, TokenRow, BeamSet, TensorBrick, GPUBox, Loop, Grid1D, State, Tower };
+window.P = { ROLE, ALIAS, COL, C, hex, rgba, css, theme, roleOf, label, mat, edges, highlight, wire, disposeOf, drop, clear, makeEnvMap, makeGrid, env:null, TokenRow, BeamSet, TensorBrick, GPUBox, Loop, Grid1D, State, Tower };
 })();

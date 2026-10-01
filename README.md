@@ -52,5 +52,8 @@ id 必須對應 `_catalog.js` 裡的 id，存檔後 `python build.py` 即可。
 - hover 用 `ctx.app.hover(meshes)`，不要碰全域 `App`。可 hover 的物件同時用 `ctx.app.focusTargets(meshes, (m, i) => '描述')` 登記，鍵盤與螢幕閱讀器才有路徑。
 - 動畫用 `Motion.tween(obj, {x: 1}, {ms, ease, onUpdate})`；`prefers-reduced-motion` 時會瞬間完成，場景自己的每幀動畫要看 `ctx.reduceMotion`。迴圈 marker 用 `loop.go(t)`。readout 的數字會自動滾動補間。
 - 換場景有 220ms 交叉淡入，`App.routing` 為 true 時表示還在切換；測試用 `site.goto(id)` 會等到切換完成。
+- 3D 文字標籤 `P.label(text, {size})` 依 size 分三階：≥ 24 標題（16px 粗）、≥ 19 軸標（14px）、其餘數值（13px 等寬）。會自動避讓、被擋住時淡出、永遠 ≥ 12px。
+- 浮動圖卡掛在 `ctx.overlay` 並用 `.ovl-card`；窄螢幕時它會自動落到面板最上面。
+- 控制面板順序：`ctrl.heading` 先、`ctrl.readouts` 在 `ctrl.note` 前；按鈕圖示用 `Controls.icon('play')`。
 - 面板樣式用 theme.css 的 class（`.log`、`.ovl-card`、`.bitchip`、`.complist`…），不要 inline style。
 - 圖例顏色不能重複；每個 readout 的 `bad` / `ok` 自帶 ▲ / ✓。

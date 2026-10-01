@@ -57,7 +57,7 @@
 
   const bar = document.createElement('div'); bar.id='tourbar'; document.getElementById('stage').appendChild(bar);
   const menu = document.createElement('div'); menu.id='tourmenu';
-  const btn = document.createElement('button'); btn.id='tourbtn'; btn.textContent='導覽 ▾'; btn.className='btn';
+  const btn = document.createElement('button'); btn.id='tourbtn'; btn.innerHTML='導覽'+Controls.icon('down').replace('class="icon"','class="icon icon-after"'); btn.className='btn';
   document.getElementById('top').insertBefore(btn, document.getElementById('progress'));
   document.getElementById('top').appendChild(menu);
   menu.innerHTML = '<div class="tm-title">挑一條路線，按順序看</div>' + TOURS.map(t=>`<button data-tour="${t.id}"><b>${t.title}</b><span>${t.steps.length} 步 · 約 ${t.minutes} 分鐘</span></button>`).join('');
