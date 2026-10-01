@@ -211,11 +211,11 @@
 
 | 場景 | 型錄寫的 | 實際 | 狀態 |
 |---|---|---|---|
-| rnn | 點 token | 只有 slider | [ ] |
-| crnn | 接 OCR 範例圖 | 沒有 | [ ] |
-| mamba | hover token、與 RNN 並排 | 都沒有 | [ ] |
-| jev | 打一段 state | 只有 3 個預設 | [ ] |
-| embedding | 新點落下、cosine 弧 | 沒動畫、直線 | [ ] |
+| rnn | 點 token | 滑過 / 點 / Tab 到 token 就追蹤；另加 RNN vs LSTM（閘門）對照 | [x] 2026-10-02 |
+| crnn | 接 OCR 範例圖 | 三張範例影像可切（都有重複字）；blank 改畫成 · | [x] 2026-10-02 |
+| mamba | hover token、與 RNN 並排 | hover 追蹤；「RNN 對照」在上方多一排固定衰減 0.7 的狀態 | [x] 2026-10-02 |
+| jev | 打一段 state | textarea 自由輸入，關鍵字打分即時改槽位機率 | [x] 2026-10-02 |
+| embedding | 新點落下、cosine 弧 | 新點從上方落下，落定後連最近鄰；弧改用距離（P0 已改成歐氏距離） | [x] 2026-10-02 |
 | attention | 拖曳向量 | slider 取代 | [ ] |
 | engram | hover token | slider 取代 | [ ] |
 | deepseek-v4 / glm / nemotron | 點層跳場景 | 只能 hover + 面板按鈕 | [ ] |
@@ -230,7 +230,7 @@
 
 - [ ] 偏薄要加料：yolo-v10（一個切換）、glm-flash 與 nemotron（沒有控制元件）、residual 與 rnn（2 個控制）、qat（只有 stepper）、embedding。
 - [ ] 偏密要拆或收：stages（3 segmented + stepper + 2 slider + 9 readout + 2 bar + 3 段說明）、ocr（3 控制 + stepper + 6 readout + 4 段說明）、mhc、engram。
-- [ ] 沒有 hover 的 slider 場景補聚焦回饋：rnn、mamba、rwkv、attention、engram、kvheads、residual、fp、exl3、imatrix、stages、ocr、tp/dp。
+- [ ] 沒有 hover 的 slider 場景補聚焦回饋：~~rnn、mamba、rwkv、gdn~~（2026-10-02，用 `App.watchHover`）、attention、engram、kvheads、residual、fp、exl3、imatrix、stages、ocr、tp/dp。
 - [ ] hover 回饋位置統一：cnn/transformer 改 3D，gguf/towers 改面板 `info`。
 
 ---

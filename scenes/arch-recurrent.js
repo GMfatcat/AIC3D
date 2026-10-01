@@ -18,10 +18,14 @@
 
   /* ---------------- RNN ---------------- */
   App.register({ id:'rnn', tab:'arch', question:'為什麼長距離的依賴會不見？',
-    init(ctx){ const {P,root,ctrl}=ctx; const tl=timeline(ctx,root); let src=0, w=0.7;
-      const redraw=()=>{ for(let t=0;t<N;t++){ const inf=t<src?0:Math.pow(w,t-src); tl.states[t].set(inf); tl.states[t].mesh.material.color.copy(P.C(t<src?'inactive':'state')); tl.states[t].mesh.material.emissive.copy(tl.states[t].mesh.material.color); tl.row.style(t,{color:t===src?'signal':'memory',glow:t===src?0.8:0.2}); }
-        set('last',Math.pow(w,N-1-src).toFixed(3)); set('half',`${Math.ceil(Math.log(0.5)/Math.log(w))} 步`); };
-      ctrl.heading('追蹤一個 token 的影響'); ctrl.slider('追蹤哪個 token',{min:0,max:N-1,value:0,fmt:v=>WORDS[v],onChange:v=>{src=v;redraw();}});
+    init(ctx){ const {P,root,ctrl}=ctx; const tl=timeline(ctx,root); let src=0, w=0.7, gate=false;
+      const eff=()=>gate?1-(1-w)*0.15:w; // LSTM / GRU 的閘門讓有效增益貼近 1：每步只漏掉 15% 的「遺忘」
+      const redraw=()=>{ for(let t=0;t<N;t++){ const inf=t<src?0:Math.pow(eff(),t-src); tl.states[t].set(inf); tl.states[t].mesh.material.color.copy(P.C(t<src?'inactive':'state')); tl.states[t].mesh.material.emissive.copy(tl.states[t].mesh.material.color); tl.row.style(t,{color:t===src?'signal':'memory',glow:t===src?0.8:0.2}); }
+        set('last',Math.pow(eff(),N-1-src).toFixed(3)); set('half',`${Math.ceil(Math.log(0.5)/Math.log(eff()))} 步`); };
+      ctrl.heading('追蹤一個 token 的影響');
+      ctrl.segmented(null,[{id:'rnn',label:'RNN'},{id:'lstm',label:'LSTM（閘門）'}],'rnn',id=>{gate=id==='lstm';redraw();});
+      const trackSl=ctrl.slider('追蹤哪個 token',{min:0,max:N-1,value:0,fmt:v=>WORDS[v],onChange:v=>{src=v;redraw();}});
+      ctx.app.watchHover(tl.row.cubes,(h,i)=>{ if(i>=0){ src=i; trackSl.set(i); redraw(); } },(c,i)=>`token「${WORDS[i]}」`); // 滑過 / 點 / Tab 到 token 就追蹤它
       ctrl.slider('每步保留比例（遞迴權重）',{min:0.3,max:0.98,step:0.02,value:w,fmt:v=>v.toFixed(2),onChange:v=>{w=v;redraw();}});
       const set=ctrl.readouts([{id:'last',label:'到最後一步剩多少'},{id:'half',label:'影響減半需要'}]);
       ctrl.note(`<p>RNN 只有<b>一個狀態</b>向量在時間軸上傳遞：hₜ = f(W·hₜ₋₁ + U·xₜ)。某個 token 的訊息要影響 10 步後的輸出，得經過 10 次 W 相乘。</p>
@@ -32,7 +36,10 @@
 
   /* ---------------- Mamba ---------------- */
   App.register({ id:'mamba', tab:'arch', question:'「選擇性」狀態更新是什麼意思？',
-    init(ctx){ const {THREE:T,P,root,ctrl}=ctx; const tl=timeline(ctx,root); let src=0, view='scan';
+    init(ctx){ const {THREE:T,P,root,ctrl}=ctx; const tl=timeline(ctx,root); let src=0, view='scan', cmp=false;
+      // 對照：一排固定衰減 0.7 的 RNN 狀態（放在上方）
+      const cmpG=new T.Group(); cmpG.visible=false; root.add(cmpG); const cmpStates=[]; for(let i=0;i<N;i++){ const s=new P.State({r:0.42,color:'inactive'}); s.group.position.set(tl.row.x(i),2.6,0); cmpG.add(s.group); cmpStates.push(s); }
+      const cmpL=P.label('對照：RNN 固定衰減 0.7，不管內容',{size:20}); cmpL.position.set(0,3.6,0); cmpG.add(cmpL);
       // 每個 token 的 Δ（選擇閘）：內容相關。示意：實詞大、虛詞小
       const DELTA=[0.9,0.15,0.6,0.5,0.95,0.9,0.1,0.7];
       const rings=WORDS.map((_,i)=>{ const r=new T.Mesh(new T.TorusGeometry(0.42,0.05,8,32),P.mat('flow',{glow:0.6})); r.position.set(tl.row.x(i),-1.6,0); root.add(r); return r; });
@@ -41,12 +48,15 @@
       const gl=P.label('展開成矩陣：第 t 列 = hₜ 裡各來源 token 的權重（Mamba-2 SSD 視角）',{size:18}); gl.position.set(0,3.0,0); grid.add(gl); grid.visible=false;
       const decay=(s,t)=>{ let a=1; for(let k=s+1;k<=t;k++) a*=Math.exp(-DELTA[k]*1.3); return a*DELTA[s]; }; // 寫入量 ∝ Δ_s，之後每步被 Δ_k 衝淡
       const redraw=()=>{ tl.states.forEach((st,t)=>{ const inf=t<src?0:decay(src,t)/Math.max(DELTA[src],1e-6); st.set(inf); st.group.visible=view==='scan'; });
+        cmpG.visible=cmp&&view==='scan'; cmpStates.forEach((st,t)=>st.set(t<src?0:Math.pow(0.7,t-src)));
         tl.arrows.group.visible=tl.up.group.visible=tl.label.visible=view==='scan'; grid.visible=view==='matrix';
         rings.forEach((r,i)=>{ r.scale.setScalar(0.6+DELTA[i]*0.8); r.material.emissiveIntensity=0.2+DELTA[i]; }); tl.row.styleAll({color:'memory',glow:0.2}); tl.row.style(src,{color:'signal',glow:0.8});
         cells.forEach(c=>{ const v=decay(c.s,c.t); c.m.material.emissiveIntensity=0.1+v*1.4; c.m.material.opacity=0.25+v*0.75; c.m.material.color.copy(P.C(c.s===src?'signal':'state')); c.m.material.emissive.copy(c.m.material.color); });
         set('delta',DELTA[src].toFixed(2)); set('last',(decay(src,N-1)/Math.max(DELTA[src],1e-6)).toFixed(3)); };
       ctrl.heading('每個 token 自己決定「寫多少、忘多少」'); ctrl.segmented(null,[{id:'scan',label:'遞迴掃描'},{id:'matrix',label:'展開成矩陣'}],'scan',id=>{view=id;redraw();});
-      ctrl.slider('追蹤哪個 token',{min:0,max:N-1,value:0,fmt:v=>WORDS[v],onChange:v=>{src=v;redraw();}});
+      ctrl.segmented('對照',[{id:'off',label:'只看 Mamba'},{id:'on',label:'RNN 對照'}],'off',id=>{cmp=id==='on';redraw();});
+      const trackSl=ctrl.slider('追蹤哪個 token',{min:0,max:N-1,value:0,fmt:v=>WORDS[v],onChange:v=>{src=v;redraw();}});
+      ctx.app.watchHover(tl.row.cubes,(h,i)=>{ if(i>=0){ src=i; trackSl.set(i); redraw(); } },(c,i)=>`token「${WORDS[i]}」`);
       const set=ctrl.readouts([{id:'delta',label:'這個 token 的 Δ（閘值）'},{id:'last',label:'到最後一步剩多少'}]);
       ctrl.note(`<p>RNN 的衰減率是固定的；<b>Mamba</b> 讓每一步的衰減 e<sup>−ΔₜA</sup> 和寫入量 Δₜ·Bₜ 都由<b>當前輸入算出來</b>（綠環大小）。「鏡頭」「對焦」這種關鍵詞 Δ 大：寫入多，同時也把之前的狀態沖淡；「在」「，」Δ 小：幾乎不碰狀態，讓舊訊息直接穿過。</p>
         <p><b>Mamba-2（SSD）</b>把這件事寫成一個有結構的下三角矩陣（切到「展開成矩陣」）——每格 = 來源 token 的寫入量 × 中間所有步的衰減連乘。它長得像 attention 矩陣，但不用算 Q·K，所以能用矩陣乘法平行訓練、又能用遞迴 O(1) 推論。</p>
@@ -67,7 +77,8 @@
         cells.forEach(c=>{ const w=c.ch?wFast:wSlow; const v=c.s===c.tt?1:Math.pow(w,c.tt-c.s); c.m.material.emissiveIntensity=0.1+v*1.3; c.m.material.opacity=0.2+v*0.8; });
         set('mode',infer?`推論：第 ${t+1} 步，只讀前一步狀態`:'訓練：整句一次算'); set('mem',infer?'O(1)（固定大小狀態）':'O(T) 中間值'); set('cost',infer?'每 token O(1)':'可用矩陣乘法 / WKV kernel 平行'); };
       ctrl.heading('同一組權重、兩種算法'); ctrl.segmented(null,[{id:'infer',label:'推論：遞迴'},{id:'train',label:'訓練：平行展開'}],'infer',id=>{mode=id;redraw();});
-      ctrl.stepper({onStep:()=>{ if(mode!=='infer') return false; if(t>=N-1) return false; t++; redraw(); return t<N-1; },onReset:()=>{t=0;redraw();},interval:600});
+      let stepper=null; ctx.app.watchHover(tl.row.cubes,(h,i)=>{ if(i>=0 && mode==='infer'){ stepper&&stepper.stop(); t=i; redraw(); } },(c,i)=>`跳到第 ${i+1} 步「${WORDS[i]}」`); // 手動跳步時停掉播放
+      stepper=ctrl.stepper({onStep:()=>{ if(mode!=='infer') return false; if(t>=N-1) return false; t++; redraw(); return t<N-1; },onReset:()=>{t=0;redraw();},interval:600});
       ctrl.slider('慢通道衰減 w',{min:0.6,max:0.99,step:0.01,value:wSlow,fmt:v=>v.toFixed(2),onChange:v=>{wSlow=v;redraw();}});
       ctrl.slider('快通道衰減 w',{min:0.05,max:0.7,step:0.01,value:wFast,fmt:v=>v.toFixed(2),onChange:v=>{wFast=v;redraw();}});
       const set=ctrl.readouts([{id:'mode',label:'目前'},{id:'cost',label:'計算'},{id:'mem',label:'記憶體'}]);
@@ -98,8 +109,9 @@
         else { // 2) 寫入：S ← S + β v kᵀ
           for(let i=0;i<D;i++) for(let j=0;j<D;j++) S[i][j]+=beta*v[i]*k[j]; paint(TEAL,0.5); phase=0; set('phase',`t=${t+1}「${WORDS[t]}」：寫入 β·vₜkₜᵀ`); t++; return t<N; } };
       const reset=()=>{ S=Array.from({length:D},()=>Array(D).fill(0)); t=0; phase=0; paint(); set('phase','—'); row.styleAll({color:'memory',glow:0.2}); };
-      ctrl.heading('一步拆成兩個半步'); ctrl.stepper({onStep:step,onReset:reset,interval:700});
-      const replay=()=>{ const n=t*2+phase; reset(); for(let i=0;i<n;i++) step(); }; // 參數一改就用新參數重走到目前這一步
+      ctrl.heading('一步拆成兩個半步'); const stepper=ctrl.stepper({onStep:step,onReset:reset,interval:700});
+      const replay=(n=t*2+phase)=>{ reset(); for(let i=0;i<n;i++) step(); }; // 參數一改就用新參數重走到目前這一步
+      ctx.app.watchHover(row.cubes,(h,i)=>{ if(i>=0){ stepper.stop(); replay((i+1)*2); } },(c,i)=>`跳到 t=${i+1}「${WORDS[i]}」寫入後`); // 手動跳步時停掉播放
       ctrl.slider('β 寫入強度（也是擦除強度）',{min:0,max:1,step:0.05,value:beta,fmt:v=>v.toFixed(2),onChange:v=>{beta=v;replay();}});
       ctrl.slider('α 遺忘閘（整體衰減）',{min:0.5,max:1,step:0.01,value:alpha,fmt:v=>v.toFixed(2),onChange:v=>{alpha=v;replay();}});
       const set=ctrl.readouts([{id:'phase',label:'目前半步'},{id:'energy',label:'‖S‖（狀態總量）'}]);

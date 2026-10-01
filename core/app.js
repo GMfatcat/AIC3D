@@ -44,6 +44,7 @@ const App = {
     const loop = ()=>{
       const dt=Math.min(0.05,this.clock.getDelta());
       if(this.current?.update) this.current.update(dt);
+      for(const w of this._hoverWatch){ const h=this.hover(w.objects); if(h!==w.last){ w.last=h; w.cb(h, h?w.objects.indexOf(h):-1); } } // 場景登記的 hover 觀察者
       Motion.tick(dt);
       if(this.autoSpin && !this.dragging && !this.reduceMotion){ this.cam.theta += 0.072*dt; this._placeCamera(); } // 以時間計，120Hz 和 60Hz 轉一樣快
       this._shadows(); this.renderer.render(this.scene,this.camera); this._projectLabels();
@@ -86,7 +87,7 @@ const App = {
 
   /* ---------- camera / orbit / pan / fit ---------- */
   _orbit(){
-    this.cam = {theta:0.5, phi:1.2, dist:18, zoom:1, target:new T.Vector3()}; this.camHome = null; this.bounds=null; this._disposers=[];
+    this.cam = {theta:0.5, phi:1.2, dist:18, zoom:1, target:new T.Vector3()}; this.camHome = null; this.bounds=null; this._disposers=[]; this._hoverWatch=[];
     try{ this.visited=new Set(JSON.parse(localStorage.getItem('visited')||'[]')); }catch(e){ this.visited=new Set(); } // 看過的場景（側欄打勾）
     const c=this.canvas; let drag=null, mode=null; const touches=new Map();
     c.addEventListener('contextmenu',e=>e.preventDefault());
@@ -148,6 +149,8 @@ const App = {
   /* 場景把可 hover 的物件登記進來，就會得到一排視覺上隱藏、但可 Tab 到的按鈕（鍵盤與螢幕閱讀器的路徑） */
   focusTargets(objects, describe){ let list=this._focusList; if(!list){ list=document.createElement('div'); list.className='focuslist'; list.setAttribute('aria-label','可用鍵盤聚焦的 3D 物件'); document.getElementById('stage').appendChild(list); this._focusList=list; }
     list.innerHTML=''; this.keyFocus=null; objects.forEach((o,i)=>{ const b=document.createElement('button'); b.type='button'; b.textContent=describe?describe(o,i):`物件 ${i+1}`; b.addEventListener('focus',()=>{ this.keyFocus=o; }); b.addEventListener('blur',()=>{ if(this.keyFocus===o) this.keyFocus=null; }); list.appendChild(b); }); },
+  /* 場景不用自己寫 update 也能 hover：每幀檢查一次，物件變了才回呼 cb(obj, index)；同時登記鍵盤聚焦清單 */
+  watchHover(objects, cb, describe){ this._hoverWatch.push({objects, cb, last:null}); if(describe) this.focusTargets(objects, describe); },
   /* 鏡頭補間到指定視角（雙擊重置、導覽切換用） */
   flyTo({theta,phi,dist,target},ms=500){ this.autoSpin=false; const cur=this.cam; const d=((theta-cur.theta+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI; this._camTween&&this._camTween.cancel();
     this._camTween=Motion.tween(cur,{theta:cur.theta+d,phi,dist},{ms,ease:'inOut',onUpdate:()=>this._placeCamera()}); if(target) Motion.tween(cur.target,{x:target.x,y:target.y,z:target.z},{ms,ease:'inOut'}); },
@@ -190,7 +193,7 @@ const App = {
     document.getElementById('i-title').textContent=item.title; document.getElementById('i-q').textContent=item.question||'';
     this.canvas.setAttribute('aria-label',`3D 場景：${item.title}。${item.question||''} 文字說明在右側面板。`);
     this.autoSpin = true; this.cam.zoom = 1; this.currentItem=item; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML='';
-    document.body.classList.remove('home'); this.home=false;
+    document.body.classList.remove('home'); this.home=false; this._hoverWatch=[];
     if(!this.visited.has(item.id)){ this.visited.add(item.id); try{ localStorage.setItem('visited',JSON.stringify([...this.visited])); }catch(e){} document.querySelectorAll('#items a').forEach(a=>{ if(a.getAttribute('href')==='#'+item.id) a.parentElement.classList.add('visited'); }); }
     const def = scenes[item.id];
     if(!def){ this.current = this._placeholder(item); this.fit(); return; }
@@ -218,7 +221,7 @@ const App = {
     (this._disposers||[]).forEach(fn=>{ try{ fn(); }catch(e){ console.error(e); } }); this._disposers=[];
     P.clear(this.root); this.labels.forEach(l=>l.el.remove()); this.labels.clear(); this.labelLayer.innerHTML=''; document.getElementById('overlay').innerHTML=''; document.getElementById('ctrl').innerHTML=''; this.legend([]);
     document.getElementById('i-title').textContent=''; document.getElementById('i-q').textContent=''; this.canvas.setAttribute('aria-label','開場：漂浮的語意色原件');
-    this.currentItem=null; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML=''; this.home=true; document.body.classList.add('home');
+    this.currentItem=null; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML=''; this.home=true; document.body.classList.add('home'); this._hoverWatch=[];
     this._buildLanding();
     // 背景：八種語意色的原件在一個球殼上慢慢漂浮
     const roles=Object.keys(P.ROLE); const items=[]; let seed=3; const rnd=()=>{ seed=(seed*9301+49297)%233280; return seed/233280; };

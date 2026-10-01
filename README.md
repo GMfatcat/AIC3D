@@ -49,7 +49,8 @@ id 必須對應 `_catalog.js` 裡的 id，存檔後 `python build.py` 即可。
 - 相機：`ctx.setCamera({theta, phi, zoom})`。距離與目標由 `fit()` 依內容自動算，`zoom` 是倍數（1.3 = 退遠一點）。
 - 重建物件時用 `P.drop(obj)`（移除 + 釋放）或 `P.clear(group)`，不要只 `remove`。被 remove 的 3D 文字標籤會自動註銷。
 - 自己開的 timer / listener 用 `ctx.onDispose(() => ...)` 登記清理。
-- hover 用 `ctx.app.hover(meshes)`，不要碰全域 `App`。可 hover 的物件同時用 `ctx.app.focusTargets(meshes, (m, i) => '描述')` 登記，鍵盤與螢幕閱讀器才有路徑。
+- hover 最簡單的寫法是 `ctx.app.watchHover(meshes, (obj, i) => {...}, (m, i) => '描述')`：App 每幀幫你檢查、物件變了才回呼，並自動登記鍵盤聚焦清單。自己寫 update 的場景用 `ctx.app.hover(meshes)`，不要碰全域 `App`。hover 會改播放狀態的場景記得先 `stepper.stop()`。
+- 自由文字輸入用 `ctrl.textarea(label, {placeholder, onInput})`。
 - 動畫用 `Motion.tween(obj, {x: 1}, {ms, ease, onUpdate})`；`prefers-reduced-motion` 時會瞬間完成，場景自己的每幀動畫要看 `ctx.reduceMotion`。迴圈 marker 用 `loop.go(t)`。readout 的數字會自動滾動補間。
 - 換場景有 220ms 交叉淡入，`App.routing` 為 true 時表示還在切換；測試用 `site.goto(id)` 會等到切換完成。
 - 3D 文字標籤 `P.label(text, {size})` 依 size 分三階：≥ 24 標題（16px 粗）、≥ 19 軸標（14px）、其餘數值（13px 等寬）。會自動避讓、被擋住時淡出、永遠 ≥ 12px。

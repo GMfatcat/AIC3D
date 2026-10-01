@@ -122,7 +122,7 @@ def test_sidebar_marks_visited_scenes(site):
 
 def test_copy_fixes_in_scene_sources():
     crnn = (ROOT / "scenes/arch-cnn-crnn.js").read_text(encoding="utf-8")
-    assert re.search(r"TEXT='[^']*3[^']*3[^']*'", crnn), "CRNN sample text should contain a repeated character so CTC merging is visible"
+    assert "'LENS-0733'" in crnn, "CRNN sample text should contain a repeated character so CTC merging is visible"
     assert "粗細 = 內容量" not in (ROOT / "scenes/block-attention.js").read_text(encoding="utf-8")
     assert "64 維" in (ROOT / "scenes/block-kvheads.js").read_text(encoding="utf-8"), "explain the 512 + 64 split"
     assert "給 27B bf16 綽綽有餘" not in (ROOT / "scenes/infra-stages.js").read_text(encoding="utf-8")

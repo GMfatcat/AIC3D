@@ -61,6 +61,10 @@ class Controls {
     const s=el('select','sel'); options.forEach(o=>{ const op=el('option',null,o.label); op.value=o.id; if(o.id===value) op.selected=true; s.appendChild(op); });
     s.addEventListener('change',()=>onChange(s.value)); w.appendChild(s); this.c.appendChild(w); return s;
   }
+  textarea(label, {value='', placeholder='', rows=3, onInput}){
+    const w=el('div','ctl'); const lab=el('label',null,`<span>${label}</span>`); const ta=el('textarea','ta'); ta.rows=rows; ta.value=value; ta.placeholder=placeholder;
+    ta.id='ctl-'+(Controls.seq=(Controls.seq||0)+1); lab.htmlFor=ta.id; ta.addEventListener('input',()=>onInput&&onInput(ta.value)); w.append(lab,ta); this.c.appendChild(w); return ta;
+  }
   readouts(keys){ // keys: [{id,label}] -> setter(id, text, cls)
     const dl=el('dl','readouts'); const dds={};
     keys.forEach(k=>{ dl.appendChild(el('dt',null,k.label)); const dd=el('dd',null,'—'); dl.appendChild(dd); dds[k.id]=dd; });

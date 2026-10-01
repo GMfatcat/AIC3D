@@ -25,9 +25,11 @@ window.EmbedCloud = (function(){
     const qLabel=P.label('',{size:22,color:P.hex('state')}); qLabel.visible=false; g.add(qLabel);
     return { group:g, pts, beams, q, qLabel,
       nearest(pos,k=3){ return pts.map(p=>({p,d:p.pos.distanceTo(pos)})).sort((a,b)=>a.d-b.d).slice(0,k); },
-      highlight(pos, text){ q.visible=true; q.position.copy(pos); qLabel.visible=true; qLabel.userData.setText(text); qLabel.position.copy(pos).add(new T.Vector3(0,0.45,0));
+      highlight(pos, text){ q.visible=true; q.position.copy(pos); q.position.y+=3; qLabel.visible=true; qLabel.userData.setText(text); qLabel.position.copy(q.position).add(new T.Vector3(0,0.45,0));
         const nn=this.nearest(pos); pts.forEach(p=>{p.mesh.material.emissiveIntensity=0.15;p.mesh.scale.setScalar(1);}); beams.hideAll();
-        nn.forEach((x,i)=>{ x.p.mesh.material.emissiveIntensity=1; x.p.mesh.scale.setScalar(1.5); beams.set(i,pos,x.p.pos,1-i*0.25,'state'); });
+        // 新點從上方落下，落定後才連最近鄰
+        Motion.tween(q.position,{y:pos.y},{ms:600,ease:'out',onUpdate:()=>{ qLabel.position.copy(q.position).add(new T.Vector3(0,0.45,0)); },onDone:()=>{
+          nn.forEach((x,i)=>{ x.p.mesh.material.emissiveIntensity=1; x.p.mesh.scale.setScalar(1.5); beams.set(i,pos,x.p.pos,1-i*0.25,'state'); }); }});
         return nn; },
       clear(){ q.visible=false; qLabel.visible=false; beams.hideAll(); pts.forEach(p=>{p.mesh.material.emissiveIntensity=0.5;p.mesh.scale.setScalar(1);}); },
     };

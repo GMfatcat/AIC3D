@@ -30,33 +30,36 @@
 
   /* ---------------- CRNN ---------------- */
   App.register({ id:'crnn', tab:'arch', question:'一張影像怎麼變成一串序列，再變成文字？',
-    init(ctx){ const {THREE:T,P,root,ctrl}=ctx; const TEXT='LENS-0733'; /* 兩個 3：讓 CTC 合併重複字的情況看得到 */ let down=4, step=0;
-      // 影像平面（canvas 貼圖）
-      const cv=document.createElement('canvas'); cv.width=512; cv.height=96; const g=cv.getContext('2d'); g.fillStyle=P.theme('--bg3'); g.fillRect(0,0,512,96); g.fillStyle=P.theme('--fg'); g.font='bold 64px IBM Plex Mono, monospace'; g.textBaseline='middle'; g.fillText(TEXT,28,50);
-      const img=new T.Mesh(new T.PlaneGeometry(8,1.5),new T.MeshBasicMaterial({map:new T.CanvasTexture(cv)})); img.position.y=2.6; root.add(img); const il=P.label('輸入影像 32×512（灰階）',{size:18}); il.position.set(0,3.6,0); root.add(il);
+    init(ctx){ const {THREE:T,P,root,ctrl}=ctx; const SAMPLES=['LENS-0733','AOI-0021','HELLO']; /* 都有重複字，讓 CTC 合併重複字的情況看得到 */ let TEXT=SAMPLES[0], down=4, step=0;
+      // 影像平面（canvas 貼圖），換範例時重畫
+      const cv=document.createElement('canvas'); cv.width=512; cv.height=96; const g=cv.getContext('2d'); const tex=new T.CanvasTexture(cv);
+      const drawImg=()=>{ g.fillStyle=P.theme('--bg3'); g.fillRect(0,0,512,96); g.fillStyle=P.theme('--fg'); g.font='bold 64px IBM Plex Mono, monospace'; g.textBaseline='middle'; g.fillText(TEXT,28,50); tex.needsUpdate=true; }; drawImg();
+      const img=new T.Mesh(new T.PlaneGeometry(8,1.5),new T.MeshBasicMaterial({map:tex})); img.position.y=2.6; root.add(img); const il=P.label('輸入影像 32×512（灰階）',{size:18}); il.position.set(0,3.6,0); root.add(il);
       const tw=new P.Tower([{type:'other'},{type:'other'},{type:'other'}],{w:8,d:0.6,h:0.22,label:'CNN（高度壓到 1，寬度降採樣）'}); tw.group.position.set(0,0.9,0); root.add(tw.group);
       let colG=null, rnnG=null, outG=null, beams=null;
       // 每欄的「預測」：由字元位置決定（示意 CTC 輸出）
-      const predFor=(cols)=>{ const out=[]; for(let c=0;c<cols;c++){ const x=(c+0.5)/cols*512; const ci=Math.floor((x-28)/ (64*0.6)); const ch=TEXT[ci]; const frac=((x-28)%(64*0.6))/(64*0.6); out.push(ch&&frac>0.2&&frac<0.8?ch:'–'); } return out; };
-      const collapse=(p)=>{ let s='',prev=null; for(const c of p){ if(c!==prev&&c!=='–') s+=c; prev=c; } return s; };
+      const predFor=(cols)=>{ const out=[]; for(let c=0;c<cols;c++){ const x=(c+0.5)/cols*512; const ci=Math.floor((x-28)/ (64*0.6)); const ch=TEXT[ci]; const frac=((x-28)%(64*0.6))/(64*0.6); out.push(ch&&frac>0.2&&frac<0.8?ch:BLANK); } return out; };
+      const BLANK='·'; // blank 畫成中點，和文字裡的連字號分得開
+      const collapse=(p)=>{ let s='',prev=null; for(const c of p){ if(c!==prev&&c!==BLANK) s+=c; prev=c; } return s; };
       const rebuild=()=>{ [colG,rnnG,outG].forEach(x=>x&&root.remove(x)); if(beams) root.remove(beams.group); const cols=Math.floor(512/down/4); const pred=predFor(cols); const w=8/cols;
         colG=new T.Group(); colG.position.y=-0.5; root.add(colG); rnnG=new T.Group(); rnnG.position.y=-1.7; root.add(rnnG); outG=new T.Group(); outG.position.y=-2.9; root.add(outG);
         const colCells=[],rnnCells=[],outLabels=[];
         for(let c=0;c<cols;c++){ const x=(c-(cols-1)/2)*w; const m=new T.Mesh(new T.BoxGeometry(w*0.85,0.7,0.5),P.mat('memory',{glow:0.2})); m.position.x=x; colG.add(m); colCells.push(m);
           const r=new T.Mesh(new T.SphereGeometry(Math.min(0.22,w*0.4),12,8),P.mat('state',{glow:0.3})); r.position.x=x; rnnG.add(r); rnnCells.push(r);
-          const l=P.label(pred[c],{size:Math.min(26,Math.max(12,w*40)),color:pred[c]==='–'?P.theme('--fg3'):P.hex('signal')}); l.position.x=x; outG.add(l); outLabels.push(l); }
-        const l1=P.label(`切成 ${cols} 欄 feature（每欄一個向量）`,{size:16}); l1.position.set(-5.2,0,0); colG.add(l1); const l2=P.label('BiLSTM（左右都看）',{size:16}); l2.position.set(-5.2,0,0); rnnG.add(l2); const l3=P.label('CTC 每欄輸出（– = blank）',{size:16}); l3.position.set(-5.2,0,0); outG.add(l3);
+          const l=P.label(pred[c],{size:Math.min(26,Math.max(12,w*40)),color:pred[c]===BLANK?P.theme('--fg3'):P.hex('signal')}); l.position.x=x; outG.add(l); outLabels.push(l); }
+        const l1=P.label(`切成 ${cols} 欄 feature（每欄一個向量）`,{size:16}); l1.position.set(-5.2,0,0); colG.add(l1); const l2=P.label('BiLSTM（左右都看）',{size:16}); l2.position.set(-5.2,0,0); rnnG.add(l2); const l3=P.label('CTC 每欄輸出（· = blank）',{size:16}); l3.position.set(-5.2,0,0); outG.add(l3);
         const fin=P.label(`合併重複、去 blank → 「${collapse(pred)}」`,{size:22,color:P.hex('signal')}); fin.position.set(0,-3.7,0); outG.add(fin);
         beams=new P.BeamSet(cols-1,{maxR:0.03,minR:0.02}); root.add(beams.group); root.updateMatrixWorld(true); for(let c=0;c<cols-1;c++) beams.set(c,rnnCells[c].position.clone().add(rnnG.position),rnnCells[c+1].position.clone().add(rnnG.position),0.5,'state');
         step=0; this._cells={colCells,rnnCells,outLabels,cols,pred}; paint(); };
       const paint=()=>{ const {colCells,rnnCells,outLabels,cols,pred}=this._cells; colCells.forEach((m,c)=>{ m.material.emissiveIntensity=c===step-1?0.9:c<step?0.35:0.1; }); rnnCells.forEach((m,c)=>{ m.material.emissiveIntensity=c===step-1?1:c<step?0.4:0.1; }); outLabels.forEach((l,c)=>{ l.material.opacity=c<step?1:0.15; });
-        set('cols',`${cols}（降採樣 ×${down}，再 ×4）`); set('chars',`${TEXT.length} 個字元`); set('ratio',`每字約 ${(cols/TEXT.length).toFixed(1)} 欄`); set('out',step?collapse(pred.slice(0,step)):'—'); };
-      ctrl.heading('從左到右掃'); ctrl.stepper({onStep:()=>{ const n=this._cells.cols; if(step>=n) return false; step++; paint(); return step<n; },onReset:()=>{step=0;paint();},interval:160});
+        set('cols',`${cols}（降採樣 ×${down}，再 ×4）`); set('chars',`${TEXT.length} 個字元（${TEXT}）`); set('ratio',`每字約 ${(cols/TEXT.length).toFixed(1)} 欄`); set('out',step?collapse(pred.slice(0,step)):'—'); };
+      ctrl.heading('從左到右掃'); ctrl.segmented('範例影像',SAMPLES.map(s=>({id:s,label:s})),TEXT,id=>{ TEXT=id; drawImg(); rebuild(); });
+      ctrl.stepper({onStep:()=>{ const n=this._cells.cols; if(step>=n) return false; step++; paint(); return step<n; },onReset:()=>{step=0;paint();},interval:160});
       ctrl.slider('CNN 寬度降採樣',{min:2,max:8,step:2,value:down,fmt:v=>'×'+v,onChange:v=>{down=v;rebuild();}});
       const set=ctrl.readouts([{id:'cols',label:'序列長度'},{id:'chars',label:'目標'},{id:'ratio',label:'欄 / 字元'},{id:'out',label:'目前解碼'}]);
       ctrl.note(`<p><b>CRNN</b> = CNN + RNN + CTC。CNN 把文字列影像的高度壓到 1、寬度降採樣幾倍，得到一串「每欄一個向量」的序列——影像在這一步<b>變成序列</b>。BiLSTM 沿寬度掃，讓每欄知道左右鄰居（判斷 0 和 O 這種要看上下文）。</p>
         <p><b>CTC</b> 解決「欄數比字元多、而且不知道哪欄對哪個字」的問題：每欄輸出一個字元或 blank，解碼時合併連續重複、刪掉 blank。所以訓練不需要逐字元標框，只要整串文字。</p>
-        <p>降採樣拉太大（×8）時欄數不夠，相鄰字會擠在同一欄、重複字（兩個 3）會被合併——這是 CRNN 的經典失敗模式。</p>`);
-      ctx.legend([['memory','feature 欄'],['state','BiLSTM 狀態'],['signal','CTC 輸出字元'],['inactive','blank']]);
+        <p>降採樣拉太大（×8）時欄數不夠，相鄰字會擠在同一欄、重複字（LENS-0733 的兩個 3、HELLO 的兩個 L）會被合併——這是 CRNN 的經典失敗模式。</p>`);
+      ctx.legend([['memory','feature 欄'],['state','BiLSTM 狀態'],['signal','CTC 輸出字元'],['inactive','blank（·）']]);
       ctx.setCamera({theta:0.0,phi:1.4}); rebuild(); } });
 })();
