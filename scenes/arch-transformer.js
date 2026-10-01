@@ -14,7 +14,7 @@ App.register({
       this.qTitle = P.label(this.mode==='encdec'?'Query：目標序列（decoder）':'Query：每個 token 問「我該看誰？」',{size:22}); this.qTitle.position.set(0,2.9,0); root.add(this.qTitle);
       this.kTitle = P.label(this.mode==='encdec'?'Key/Value：來源序列（encoder 輸出）':'Key/Value：同一串 token',{size:22}); this.kTitle.position.set(0,-3.1,0); root.add(this.kTitle);
       this.beams = new P.BeamSet(qLabels.length*kLabels.length,{maxR:0.09}); root.add(this.beams.group);
-      this.nq=qLabels.length; this.nk=kLabels.length;
+      this.nq=qLabels.length; this.nk=kLabels.length; this.qLabels=qLabels;
       this.weights = this._weights(); this.draw();
     };
     this.allowed = (i,j)=> this.mode==='enc' ? true : this.mode==='dec' ? j<=i : true;
@@ -37,11 +37,12 @@ App.register({
       const masked = this.mode==='dec' ? (this.nq*this.nk - this.nq*(this.nq+1)/2) : 0;
       set('pairs', `${this.nq*this.nk - masked} / ${this.nq*this.nk}`);
       set('mask', this.mode==='enc'?'無（全部可見）':this.mode==='dec'?'因果：只看自己和左邊':'cross：target 看全部 source');
+      set('hov', this.focus>0 ? `第 ${this.focus} 個「${this.qLabels[this.focus-1]}」：看得到 ${this.weights[this.focus-1].filter(w=>w>0).length} 個 key` : '—');
     };
     ctrl.heading('Mask 類型');
     ctrl.segmented(null,[{id:'enc',label:'Encoder-only'},{id:'dec',label:'Decoder-only'},{id:'encdec',label:'Enc-Dec'}],this.mode,(m)=>{ this.mode=m; this.focus=0; slider.set(0); build(); });
     const slider = this.slider = ctrl.slider('聚焦哪個 query token',{min:0,max:6,value:0,fmt:v=>v===0?'全部':`第 ${v} 個`,onChange:v=>{ this.focus=v; this.draw(); }});
-    const set = ctrl.readouts([{id:'mask',label:'Mask'},{id:'pairs',label:'可見的 (q,k) 配對'}]);
+    const set = ctrl.readouts([{id:'mask',label:'Mask'},{id:'pairs',label:'可見的 (q,k) 配對'},{id:'hov',label:'滑到的 query'}]);
     ctrl.note(`<p><b>Encoder-only</b>（BERT 類）：每個 token 看得到整句，適合理解、分類、embedding。</p>
       <p><b>Decoder-only</b>（GPT / Qwen / DeepSeek 類）：只能看左邊，所以能一顆一顆生成；訓練時整句一次算，靠的就是這個三角形 mask。</p>
       <p><b>Encoder-Decoder</b>（T5 / 翻譯 / Whisper 類）：decoder 內部仍是因果，但多了一層 cross attention 去看 encoder 的輸出。這裡畫的是 cross 那一層。</p>

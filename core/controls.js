@@ -14,7 +14,10 @@ const ICONS = {
 const icon = name => `<svg class="icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||''}</svg>`;
 
 class Controls {
-  constructor(container){ this.c = container; this.c.innerHTML=''; this.timers=[]; this.lastHeading=''; }
+  constructor(container){ this.c = container; this.root = container; this.c.innerHTML=''; this.timers=[]; this.lastHeading=''; }
+  /* 可摺疊的次要區塊：details(summary) 之後的控制都進去，直到 endDetails() */
+  details(summary, open=false){ const d=el('details','ctl group'); d.open=open; d.appendChild(el('summary',null,summary)); this.root.appendChild(d); this.c=d; return d; }
+  endDetails(){ this.c=this.root; }
   heading(text){ this.c.appendChild(el('h2',null,text)); this.lastHeading=text; }
   /* 儀器感 slider：軌道 + 填色 + 刻度 + 拖曳時的數值泡泡。原生 <input type=range> 疊在上面（透明）負責鍵盤、觸控、螢幕閱讀器。 */
   slider(label, {min,max,step=1,value,fmt=(v)=>v,onChange}){
@@ -79,7 +82,7 @@ class Controls {
   }
   html(html, cls){ const d=el('div',cls||'ctl',html); this.c.appendChild(d); return d; }
   note(html){ return this.html(html,'note'); }
-  dispose(){ this.timers.forEach(t=>clearInterval(t)); this.timers=[]; this.c.innerHTML=''; }
+  dispose(){ this.timers.forEach(t=>clearInterval(t)); this.timers=[]; this.c=this.root; this.root.innerHTML=''; }
 }
 Controls.icon = icon;
 window.Controls = Controls;

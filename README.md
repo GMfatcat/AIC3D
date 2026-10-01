@@ -55,7 +55,8 @@ id 必須對應 `_catalog.js` 裡的 id，存檔後 `python build.py` 即可。
 - 換場景有 220ms 交叉淡入，`App.routing` 為 true 時表示還在切換；測試用 `site.goto(id)` 會等到切換完成。
 - 3D 文字標籤 `P.label(text, {size})` 依 size 分三階：≥ 24 標題（16px 粗）、≥ 19 軸標（14px）、其餘數值（13px 等寬）。會自動避讓、被擋住時淡出、永遠 ≥ 12px。
 - 浮動圖卡掛在 `ctx.overlay` 並用 `.ovl-card`；窄螢幕時它會自動落到面板最上面。
-- 控制面板順序：`ctrl.heading` 先、`ctrl.readouts` 在 `ctrl.note` 前；按鈕圖示用 `Controls.icon('play')`。
+- 控制面板順序：`ctrl.heading` 先、`ctrl.readouts` 在 `ctrl.note` 前；按鈕圖示用 `Controls.icon('play')`。逐步演示用 `ctrl.stepper`，事件型操作（新增請求、丟 prompt）用 `ctrl.buttons`。次要讀數用 `ctrl.details('標題')` … `ctrl.endDetails()` 收起來。
+- hover 回饋一律兩處都做：3D 上高亮，面板加一行「滑到的 …」讀數。
 - `ctrl.stepper` 進場 600ms 後會自動播放一輪（`autoplay:false` 可關）；使用者碰任何控制就停。
 - 說明裡提到別的場景要用 `<a href="#id">標題</a>`，不要寫「Tab 2」「下一個場景」（靜態測試會擋）。面板最底下的「上一個 / 下一個」由 App 自動加。
 - 沒有 hash 或 `#home` 是開場頁（`App._showHome`）；導覽路線定義在 `core/tours.js`，開場頁的卡片直接讀它。

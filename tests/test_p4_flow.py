@@ -113,7 +113,7 @@ def test_fit_keeps_labels_clear_of_the_tour_bar(site):
 
 def test_sidebar_marks_visited_scenes(site):
     site.goto("residual"); site.goto("mhc")
-    visited = site.ev("[...document.querySelectorAll('#items li.visited a')].map(a => a.textContent)")
+    visited = site.ev("[...document.querySelectorAll('#items li.visited a .t')].map(a => a.textContent)")
     assert "Residual Block" in visited and "mHC" in visited
     assert "Attention" not in visited
 

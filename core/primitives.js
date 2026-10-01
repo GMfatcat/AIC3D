@@ -46,12 +46,17 @@ function label(text, opts={}){
 }
 
 /* ---------- material helper ---------- */
+/* 場景裡到處把 emissiveIntensity 設成 0.9 / 1.2 這種「相對亮度」；這個材質類別把它統一映射到 0.06–0.38，避免過曝發白。
+   用類別的 accessor 而不是每個實例 defineProperty：clone / copy 也正確。 */
+class GlowMaterial extends T.MeshStandardMaterial {
+  get emissiveIntensity(){ return this._ei ?? 0.2; }
+  set emissiveIntensity(v){ this._ei = 0.06 + 0.32 * Math.min(Math.max(v, 0), 1.2) / 1.2; }
+  copy(src){ super.copy(src); if(src._ei !== undefined) this._ei = src._ei; return this; } // 不要把已映射的值再映射一次
+}
 function mat(color, opts={}){
   const col = C(color, opts.tier);
-  const m = new T.MeshStandardMaterial(Object.assign({ color: col, emissive: col, roughness: 0.55, metalness: 0.12, envMap: P.env || null, envMapIntensity: 0.55,
+  const m = new GlowMaterial(Object.assign({ color: col, emissive: col, roughness: 0.55, metalness: 0.12, envMap: P.env || null, envMapIntensity: 0.55,
     transparent: opts.opacity !== undefined, opacity: opts.opacity ?? 1 }, opts.extra || {}));
-  // 場景裡到處有 emissiveIntensity = 0.9 / 1.2 這種值；統一壓到 0.06–0.38，避免過曝發白
-  let ei = 0.2; Object.defineProperty(m, 'emissiveIntensity', { get(){ return ei; }, set(v){ ei = 0.06 + 0.32 * Math.min(Math.max(v,0), 1.2) / 1.2; }, configurable:true });
   m.emissiveIntensity = opts.glow ?? 0.25;
   return m;
 }
@@ -230,5 +235,5 @@ function disposeOf(obj){
 }
 function drop(obj){ if(obj.parent) obj.parent.remove(obj); disposeOf(obj); } // 從場景移除並釋放
 function clear(group){ while(group.children.length) drop(group.children[group.children.length-1]); }
-window.P = { ROLE, ALIAS, COL, C, hex, rgba, css, theme, roleOf, label, mat, edges, highlight, wire, disposeOf, drop, clear, makeEnvMap, makeGrid, env:null, TokenRow, BeamSet, TensorBrick, GPUBox, Loop, Grid1D, State, Tower };
+window.P = { ROLE, ALIAS, COL, C, hex, rgba, css, theme, roleOf, label, mat, GlowMaterial, edges, highlight, wire, disposeOf, drop, clear, makeEnvMap, makeGrid, env:null, TokenRow, BeamSet, TensorBrick, GPUBox, Loop, Grid1D, State, Tower };
 })();

@@ -139,9 +139,9 @@
 ### 3D 材質與光影
 
 - [x] 材質與光影（輕量路線，2026-10-02）：程式產生的漸層環境貼圖（`P.makeEnvMap`）、背光 rim light、roughness 0.55 / metalness 0.12；canvas 透明，背景是 CSS 徑向漸層 + vignette；網格改成往遠處淡出的貼圖（`P.makeGrid`），淡出半徑跟場景大小走。
-  - [ ] 後處理（bloom / SSAO）：使用者決定先不做；若之後要，需 vendor three/examples 的 EffectComposer。
+  - [x] 後處理（bloom / SSAO）：決定不做（2026-10-02）。輕量光影已夠；要做需 vendor three/examples 的 EffectComposer，手機與 iGPU 吃力。
 - [x] 背景漸層 + vignette（2026-10-02）
-- [ ] `P.mat` 用 `Object.defineProperty` 攔截 `emissiveIntensity` 的 hack 很脆弱，改成在建立時正規化。
+- [x] `P.mat` 改回傳 `P.GlowMaterial`（類別 accessor 做 0.06–0.38 的映射，clone / copy 正確），不再每個實例 defineProperty（2026-10-02）
 
 ### 標籤系統重做
 
@@ -159,7 +159,7 @@
 - [x] 按鈕圖示統一成 inline SVG（單步 / 播放 / 暫停 / 重置 / 導覽）（2026-10-02）
 - [x] 控制順序：heading 必在其他控制前、readouts 必在 note 前，靜態測試守住；embedding 已調整（2026-10-02）
   - [x] vLLM 的提示移到 heading 下、sglang 四個請求按鈕同一列（2026-10-02）
-- [ ] 動作型場景（vllm / sglang / mhc）用自訂按鈕，其他用 stepper，形式統一。
+- [x] 動作型場景（vllm / sglang / mhc）維持自訂按鈕：它們是「事件型」（新增請求、丟 prompt、重播），不是逐步演示，硬套 stepper 反而不對。慣例寫進 README（2026-10-02）
 - [x] slider 改動時 3D 的亮度 / 大小 / 透明度 ease（`TokenRow.style` 補間，300ms）（2026-10-02）
 
 ### 分頁與頂欄
@@ -184,7 +184,7 @@
 - [x] **面板底部「上一個 / 下一個」**，跨分頁連續、頭尾相接（`App.sceneNav()`）（2026-10-02）
 - [x] **導覽列**：取景時把導覽列高度算進底部保留帶（2026-10-02）
 - [x] 側欄已讀標記（localStorage `visited`，打勾）（2026-10-02）
-  - [ ] 編號 / 小縮圖：暫不做
+  - [x] 側欄加本主題內的編號（2026-10-02）；縮圖不做
 - [x] 「下一個場景」指錯的兩處改成直接連到 Imatrix（2026-10-02）
 - [x] 模型塔跳轉按鈕顯示場景標題（P1 已做）；`moe` 連 `deepseek-v4` 的自我連結只發生在 nemotron → DeepSeek，合理，不改。
 
@@ -200,7 +200,7 @@
 - [x] 列 = 橫、欄 = 直：mHC 與 imatrix 改正，GPTQ 原本就對（2026-10-02）
 - [x] 子代理（subagent）統一（2026-10-02）
 - [x] 全形括號：tiling 的 A（M×K）、YOLO 的 P4（16）；mHC 的 ＝ 改 =（2026-10-02）
-  - [ ] `tool: read_file` 這類程式碼風格的半形冒號保留（它是指令）
+  - [x] `tool: read_file` 這類程式碼風格的半形冒號保留（它是指令）（2026-10-02）
 - [x] minilm 按鈕用短標籤（狗追貓 / 牛肉麵 / GPU kernel）（2026-10-02）
 
 ---
@@ -229,9 +229,9 @@
 ### 場景份量
 
 - [x] 偏薄要加料（2026-10-02）：yolo（三步配對）、glm（硬體 → tok/s）、nemotron（點層跳場景）、residual（hover 各層）、rnn（LSTM 對照 + hover）、qat（hover 直方圖）、embedding（落下動畫）。
-- [ ] 偏密要拆或收：stages（3 segmented + stepper + 2 slider + 9 readout + 2 bar + 3 段說明）、ocr（3 控制 + stepper + 6 readout + 4 段說明）、mhc、engram。
+- [x] 偏密要拆或收：stages 的規格 / 記憶體四個讀數、OCR 的多頁 / KV 三個讀數收進可摺疊的 `ctrl.details()`，預設收起（2026-10-02）
 - [x] 沒有 hover 的 slider 場景補聚焦回饋：全部用 `App.watchHover` 補上（2026-10-02）；只剩 ocr 沒有 hover（它的控制已經夠密，留著）
-- [ ] hover 回饋位置統一：cnn/transformer 改 3D，gguf/towers 改面板 `info`。
+- [x] hover 回饋位置統一：所有場景都「3D 高亮 + 面板一行讀數」；cnn 與 transformer 補了讀數（2026-10-02）
 
 ---
 

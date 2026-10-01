@@ -75,7 +75,9 @@
       ctrl.slider('解析度模式',{min:0,max:3,value:mode,fmt:v=>MODES[v].n,onChange:v=>{mode=v;draw();}});
       ctrl.slider('一次送進幾頁',{min:1,max:40,value:pages,onChange:v=>{pages=v;T_out=0;draw();}});
       ctrl.stepper({onStep:()=>{ const total=pages*DOC_TOKENS; if(T_out>=total) return false; T_out=Math.min(total,T_out+Math.max(200,total/20)); draw(); return T_out<total; },onReset:()=>{T_out=0;draw();},interval:250});
-      const set=ctrl.readouts([{id:'enc',label:'編碼器輸出'},{id:'ratio',label:'壓縮比（文字 ÷ 視覺）'},{id:'acc',label:'解碼精度（示意）'},{id:'pages',label:'多頁'},{id:'kv',label:'目前 KV cache（token）'},{id:'lat',label:'每步延遲'}]);
+      const setMain=ctrl.readouts([{id:'enc',label:'編碼器輸出'},{id:'ratio',label:'壓縮比（文字 ÷ 視覺）'},{id:'acc',label:'解碼精度（示意）'}]);
+      ctrl.details('多頁與 KV cache'); const setKV=ctrl.readouts([{id:'pages',label:'多頁'},{id:'kv',label:'目前 KV cache（token）'},{id:'lat',label:'每步延遲'}]); ctrl.endDetails();
+      const KVS=new Set(['pages','kv','lat']); const set=(id,t,c)=>(KVS.has(id)?setKV:setMain)(id,t,c);
       ctrl.note(`<p><b>DeepSeek-OCR</b> 解決輸入端：DeepEncoder = SAM-base（視窗注意力，便宜處理 4096 個 patch）→ 16× 卷積壓縮 → CLIP-large（全域注意力只對 256 個 token 做）。1024² 一頁壓成 256 token；壓縮 10× 內精度約 97%，20× 掉到約 60%——拉解析度到 Tiny 看輸出出現 ▢。</p>
         <p><b>Unlimited-OCR</b>（百度，2026-06，github.com/baidu/Unlimited-OCR）解決輸出端：拿 DeepSeek-OCR 當基底，把解碼器所有 MHA 換成 <b>R-SWA</b>（Reference Sliding Window Attention）——每個輸出 token 看得到<b>全部參考 token</b>（視覺 token + prompt，固定 m 個），但對已輸出的部分只看<b>最近 128 個</b>。KV cache 變成一個容量 m + 128 的佇列，解碼幾萬 token 記憶體和延遲都不變；因此可以幾十頁一次 forward（32K 內約 20–30 頁），OmniDocBench v1.5 還比基底高 6 分。按「播放」看下排佇列：DeepSeek-OCR 橘色一路長，Unlimited-OCR 只亮最近一段。</p>
         <p>它和純 SWA 的差別：視覺 token <b>不進滑動窗、不被逐出</b>，所以不會像線性注意力那樣越看越糊。這也是為什麼它只適合「有參考物」的任務：OCR、ASR、翻譯。</p>

@@ -191,7 +191,7 @@ def test_sidebar_is_a_list_of_links(site):
     site.goto("residual")
     assert site.ev("document.getElementById('items').tagName") == "UL"
     assert site.ev("document.querySelectorAll('#items li a').length") == 5
-    assert site.ev("document.querySelector('#items a[aria-current=\"page\"]').textContent") == "Residual Block"
+    assert site.ev("document.querySelector('#items a[aria-current=\"page\"] .t').textContent") == "Residual Block"
 
 
 def test_token_row_labels_are_in_the_scene(site):

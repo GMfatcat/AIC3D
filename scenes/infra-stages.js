@@ -59,7 +59,9 @@ App.register({
     ctrl.heading('一個請求的生命週期'); ctrl.stepper({onStep:step,onReset:()=>{t=0;redraw();},interval:650});
     ctrl.slider('Prompt 長度（token）',{min:4,max:64,step:4,value:P_len,onChange:v=>{P_len=v;t=0;buildRow();redraw();}});
     ctrl.slider('生成長度（token）',{min:2,max:16,step:1,value:G_len,onChange:v=>{G_len=v;t=0;buildRow();redraw();}});
-    const set=ctrl.readouts([{id:'hw',label:'規格'},{id:'w',label:'權重大小（要放進記憶體）'},{id:'act',label:'每步要讀的權重'},{id:'fit',label:'裝得下？'},{id:'phase',label:'階段'},{id:'bound',label:'瓶頸'},{id:'time',label:'這一步最少耗時'},{id:'tps',label:'decode 上限（單 stream）'},{id:'ttft',label:'TTFT 下限'},{id:'hov',label:'滑到的 token'}]);
+    const setMain=ctrl.readouts([{id:'phase',label:'階段'},{id:'bound',label:'瓶頸'},{id:'time',label:'這一步最少耗時'},{id:'tps',label:'decode 上限（單 stream）'},{id:'ttft',label:'TTFT 下限'},{id:'hov',label:'滑到的 token'}]);
+    ctrl.details('規格與記憶體'); const setSpec=ctrl.readouts([{id:'hw',label:'規格'},{id:'w',label:'權重大小（要放進記憶體）'},{id:'act',label:'每步要讀的權重'},{id:'fit',label:'裝得下？'}]); ctrl.endDetails(); // 次要讀數收起來，面板才不會一屏都是數字
+    const SPEC=new Set(['hw','w','act','fit']); const set=(id,t,c)=>(SPEC.has(id)?setSpec:setMain)(id,t,c);
     const bar=ctrl.bar('算力需求（相對這一步的瓶頸）'); const bar2=ctrl.bar('頻寬需求');
     const hwNote=ctrl.note('');
     ctrl.note(`<p><b>MoE 在這張圖上的位置</b>：記憶體要放<b>全部</b>參數（284B bf16 = 568 GB，連 Mac 512 GB 都放不下，FP8 才行），但 decode 每步只讀<b>啟用</b>的 13B——所以 MoE 是「裝起來像大模型、跑起來像小模型」，在頻寬低的 unified memory 機器上特別划算：Mac 512 GB 放 284B FP8（284 GB）綽綽有餘，每步只讀 13 GB，上限 60 tok/s，比 27B dense bf16 還快；Spark 128 GB 則要壓到 3 bpw 以下或用兩台才裝得下。兩個但書：① batch 大時不同請求會踩到不同專家，實際讀取量往全部靠；② prefill 多 token 同樣會碰到更多專家（這裡示意成最多 8 份啟用權重）。</p>`);

@@ -185,7 +185,7 @@ const App = {
     document.querySelectorAll('#tabs button').forEach(b=>{ const on=b.dataset.tab===item.tab; b.setAttribute('aria-selected',String(on)); b.tabIndex=on?0:-1; });
     document.getElementById('progress').textContent=`${catalog.indexOf(item)+1} / ${catalog.length}`; // 目前場景在全站的位置
     const list=document.getElementById('items'); list.innerHTML='';
-    catalog.filter(i=>i.tab===item.tab).forEach(i=>{ const li=document.createElement('li'); if(this.visited.has(i.id)) li.classList.add('visited'); const a=document.createElement('a'); a.href='#'+i.id; a.textContent=i.title; if(!scenes[i.id]){ li.classList.add('todo'); a.innerHTML=`${i.title}<i>規劃中</i>`; } if(i.id===item.id) a.setAttribute('aria-current','page'); li.appendChild(a); list.appendChild(li); });
+    catalog.filter(i=>i.tab===item.tab).forEach((i,n)=>{ const li=document.createElement('li'); if(this.visited.has(i.id)) li.classList.add('visited'); const a=document.createElement('a'); a.href='#'+i.id; a.innerHTML=`<span class="num">${n+1}</span><span class="t">${i.title}</span>`; if(!scenes[i.id]){ li.classList.add('todo'); a.innerHTML+=`<i>規劃中</i>`; } if(i.id===item.id) a.setAttribute('aria-current','page'); li.appendChild(a); list.appendChild(li); });
     this._go(item);
   },
   /* 交叉淡入：舞台與面板淡出 → 換場景 → 淡入。期間 App.routing 為 true。 */

@@ -33,7 +33,8 @@ body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px
 /* side list */
 #side{grid-area:side;border-right:1px solid var(--line);background:var(--bg2);overflow-y:auto;padding:10px 8px;min-width:0;}
 #items{display:flex;flex-direction:column;gap:2px;list-style:none;margin:0;padding:0;}
-#items a{color:var(--fg2);text-decoration:none;padding:7px 10px;border-radius:7px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+#items a{color:var(--fg2);text-decoration:none;padding:7px 10px;border-radius:7px;display:flex;align-items:center;gap:8px;}
+#items a .t{flex:1;} #items a .num{font-family:var(--mono);font-size:10.5px;color:var(--fg3);min-width:12px;text-align:right;} /* 本主題內的編號 */
 #items a:hover{background:var(--bg3);}
 #items a[aria-current="page"]{background:var(--bg3);color:var(--fg);font-weight:500;}
 #items a:focus-visible{outline:2px solid var(--signal);outline-offset:-2px;}
@@ -109,6 +110,9 @@ textarea.ta:focus-visible{outline:2px solid var(--signal);outline-offset:-1px;}
 .ovl-card{position:absolute;right:14px;top:14px;width:260px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;backdrop-filter:blur(8px);}
 .ovl-card .hint{margin-bottom:4px;} .ovl-card canvas{display:block;width:100%;}
 .ovl-dock .ovl-card{position:static;width:100%;margin-bottom:4px;} /* 窄螢幕時圖卡放在面板最上面 */
+details.group{border:1px solid var(--line);border-radius:8px;padding:0 10px 8px;gap:10px;} details.group:not([open]){padding-bottom:0;}
+details.group summary{cursor:pointer;font-size:12.5px;color:var(--fg2);padding:7px 0;list-style:none;} details.group summary::before{content:'▸ ';font-size:10px;} details.group[open] summary::before{content:'▾ ';}
+details.group summary:focus-visible{outline:2px solid var(--signal);outline-offset:-2px;border-radius:6px;} details.group > .ctl,details.group > .readouts{margin-top:8px;}
 .note{font-size:13px;color:var(--fg2);border-top:1px solid var(--line);padding-top:12px;}
 .note b{color:var(--fg);font-weight:500;}
 .note a,.hint a{color:var(--signal);text-decoration:none;border-bottom:1px solid rgba(242,181,68,.35);} .note a:hover,.hint a:hover{border-bottom-color:var(--signal);}

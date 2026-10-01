@@ -16,11 +16,12 @@
         kern.scale.set(k*cell,k*cell,1); kern.position.set((c0+(k-1)/2-(IN-1)/2)*cell,((IN-1)/2-(r0+(k-1)/2))*cell,0.3);
         outCells.forEach(c=>{ const cur=c.i===oi&&c.j===oj; const done=hoverIdx<0&&(c.i*O+c.j)<pos; c.m.material.color.copy(P.C(cur?'signal':done?'flow':'inactive')); c.m.material.emissive.copy(c.m.material.color); c.m.material.emissiveIntensity=cur?0.9:done?0.4:0.08; c.m.position.z=cur?0.2:0; });
         root.updateMatrixWorld(true); const a=kern.position.clone().applyMatrix4(inG.matrixWorld), b=outCells[idx].m.position.clone().applyMatrix4(outG.matrixWorld); beams.set(0,a,b,0.7,'signal');
+        set('hov',hoverIdx<0?'—':`第 ${oi+1} 列 第 ${oj+1} 欄：看輸入第 ${r0+1}–${r0+k} 列、第 ${c0+1}–${c0+k} 欄`);
         const rf=1+(k-1)*Array.from({length:layers},(_,i)=>stride**i).reduce((a,b)=>a+b,0); set('rf',`${rf}×${rf}（${layers} 層 ${k}×${k}，stride ${stride}）`); set('params',`${k*k} 個（每層、每個通道）`); set('out',`${O}×${O}`); set('cover',`${k*k} / ${IN*IN} 個輸入像素`); };
       ctrl.heading('kernel 滑過去'); ctrl.stepper({onStep:()=>{ const n=outSize()**2; if(pos>=n) return false; pos++; paint(); return pos<n; },onReset:()=>{pos=0;paint();},interval:220});
       ctrl.slider('kernel 大小 k',{min:1,max:5,step:2,value:k,onChange:v=>{k=v;rebuild();}}); ctrl.slider('stride',{min:1,max:2,value:stride,onChange:v=>{stride=v;rebuild();}});
       ctrl.slider('堆幾層（感受野換算）',{min:1,max:6,value:layers,onChange:v=>{layers=v;paint();}});
-      const set=ctrl.readouts([{id:'out',label:'輸出大小'},{id:'cover',label:'一個輸出看到'},{id:'params',label:'權重數'},{id:'rf',label:'堆層後的感受野'}]);
+      const set=ctrl.readouts([{id:'out',label:'輸出大小'},{id:'cover',label:'一個輸出看到'},{id:'params',label:'權重數'},{id:'rf',label:'堆層後的感受野'},{id:'hov',label:'滑到的輸出格'}]);
       ctrl.note(`<p>一個 <b>kernel</b> 只看一小塊（k×k），在整張圖上<b>共用同一組權重</b>滑過去——所以參數只有 k² 個，不管圖多大。這是 CNN 比全連接省、而且有平移不變性的原因。</p>
         <p>單層只看局部，但<b>堆層會讓感受野線性長大</b>：stride 1 時 L 層 k×k 的感受野是 1 + L(k−1)；stride s 時每往上一層，一步就對應原圖更多像素，變成 1 + (k−1)(1 + s + s² + …)。深層的一個輸出像素其實「看到」了原圖一大塊，這就是「低層抓邊緣、高層抓物件」的來源。</p>
         <p class="hint">滑鼠移到右邊任一輸出格，會反亮它在輸入上的感受野。AOI 常用的 SegFormer / UNet 前段都是這個操作的堆疊。</p>`);
