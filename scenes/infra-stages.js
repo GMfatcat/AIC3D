@@ -46,7 +46,7 @@ App.register({
       set('tps',`≤ ${tps.toFixed(1)} tok/s（${fits?'頻寬':'PCIe'} ÷ ${isMoE()?'啟用':''}權重）`,tps<10?'bad':'ok'); set('ttft',`≥ ${ttft.toFixed(0)} ms（prompt ${P_len} token）`,ttft>500?'bad':'ok');
       bar([{frac:tot?Math.min(1,tC/tot):0,color:'signal'}]); bar2([{frac:tot?Math.min(1,tM/tot):0,color:'state'}]);
       hwNote.innerHTML = H.unified
-        ? `<p><b>Unified memory</b>：CPU、GPU 共用同一池，沒有「VRAM 放不放得下」這道牆——${fmtB(H.mem)} 給 27B bf16 綽綽有餘（235B bf16 就只有 Mac 裝得下），還留一大塊給 KV cache，不用 TP、不用 offload、也沒有 host↔device 複製。</p><p>代價在頻寬：${(H.bw/1e9).toFixed(0)} GB/s 把 ${fmtB(bytes)} 讀一遍要 ${(bytes/H.bw*1000).toFixed(0)} ms，所以單 stream decode 上限只有 ${tps.toFixed(1)} tok/s。<b>量化在這種機器上直接換成速度</b>（切 NVFP4 看 tok/s）。Prefill 吃算力，長 prompt 的 TTFT 比 H100 慢一個數量級。適合：模型大、使用者少、prompt 不長、要在桌邊跑。</p>`
+        ? `<p><b>Unified memory</b>：CPU、GPU 共用同一池，沒有「VRAM 放不放得下」這道牆——${fmtB(H.mem)} 放目前這組 ${fmtB(bytes)} 的權重${bytes<H.mem*0.6?'綽綽有餘':bytes<H.mem?'剛好夠':'也放不下'}（235B bf16 就只有 Mac 裝得下），還留一大塊給 KV cache，不用 TP、不用 offload、也沒有 host↔device 複製。</p><p>代價在頻寬：${(H.bw/1e9).toFixed(0)} GB/s 把 ${fmtB(bytes)} 讀一遍要 ${(bytes/H.bw*1000).toFixed(0)} ms，所以單 stream decode 上限只有 ${tps.toFixed(1)} tok/s。<b>量化在這種機器上直接換成速度</b>（切 NVFP4 看 tok/s）。Prefill 吃算力，長 prompt 的 TTFT 比 H100 慢一個數量級。適合：模型大、使用者少、prompt 不長、要在桌邊跑。</p>`
         : `<p><b>獨立 GPU</b>：HBM 頻寬 ${(H.bw/1e12).toFixed(1)} TB/s、算力高，但 ${fmtB(H.mem)} 是硬牆。模型 + KV 超過就得 TP 切多卡、量化，或 offload 到主機 DDR——offload 時每步權重要走 PCIe 64 GB/s，decode 直接慢 60 倍（切 BF16 + 更大模型會看到）。</p><p>分工很清楚：H100 吃並發、吃長 prompt（batching 把多個請求的 decode 合在一次權重讀取裡）；Spark / Mac 裝得下、單人互動夠用。</p>`;
     };
     const step=()=>{ if(t>=G_len+1) return false; t++; redraw(); return t<G_len+1; };

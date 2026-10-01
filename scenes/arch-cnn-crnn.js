@@ -30,7 +30,7 @@
 
   /* ---------------- CRNN ---------------- */
   App.register({ id:'crnn', tab:'arch', question:'一張影像怎麼變成一串序列，再變成文字？',
-    init(ctx){ const {THREE:T,P,root,ctrl}=ctx; const TEXT='LENS-0731'; let down=4, step=0;
+    init(ctx){ const {THREE:T,P,root,ctrl}=ctx; const TEXT='LENS-0733'; /* 兩個 3：讓 CTC 合併重複字的情況看得到 */ let down=4, step=0;
       // 影像平面（canvas 貼圖）
       const cv=document.createElement('canvas'); cv.width=512; cv.height=96; const g=cv.getContext('2d'); g.fillStyle=P.theme('--bg3'); g.fillRect(0,0,512,96); g.fillStyle=P.theme('--fg'); g.font='bold 64px IBM Plex Mono, monospace'; g.textBaseline='middle'; g.fillText(TEXT,28,50);
       const img=new T.Mesh(new T.PlaneGeometry(8,1.5),new T.MeshBasicMaterial({map:new T.CanvasTexture(cv)})); img.position.y=2.6; root.add(img); const il=P.label('輸入影像 32×512（灰階）',{size:18}); il.position.set(0,3.6,0); root.add(il);

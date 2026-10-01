@@ -177,27 +177,31 @@
 
 ## P4 — 敘事與流程
 
-- [ ] **開場頁**：一進站就落在 CNN，沒有「這是什麼、顏色代表什麼、從哪開始」。10 秒內建立世界觀，展示 `P.ROLE` 的八種語意色，六條導覽路線當主要入口（目前藏在右上角下拉）。
-- [ ] **場景內節奏「先看現象再給控制」**：進場自動播放一次關鍵動畫（或鏡頭巡覽），再解鎖控制。minilm 開場是空的，要先選一句才有東西。
-- [ ] **跨場景連結改成可點**：目前五種說法混用「Tab 1」（minilm:39、catalog nemotron）、「基礎架構 Tab」（glm:52）、「Block Tab」（ds:43）、「Tab 2 / Tab 5」（kvcache:37）、「左邊」。統一成 `<a href="#id">場景標題</a>`。
-- [ ] **場景底部「上一個 / 下一個」**，一般模式也能線性閱讀。
-- [ ] **導覽列遮住畫面**：說明條蓋在舞台下方，擋住 token 列等底部物件。改放側邊或讓場景 fit 時扣掉導覽列高度。
-- [ ] 側欄加已讀標記 / 編號 / 小縮圖。
-- [ ] 「下一個場景」指錯：GGUF 說「Imatrix（下一個場景）」（`optimize-gguf-qat-imatrix.js:22`）實際是 QAT；GPTQ 同（`optimize-quant.js:68`）實際是 fp。
-- [ ] 模型塔跳轉按鈕顯示 id（「看 kvheads 場景 →」）而非標題（`model-towers.js:33`）；`moe` 連到 `deepseek-v4`，在 DeepSeek 頁 hover 會連回自己（`:6`）。
+- [x] **開場頁**（2026-10-02）：沒有 hash 或 `#home` 時顯示；舞台滿版放 22 個漂浮旋轉的語意色原件，上面疊標題、一句話、八種顏色的角色說明、六張導覽路線卡（主入口）、「直接瀏覽 38 個場景」。品牌名是回首頁的連結。走同一套交叉淡入。
+- [x] **先看現象再給控制**（2026-10-02）：有 stepper 的場景進場 600ms 後自動播放一輪，碰任何控制就停；減少動態偏好時不自動播。
+  - [ ] minilm 開場是空的，要先選一句才有東西（P5 逐場景）
+- [x] **跨場景連結可點**（2026-10-02）：minilm、模型塔、GGUF、GPTQ、KV cache、agent-loop 的說明改成 `<a href="#id">`；靜態測試擋住「Tab N」「規劃中」「下一個場景」再出現。
+- [x] **面板底部「上一個 / 下一個」**，跨分頁連續、頭尾相接（`App.sceneNav()`）（2026-10-02）
+- [x] **導覽列**：取景時把導覽列高度算進底部保留帶（2026-10-02）
+- [x] 側欄已讀標記（localStorage `visited`，打勾）（2026-10-02）
+  - [ ] 編號 / 小縮圖：暫不做
+- [x] 「下一個場景」指錯的兩處改成直接連到 Imatrix（2026-10-02）
+- [x] 模型塔跳轉按鈕顯示場景標題（P1 已做）；`moe` 連 `deepseek-v4` 的自我連結只發生在 nemotron → DeepSeek，合理，不改。
 
 ### 文案修正
 
-- [ ] `agent-loop.js:51`「Compact 與 Subagent 在左邊有獨立場景（規劃中）」已做好，移除「規劃中」。
-- [ ] CRNN 說「重複字（兩個 3）會被合併」但 `TEXT='LENS-0731'` 只有一個 3（`arch-cnn-crnn.js:59`）；`-` 與 blank 符號 `–` 肉眼分不出（`:40,47`）。
-- [ ] Attention「V（粗細 = 內容量）」實際用高度（`block-attention.js:19` vs `:14`）。
-- [ ] GDN 說「擦掉（紅）再寫（綠）」實際寫入是 teal（`arch-recurrent.js:107`）；Mamba「綠環」同（`:52`）。
-- [ ] kvheads latent 說明寫 512 維，readout 是 `512+64=576` 沒解釋（`block-kvheads.js:10,33,34`）。
-- [ ] stages 說明寫死「給 27B bf16 綽綽有餘」不隨模型選擇變（`infra-stages.js:49`）。
-- [ ] 列 / 行 / 欄：mHC 用「行」指 row（大陸用法，台灣「列」= row）（`block-mhc.js:15,44`）；imatrix「列 = 輸入通道」實際是欄（`optimize-gguf-qat-imatrix.js:64`）；GPTQ 用「欄」。全站統一。
-- [ ] subagent / 子代理混用（`agent-compact-subagent.js:38,60`）。
-- [ ] 半形全形標點：`tool: read_file`（`agent-loop.js:11`）、`'A (M×K)'`（tiling:32）、`'P4 (16)'`（yolo:11）、`＝`/`=`（mhc:69）、`—`/`–`（mhc:66）。
-- [ ] minilm 按鈕標籤截斷成「GPU ke…」（`model-minilm.js:36`）。
+- [x] agent-loop 的「規劃中」改成兩個可點連結（2026-10-02）
+- [x] CRNN 範例改 `LENS-0733`，合併重複字看得到（2026-10-02）
+  - [ ] `-` 與 blank 符號 `–` 肉眼分不出（P5 逐場景）
+- [x] Attention「V（高度 = 內容量）」（2026-10-02）
+- [x] GDN / Mamba 的顏色字已在 P1 改成「青綠」
+- [x] kvheads 說明補「另有 64 維解耦 RoPE 位置鍵，每 token 存 576 維」（2026-10-02）
+- [x] stages 說明隨目前權重大小變（綽綽有餘 / 剛好夠 / 也放不下）（2026-10-02）
+- [x] 列 = 橫、欄 = 直：mHC 與 imatrix 改正，GPTQ 原本就對（2026-10-02）
+- [x] 子代理（subagent）統一（2026-10-02）
+- [x] 全形括號：tiling 的 A（M×K）、YOLO 的 P4（16）；mHC 的 ＝ 改 =（2026-10-02）
+  - [ ] `tool: read_file` 這類程式碼風格的半形冒號保留（它是指令）
+- [x] minilm 按鈕用短標籤（狗追貓 / 牛肉麵 / GPU kernel）（2026-10-02）
 
 ---
 

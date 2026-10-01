@@ -8,7 +8,7 @@
       OBJS.forEach(o=>{ const m=new T.Mesh(new T.CircleGeometry(Math.min(o.w,o.h)*0.35,24),P.mat('structure',{glow:0.3,opacity:0.6})); m.position.set(o.x,o.y,0.02); img.add(m); });
       const il=P.label('輸入影像',{size:20}); il.position.set(0,2.4,0); img.add(il);
       // backbone pyramid P3 / P4 / P5
-      const pyr=new T.Group(); pyr.position.set(0.6,0.6,0); root.add(pyr); [[2.4,'P3 (stride 8)'],[1.6,'P4 (16)'],[1.0,'P5 (32)']].forEach(([s,l],i)=>{ const m=new T.Mesh(new T.BoxGeometry(s,s*0.67,0.35),P.mat(['memory','state','signal'][i],{glow:0.3,opacity:0.9})); m.position.set(i*0.35,(i-1)*-1.5,i*0.6); pyr.add(m); const lb=P.label(l,{size:15}); lb.position.set(i*0.35+s/2+0.6,(i-1)*-1.5,i*0.6); pyr.add(lb); });
+      const pyr=new T.Group(); pyr.position.set(0.6,0.6,0); root.add(pyr); [[2.4,'P3（stride 8）'],[1.6,'P4（16）'],[1.0,'P5（32）']].forEach(([s,l],i)=>{ const m=new T.Mesh(new T.BoxGeometry(s,s*0.67,0.35),P.mat(['memory','state','signal'][i],{glow:0.3,opacity:0.9})); m.position.set(i*0.35,(i-1)*-1.5,i*0.6); pyr.add(m); const lb=P.label(l,{size:15}); lb.position.set(i*0.35+s/2+0.6,(i-1)*-1.5,i*0.6); pyr.add(lb); });
       const pl=P.label('Backbone + PAN neck：三個尺度的 feature map',{size:17}); pl.position.set(0.5,3.0,0); pyr.add(pl);
       // heads
       const heads=new T.Group(); heads.position.set(4.6,0.6,0); root.add(heads);

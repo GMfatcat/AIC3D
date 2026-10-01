@@ -87,6 +87,7 @@ const App = {
   /* ---------- camera / orbit / pan / fit ---------- */
   _orbit(){
     this.cam = {theta:0.5, phi:1.2, dist:18, zoom:1, target:new T.Vector3()}; this.camHome = null; this.bounds=null; this._disposers=[];
+    try{ this.visited=new Set(JSON.parse(localStorage.getItem('visited')||'[]')); }catch(e){ this.visited=new Set(); } // 看過的場景（側欄打勾）
     const c=this.canvas; let drag=null, mode=null; const touches=new Map();
     c.addEventListener('contextmenu',e=>e.preventDefault());
     c.addEventListener('pointerdown',e=>{ document.getElementById('camhint').classList.add('seen'); this._camTween&&this._camTween.cancel(); this._setPointer(e); touches.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(touches.size===2){ mode='pinch'; return; } drag={x:e.clientX,y:e.clientY}; mode=(e.button===2||e.button===1||e.shiftKey)?'pan':'rotate'; this.dragging=true; this.autoSpin=false; c.setPointerCapture(e.pointerId); });
@@ -126,7 +127,8 @@ const App = {
     const aspect=this.camera.aspect||1.6; const fovV=this.camera.fov*Math.PI/180; const fovH=2*Math.atan(Math.tan(fovV/2)*aspect);
     // 左上標題與左下圖例佔掉的高度不給內容用：內容縮進中間那一帶，並往帶的中心平移
     const H=this.canvas.clientHeight||600; const infoH=document.getElementById('info').offsetHeight||0; const legEl=document.getElementById('legend'); const legH=(legEl&&legEl.offsetParent)?legEl.offsetHeight:0;
-    const top=H>420?infoH+24:0, bottom=H>420?legH+24:0; const band=Math.max(0.45,(H-top-bottom)/H);
+    const tb=document.getElementById('tourbar'); const tbH=(tb&&tb.classList.contains('on'))?tb.offsetHeight+20:0;
+    const top=H>420?infoH+24:0, bottom=H>420?Math.max(legH+24,tbH):0; const band=Math.max(0.45,(H-top-bottom)/H);
     const dV=(size.y/2)/Math.tan(fovV/2)/band, dH=(size.x/2)/Math.tan(fovH/2), dD=size.z/2;
     const dist=(Math.max(dV,dH)*1.12+dD+1.2)*(this.cam.zoom||1);
     this.cam.target.copy(center); this.cam.dist=dist; this.minDist=Math.max(2,dist*0.25); this.maxDist=dist*4; this._placeCamera();
@@ -159,7 +161,8 @@ const App = {
     tabs.addEventListener('keydown',e=>{ if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft') return; const i=TABS.findIndex(t=>t.id===e.target.dataset.tab); if(i<0) return; const n=(i+(e.key==='ArrowRight'?1:-1)+TABS.length)%TABS.length; goTab(TABS[n]); tabs.children[n].focus(); e.preventDefault(); });
   },
   _route(){
-    let id=location.hash.replace('#','') || catalog[0].id;
+    let id=location.hash.replace('#','') || 'home';
+    if(id==='home'){ this._inTour=false; this.hideTour && this.hideTour(); this._goHome(); return; }
     const tm=id.match(/^tour=([\w-]+)&step=(\d+)$/);
     if(tm && this.renderTour){ const sid=this.renderTour(tm[1],+tm[2]); if(sid){ id=sid; this._inTour=true; } else { this._inTour=false; } }
     else { this._inTour=false; this.hideTour && this.hideTour(); }
@@ -167,7 +170,7 @@ const App = {
     document.querySelectorAll('#tabs button').forEach(b=>{ const on=b.dataset.tab===item.tab; b.setAttribute('aria-selected',String(on)); b.tabIndex=on?0:-1; });
     document.getElementById('progress').textContent=`${catalog.indexOf(item)+1} / ${catalog.length}`; // 目前場景在全站的位置
     const list=document.getElementById('items'); list.innerHTML='';
-    catalog.filter(i=>i.tab===item.tab).forEach(i=>{ const li=document.createElement('li'); const a=document.createElement('a'); a.href='#'+i.id; a.textContent=i.title; if(!scenes[i.id]){ li.classList.add('todo'); a.innerHTML=`${i.title}<i>規劃中</i>`; } if(i.id===item.id) a.setAttribute('aria-current','page'); li.appendChild(a); list.appendChild(li); });
+    catalog.filter(i=>i.tab===item.tab).forEach(i=>{ const li=document.createElement('li'); if(this.visited.has(i.id)) li.classList.add('visited'); const a=document.createElement('a'); a.href='#'+i.id; a.textContent=i.title; if(!scenes[i.id]){ li.classList.add('todo'); a.innerHTML=`${i.title}<i>規劃中</i>`; } if(i.id===item.id) a.setAttribute('aria-current','page'); li.appendChild(a); list.appendChild(li); });
     this._go(item);
   },
   /* 交叉淡入：舞台與面板淡出 → 換場景 → 淡入。期間 App.routing 為 true。 */
@@ -187,6 +190,8 @@ const App = {
     document.getElementById('i-title').textContent=item.title; document.getElementById('i-q').textContent=item.question||'';
     this.canvas.setAttribute('aria-label',`3D 場景：${item.title}。${item.question||''} 文字說明在右側面板。`);
     this.autoSpin = true; this.cam.zoom = 1; this.currentItem=item; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML='';
+    document.body.classList.remove('home'); this.home=false;
+    if(!this.visited.has(item.id)){ this.visited.add(item.id); try{ localStorage.setItem('visited',JSON.stringify([...this.visited])); }catch(e){} document.querySelectorAll('#items a').forEach(a=>{ if(a.getAttribute('href')==='#'+item.id) a.parentElement.classList.add('visited'); }); }
     const def = scenes[item.id];
     if(!def){ this.current = this._placeholder(item); this.fit(); return; }
     const ctx = { app:this, THREE:T, P, scene:this.scene, root:this.root, ctrl:this.ctrl, overlay:overlayHost, legend:(items)=>this.legend(items), setCamera:(c)=>this.setCamera(c), reduceMotion:this.reduceMotion,
@@ -194,9 +199,43 @@ const App = {
     this.ctx = ctx;
     const inst = Object.create(def); inst.init(ctx); this.current = inst;
     document.getElementById('i-q').textContent = def.question || item.question || '';
+    this.sceneNav();
     this.root.updateMatrixWorld(true); this.fit();
     if(!this.reduceMotion){ const home=this.cam.dist; this.cam.dist=home*1.12; this._placeCamera(); this._camTween=Motion.tween(this.cam,{dist:home},{ms:700,ease:'out',onUpdate:()=>this._placeCamera()}); } // 從稍遠處緩緩靠近（settle-in）
   },
+  /* 面板最底下：上一個 / 下一個場景（跨分頁連續、頭尾相接） */
+  sceneNav(){ const item=this.currentItem; if(!item||!this.ctrl) return; const i=catalog.indexOf(item); const prev=catalog[(i-1+catalog.length)%catalog.length], next=catalog[(i+1)%catalog.length];
+    const old=this.ctrl.c.querySelector('.scenenav'); if(old) old.remove();
+    const nav=document.createElement('nav'); nav.className='scenenav'; nav.setAttribute('aria-label','上一個 / 下一個場景');
+    nav.innerHTML=`<a href="#${prev.id}" class="prev"><small>← 上一個</small>${prev.title}</a><a href="#${next.id}" class="next"><small>下一個 →</small>${next.title}</a>`; this.ctrl.c.appendChild(nav); },
+  /* 開場頁：沒有 hash 或 #home */
+  _goHome(){ document.querySelectorAll('#tabs button').forEach(b=>{ b.setAttribute('aria-selected','false'); b.tabIndex=-1; }); document.getElementById('items').innerHTML=''; document.getElementById('progress').textContent='';
+    if(this.home) return; if(this.routing){ this._pendingItem=null; } // 用 show() 同一套交叉淡入
+    const go=()=>this._showHome(); if(!this.current || this.reduceMotion){ go(); return; }
+    this.routing=true; document.body.classList.add('is-switching'); setTimeout(()=>{ go(); requestAnimationFrame(()=>{ document.body.classList.remove('is-switching'); this.routing=false; }); },220); },
+  _showHome(){
+    if(this.current){ this.current.dispose && this.current.dispose(); this.ctrl && this.ctrl.dispose(); }
+    (this._disposers||[]).forEach(fn=>{ try{ fn(); }catch(e){ console.error(e); } }); this._disposers=[];
+    P.clear(this.root); this.labels.forEach(l=>l.el.remove()); this.labels.clear(); this.labelLayer.innerHTML=''; document.getElementById('overlay').innerHTML=''; document.getElementById('ctrl').innerHTML=''; this.legend([]);
+    document.getElementById('i-title').textContent=''; document.getElementById('i-q').textContent=''; this.canvas.setAttribute('aria-label','開場：漂浮的語意色原件');
+    this.currentItem=null; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML=''; this.home=true; document.body.classList.add('home');
+    this._buildLanding();
+    // 背景：八種語意色的原件在一個球殼上慢慢漂浮
+    const roles=Object.keys(P.ROLE); const items=[]; let seed=3; const rnd=()=>{ seed=(seed*9301+49297)%233280; return seed/233280; };
+    for(let i=0;i<22;i++){ const role=roles[i%roles.length]; const kind=i%3; const geo=kind===0?new T.BoxGeometry(0.7,0.7,0.7):kind===1?new T.SphereGeometry(0.42,24,16):new T.CylinderGeometry(0.22,0.22,1.1,16);
+      const m=new T.Mesh(geo,P.mat(role,{glow:0.35})); const th=rnd()*Math.PI*2, ph=Math.acos(2*rnd()-1), r=3.6+rnd()*2.2; m.position.set(r*Math.sin(ph)*Math.cos(th), (r*Math.cos(ph))*0.6, r*Math.sin(ph)*Math.sin(th)); m.rotation.set(rnd()*3,rnd()*3,rnd()*3);
+      m.userData.bob={y:m.position.y, p:rnd()*6.28, s:0.4+rnd()*0.6}; this.root.add(m); items.push(m); }
+    this.setCamera({theta:0.6,phi:1.25,zoom:1.15}); this.ctx=null;
+    let t=0; this.current={ update:(dt)=>{ if(this.reduceMotion) return; t+=dt; this.root.rotation.y+=dt*0.05; items.forEach(m=>{ const b=m.userData.bob; m.position.y=b.y+Math.sin(t*b.s+b.p)*0.25; m.rotation.x+=dt*0.15; }); }, dispose:()=>{ this.root.rotation.y=0; } };
+    this.root.updateMatrixWorld(true); this.fit();
+  },
+  _buildLanding(){ let el=document.getElementById('landing'); if(el.dataset.built) return; el.dataset.built='1';
+    const roles=Object.entries(P.ROLE).map(([k,r])=>`<span class="role-chip"><i style="background:${r.base}"></i>${r.label}</span>`).join('');
+    const tours=(this.tours||[]).map(t=>{ const first=catalog.find(x=>x.id===t.steps[0][0]); return `<a class="tour-card" href="#tour=${t.id}&step=1"><b>${t.title}</b><span>${t.steps.length} 步 · 約 ${t.minutes} 分鐘</span><small>從「${first?first.title:t.steps[0][0]}」開始</small></a>`; }).join('');
+    el.innerHTML=`<div class="land-in"><h1>AI 概念 3D 教學</h1><p class="lead">${catalog.length} 個互動 3D 場景，每個只回答一個問題：從 CNN 到 Agent，看懂概念，不追數值。</p>
+      <p class="roles-cap">整站只用八種顏色，每種代表一個角色：</p><div class="roles">${roles}</div>
+      <h2>挑一條路線，按順序看</h2><div class="tours">${tours}</div>
+      <a class="btn browse" href="#${catalog[0].id}">或直接瀏覽 ${catalog.length} 個場景 →</a></div>`; },
   legend(items){ const l=document.getElementById('legend'); l.innerHTML=''; items.forEach(([color,text])=>{ const s=document.createElement('span'); const hx=P.hex(color); s.innerHTML=`<i style="background:${hx}"></i>${text}`; l.appendChild(s); }); },
   _placeholder(item){
     this.legend([]);

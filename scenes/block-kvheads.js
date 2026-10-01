@@ -7,7 +7,7 @@ App.register({
       {id:'mha',label:'MHA',kv:8,cache:1.0, text:'<b>MHA</b>：8 個 Q 頭各配一組 K/V。cache 最大，表達力最完整。'},
       {id:'gqa',label:'GQA',kv:2,cache:0.25,text:'<b>GQA</b>：4 個 Q 頭共用 1 組 K/V（2 組）。cache 降到 1/4，品質接近 MHA。Llama / Qwen 系用這個。'},
       {id:'mqa',label:'MQA',kv:1,cache:0.125,text:'<b>MQA</b>：全部 Q 頭共用 1 組 K/V。cache 1/8，但表達力明顯受限。'},
-      {id:'mla',label:'MLA',kv:0,cache:0.28, text:'<b>MLA</b>：不減頭。把每個 token 的 K、V 一起<b>壓成一個低維 latent c</b>（這裡 512 維 vs 原本 2×8×128 = 2048）存進 cache，用到時再用上投影矩陣展開成 8 組完整的 K/V。cache 和 GQA 同級，表達力卻接近 MHA。DeepSeek 系用這個。'},
+      {id:'mla',label:'MLA',kv:0,cache:0.28, text:'<b>MLA</b>：不減頭。把每個 token 的 K、V 一起<b>壓成一個低維 latent c</b>（這裡 512 維 vs 原本 2×8×128 = 2048；另外還有 64 維解耦的 RoPE 位置鍵，所以每 token 存 576 維）存進 cache，用到時再用上投影矩陣展開成 8 組完整的 K/V。cache 和 GQA 同級，表達力卻接近 MHA。DeepSeek 系用這個。'},
     ];
     const plateGeo=new T.BoxGeometry(0.55,0.75,0.1);
     const qs=[]; for(let i=0;i<NQ;i++){ const m=new T.Mesh(plateGeo,P.mat('signal',{glow:0.4})); m.position.set((i-3.5)*0.8,1.8,0); root.add(m); qs.push(m); }

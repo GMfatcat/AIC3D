@@ -66,7 +66,7 @@
       const bar=ctrl.bar('這個方法'); const bar2=ctrl.bar('直接四捨五入');
       ctrl.note(`<p>把第 j 欄的權重 snap 到最近格點時會產生誤差 e。<b>GPTQ</b> 不是忍下來，而是用校準資料算出的 Hessian 反矩陣，把 e 按欄之間的相關性<b>分攤到還沒量化的欄</b>（紅色波傳向右邊）：後面的欄先往反方向調一點，讓整層的輸出 XW 盡量不變。</p>
         <p>所以 GPTQ 最小化的是<b>輸出誤差</b>，不是權重誤差——這就是它比直接四捨五入好、而且 4-bit 還能用的原因。代價是需要一批校準資料、以及逐欄的序列計算（實務上分 block 做）。</p>
-        <p class="hint">這裡用 4 階均勻格點、相鄰欄相關 0.35 做示意。Imatrix（下一個場景）是把同樣的「哪些權重對輸出重要」用在 GGUF 的分級精度上。</p>`);
+        <p class="hint">這裡用 4 階均勻格點、相鄰欄相關 0.35 做示意。<a href="#imatrix">Imatrix</a> 是把同樣的「哪些權重對輸出重要」用在 GGUF 的分級精度上。</p>`);
       ctx.legend([['memory','浮點權重'],['signal','已量化'],['alert','誤差分攤到右側的欄']]);
       ctx.setCamera({theta:0.15,phi:1.4}); reset();
       this.update=(dt)=>{ if(waveT>0){ waveT=Math.max(0,waveT-dt*1.5); wave.material.opacity=0.35*waveT; wave.position.x+=dt*2.5; } }; } });

@@ -16,7 +16,7 @@ App.register({
     const out=new T.Mesh(new T.BoxGeometry(0.5,1,0.5),P.mat('signal',{glow:0.7})); out.position.set(row.x(WORDS.length-1)+1.9,-1.4,0); root.add(out);
     const outL=P.label('輸出 = Σ wᵢ·Vᵢ',{size:20}); outL.position.set(out.position.x,-3.0,0); root.add(outL);
     const kL=P.label('K 向量（每個 token 一支）',{size:20}); kL.position.set(0,2.3,0); root.add(kL);
-    const vL=P.label('V（粗細 = 內容量）',{size:20}); vL.position.set(-row.x(WORDS.length-1)-1.2,-1.9,0); root.add(vL);
+    const vL=P.label('V（高度 = 內容量）',{size:20}); vL.position.set(-row.x(WORDS.length-1)-1.2,-1.9,0); root.add(vL);
     const wLabels=WORDS.map((_,i)=>{ const l=P.label('',{size:18,color:P.hex('signal')}); l.position.set(row.x(i),1.95,0); root.add(l); return l; });
     const a=new T.Vector3(), b=new T.Vector3();
     const redraw=()=>{

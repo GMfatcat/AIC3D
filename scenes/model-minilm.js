@@ -4,9 +4,9 @@ App.register({
   init(ctx){
     const {THREE:T, P, root, ctrl} = ctx;
     const SENT = [
-      {label:'「我家的狗很愛追貓」', tokens:['我家','的','狗','很','愛','追','貓'], pos:[-2.9,0.6,0.3]},
-      {label:'「這碗牛肉麵的湯頭很濃」', tokens:['這碗','牛肉麵','的','湯頭','很','濃'], pos:[2.7,-0.2,0.8]},
-      {label:'「GPU kernel 的 tile 要對齊」', tokens:['GPU','kernel','的','tile','要','對齊'], pos:[0.3,0.4,-3.0]},
+      {label:'「我家的狗很愛追貓」', short:'狗追貓', tokens:['我家','的','狗','很','愛','追','貓'], pos:[-2.9,0.6,0.3]},
+      {label:'「這碗牛肉麵的湯頭很濃」', short:'牛肉麵', tokens:['這碗','牛肉麵','的','湯頭','很','濃'], pos:[2.7,-0.2,0.8]},
+      {label:'「GPU kernel 的 tile 要對齊」', short:'GPU kernel', tokens:['GPU','kernel','的','tile','要','對齊'], pos:[0.3,0.4,-3.0]},
     ];
     // left: tower
     const towerG=new T.Group(); towerG.position.set(-6.5,-2.6,0); root.add(towerG);
@@ -33,11 +33,11 @@ App.register({
       flyer.position.lerpVectors(anim.from,anim.to,e); flyer.position.y+=Math.sin(anim.t*Math.PI)*1.5;
       if(anim.t>=1){ flyer.visible=false; const local=anim.to.clone().sub(cloudG.position); const nn=cloud.highlight(local,anim.s.label.replace(/[「」]/g,'')); nn.forEach((x,i)=>set('n'+(i+1),x.p.word)); anim=null; } };
     ctrl.heading('輸入一句話');
-    ctrl.segmented(null,SENT.map((s,i)=>({id:String(i),label:s.label.slice(1,7)+'…'})),null,id=>run(SENT[+id]));
+    ctrl.segmented(null,SENT.map((s,i)=>({id:String(i),label:s.short})),null,id=>run(SENT[+id]));
     const set=ctrl.readouts([{id:'tok',label:'token 數'},{id:'dim',label:'輸出維度'},{id:'out',label:'輸出'},{id:'n1',label:'最近鄰 1'},{id:'n2',label:'最近鄰 2'},{id:'n3',label:'最近鄰 3'}]);
     ctrl.note(`<p>不管一句話有幾個 token，進去是 N 個向量，<b>mean pooling</b> 把它們平均成一個，再做 L2 正規化。這就是為什麼它適合做檢索：一句話 = 一個點，比距離就好。</p>
-      <p>6 層、384 維、約 22M 參數，CPU 跑一句話幾毫秒。它不是生成模型，是 Encoder-only（看 Tab 1 的 Transformer 場景，mask 是「全部可見」）。</p>
-      <p class="hint">右邊點雲和 Tab 1 的 Embedding 場景是同一個。</p>`);
+      <p>6 層、384 維、約 22M 參數，CPU 跑一句話幾毫秒。它不是生成模型，是 Encoder-only（<a href="#transformer">Transformer 場景</a>裡「全部可見」的那種 mask）。</p>
+      <p class="hint">右邊點雲和 <a href="#embedding">Embedding 場景</a>是同一個。</p>`);
     ctx.legend([['flow','Attention 層'],['memory','FFN 層'],['state','pooling 後的句向量']]);
     ctx.setCamera({theta:0.25,phi:1.3});
   },

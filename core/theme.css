@@ -19,7 +19,8 @@ body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px
 
 /* top bar */
 #top{grid-area:top;display:flex;align-items:center;gap:18px;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--bg2);min-width:0;} /* min-width:0：否則整排 nowrap 分頁的 min-content 會把 grid 欄撐到比手機螢幕寬 */
-#top .brand{font-weight:700;font-size:15px;white-space:nowrap;}
+#top .brand{font-weight:700;font-size:15px;white-space:nowrap;color:var(--fg);text-decoration:none;border-radius:7px;padding:2px 6px;margin-left:-6px;}
+#top .brand:hover{background:var(--bg3);} #top .brand:focus-visible{outline:2px solid var(--signal);}
 #top .brand small{display:block;font-weight:400;font-size:11.5px;color:var(--fg3);line-height:1.2;}
 #tabs{display:flex;gap:2px;flex:1;overflow-x:auto;}
 #tabs button{appearance:none;border:0;background:transparent;color:var(--fg2);font:inherit;padding:7px 12px;border-radius:7px;cursor:pointer;white-space:nowrap;}
@@ -38,6 +39,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px
 #items a:focus-visible{outline:2px solid var(--signal);outline-offset:-2px;}
 #items a i{font-style:normal;font-size:10px;color:var(--fg3);font-family:var(--mono);}
 #items li.todo a{color:var(--fg3);}
+#items li.visited a::after{content:'✓';font-size:10px;color:var(--flow);opacity:.8;} /* 看過的 */
 
 /* stage */
 #stage{grid-area:stage;position:relative;min-width:0;background:#0B111C radial-gradient(ellipse 80% 70% at 50% 42%, #141D2E 0%, #0B111C 58%, #070B13 100%);}
@@ -107,6 +109,11 @@ select.sel{font:inherit;font-size:13px;background:var(--bg3);color:var(--fg);bor
 .ovl-dock .ovl-card{position:static;width:100%;margin-bottom:4px;} /* 窄螢幕時圖卡放在面板最上面 */
 .note{font-size:13px;color:var(--fg2);border-top:1px solid var(--line);padding-top:12px;}
 .note b{color:var(--fg);font-weight:500;}
+.note a,.hint a{color:var(--signal);text-decoration:none;border-bottom:1px solid rgba(242,181,68,.35);} .note a:hover,.hint a:hover{border-bottom-color:var(--signal);}
+/* 面板最底下：上一個 / 下一個 */
+.scenenav{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;padding-top:14px;border-top:1px solid var(--line);}
+.scenenav a{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;color:var(--fg);text-decoration:none;font-size:13px;min-width:0;}
+.scenenav a small{font-size:11px;color:var(--fg3);} .scenenav a.next{text-align:right;align-items:flex-end;} .scenenav a:hover{border-color:var(--fg3);background:var(--bg3);}
 .note p{margin:0 0 8px;}
 .bar{height:10px;background:var(--bg3);border-radius:5px;overflow:hidden;display:flex;}
 .bar i{display:block;height:100%;}
@@ -128,6 +135,20 @@ select.sel{font:inherit;font-size:13px;background:var(--bg3);color:var(--fg);bor
 .ctxbar{display:flex;gap:2px;height:22px;background:var(--bg3);border-radius:6px;padding:2px;overflow:hidden;}
 .ctxbar i{display:block;height:100%;border-radius:3px;flex:0 0 auto;transition:width .3s;}
 
+/* 開場頁 */
+#landing{position:absolute;inset:0;display:none;overflow:auto;pointer-events:none;}
+body.home #landing{display:block;} body.home #info,body.home #legend,body.home #camhint,body.home #side,body.home #ctrl{display:none;}
+body.home{grid-template-columns:1fr;grid-template-areas:"top" "stage";} /* 開場頁：舞台滿版 */
+#landing .land-in{pointer-events:auto;max-width:760px;margin:0 auto;padding:clamp(28px,7vh,72px) 24px 48px;}
+#landing h1{font-size:clamp(26px,3.6vw,40px);margin:0 0 10px;letter-spacing:.5px;text-shadow:0 2px 12px rgba(0,0,0,.6);}
+#landing .lead{font-size:15px;color:var(--fg2);max-width:560px;margin:0 0 22px;text-shadow:0 1px 6px rgba(0,0,0,.6);}
+#landing .roles-cap{font-size:12px;color:var(--fg3);margin:0 0 6px;}
+#landing .roles{display:flex;flex-wrap:wrap;gap:6px 10px;margin-bottom:28px;} .role-chip{font-size:12px;color:var(--fg2);background:rgba(9,14,23,.6);padding:3px 9px;border-radius:999px;border:1px solid var(--line);} .role-chip i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px;}
+#landing h2{font-size:13px;font-weight:500;color:var(--fg2);margin:0 0 10px;}
+#landing .tours{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:22px;}
+.tour-card{display:flex;flex-direction:column;gap:4px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--fg);text-decoration:none;backdrop-filter:blur(8px);transition:transform .15s,border-color .15s;}
+.tour-card:hover{transform:translateY(-2px);border-color:var(--signal);} .tour-card:focus-visible{outline:2px solid var(--signal);} .tour-card b{font-size:14px;font-weight:600;} .tour-card span{font-size:12px;color:var(--fg3);font-family:var(--mono);} .tour-card small{font-size:12px;color:var(--fg2);}
+#landing .browse{display:inline-block;text-decoration:none;}
 @media (max-width:900px){
   body{grid-template-columns:1fr;grid-template-rows:auto auto 1fr auto;grid-template-areas:"top" "side" "stage" "ctrl";}
   #side{border-right:0;border-bottom:1px solid var(--line);padding:6px 10px;}

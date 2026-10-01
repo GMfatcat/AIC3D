@@ -17,8 +17,8 @@ MARKER_ON_NODE = """
 def test_scene_switch_crossfades_the_stage(site):
     site.goto("cnn")
     site.ev("location.hash = 'rnn'")
-    site.page.wait_for_timeout(80)
-    assert site.ev(STAGE_OPACITY) < 1, "stage should be fading out right after a hash change"
+    site.page.wait_for_function("App.routing === true")  # hashchange is async
+    site.page.wait_for_function("parseFloat(getComputedStyle(document.getElementById('stage')).opacity) < 1", timeout=2000)  # fading out
     assert site.ev("App.routing") is True
     site.page.wait_for_timeout(800)
     assert site.ev(STAGE_OPACITY) == 1

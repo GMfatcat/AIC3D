@@ -49,7 +49,7 @@ App.register({
     const set=ctrl.readouts([{id:'turns',label:'已走的步'},{id:'ctx',label:'context 用量'},{id:'comp',label:'compact 次數'}]);
     ctrl.note(`<p>Agent 不是一次問答，是一個<b>迴圈</b>：LLM 看完整個 context 決定下一步——回話，或呼叫工具；工具結果再被塞回 context，LLM 再看一次。</p>
       <p>注意吃 context 的不是 LLM 自己的話，而是<b>工具結果</b>（藍色）：一個 log 檔就能吃掉幾千 token。所以 Pi 這類 harness 一定要有 <b>compact</b>（舊訊息壓成摘要）和 <b>subagent</b>（把吃 context 的工作丟到另一個 context）。</p>
-      <p class="hint">Compact 與 Subagent 在左邊有獨立場景（規劃中）。</p>`);
+      <p class="hint"><a href="#compact">Compact</a> 與 <a href="#subagent">Subagent</a> 各有自己的場景。</p>`);
     ctx.legend([['signal','使用者訊息'],['state','LLM 推理'],['flow','工具呼叫'],['memory','工具結果'],['structure','compact 後的摘要']]);
     ctx.setCamera({theta:0.4,phi:0.95});
     render();

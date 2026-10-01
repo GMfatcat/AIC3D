@@ -50,12 +50,12 @@
         render(); return i<S.length; };
       const reset=()=>{ i=0; mainChunks=[]; subChunks=[]; main.setT(0); sub.setT(0); sub.group.visible=false; link.hideAll(); render(); };
       ctrl.heading('同一個任務，兩種做法');
-      ctrl.segmented(null,[{id:'flat',label:'主 agent 自己做'},{id:'sub',label:'丟給 subagent'}],'sub',id=>{mode=id;reset();});
+      ctrl.segmented(null,[{id:'flat',label:'主 agent 自己做'},{id:'sub',label:'丟給子代理'}],'sub',id=>{mode=id;reset();});
       ctrl.stepper({onStep:step,onReset:reset,interval:900});
-      ctrl.html('<span class="hint">主 agent 的 context</span>'); ctrl.c.appendChild(mainBar); const subLabel=ctrl.html('<span class="hint">subagent 的 context（獨立，用完即丟）</span>'); ctrl.c.appendChild(subBar);
+      ctrl.html('<span class="hint">主 agent 的 context</span>'); ctrl.c.appendChild(mainBar); const subLabel=ctrl.html('<span class="hint">子代理的 context（獨立，用完即丟）</span>'); ctrl.c.appendChild(subBar);
       const set=ctrl.readouts([{id:'main',label:'主 context 用量'},{id:'sub',label:'子 context 用量'}]);
       ctrl.note(`<p>「讀 log、grep、看原始碼」這種<b>吃 context 但結論很短</b>的工作，主 agent 自己做的話，幾千 token 的工具結果會一直留在主 context 裡，直到被 compact。</p>
-        <p>丟給 <b>subagent</b>：它有自己的 context，跑完只回一句結論（灰色小塊）給主 agent。主 context 乾淨，而且子任務可以平行開好幾個。</p>
+        <p>丟給<b>子代理（subagent）</b>：它有自己的 context，跑完只回一句結論（灰色小塊）給主 agent。主 context 乾淨，而且子任務可以平行開好幾個。</p>
         <p>代價：subagent 看不到主對話的脈絡，任務描述要寫清楚；多一次 LLM 呼叫的延遲與成本。</p>`);
       ctx.legend([['state','LLM'],['flow','工具 / 派發任務'],['memory','工具結果'],['structure','子代理回傳的摘要']]);
       ctx.setCamera({theta:0.3,phi:1.0}); reset();

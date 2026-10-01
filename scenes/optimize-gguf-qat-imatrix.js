@@ -19,7 +19,7 @@
       const set=ctrl.readouts([{id:'total',label:'檔案大小'},{id:'bpw',label:'平均 bpw'}]); const bar=ctrl.bar('相對 F16（54 GB）'); const info=ctrl.html('');
       ctrl.note(`<p><b>GGUF</b> 是 llama.cpp 家族的單檔容器：開頭是 header + key-value metadata（架構、tokenizer、超參數、RoPE 設定……），後面是一個一個張量，每個張量<b>自己帶型別</b>。所以同一個檔案裡可以混：embedding 用一種、attention 用一種、敏感的 ffn_down 升一級。</p>
         <p>K-quant（Q4_K、Q6_K）的精髓是<b>兩層 scale</b>：256 個權重一個 super-block，裡面再切小 block 各有自己的 scale/min，所以 bpw 是 4.5 而不是 4。名字尾巴的 _S / _M / _L 就是「哪些敏感張量升級」的配方差異。</p>
-        <p>搭配 Imatrix（下一個場景）時，量化器會依重要度決定每個 block 的 scale 怎麼取——型別不變、誤差更小。</p>`);
+        <p>搭配 <a href="#imatrix">Imatrix</a> 時，量化器會依重要度決定每個 block 的 scale 怎麼取——型別不變、誤差更小。</p>`);
       ctx.legend([['memory','F16'],['flow','Q8_0'],['state','Q6_K'],['signal','Q5_K'],['signal:dim','Q4_K'],['inactive','Q3_K'],['structure','F32（norm 等小張量）']]);
       ctx.setCamera({theta:0.15,phi:1.4}); layout();
       const brickMeshes=bricks.map(b=>b.mesh); ctx.app.focusTargets(brickMeshes,m=>m.userData.t.n); this.update=()=>{ const hv=ctx.app.hover(brickMeshes); if(hv!==hovered){ hovered=hv; bricks.forEach(b=>{ b.mesh.material.emissiveIntensity=b.mesh===hv?0.7:0.15; }); describe(); } }; } });
@@ -61,7 +61,7 @@
       const grid=new T.Group(); grid.position.y=0.6; root.add(grid); const cells=[]; const cg=new T.BoxGeometry(0.7,0.7,0.3);
       for(let i=0;i<R;i++) for(let j=0;j<C;j++){ const m=new T.Mesh(cg,P.mat('memory',{glow:0.2})); m.position.set((j-(C-1)/2)*0.85,((R-1)/2-i)*0.85,0); grid.add(m); cells.push({m,i,j}); }
       const colBars=[]; for(let j=0;j<C;j++){ const m=new T.Mesh(new T.BoxGeometry(0.6,1,0.3),P.mat('signal',{glow:0.6})); m.position.set((j-(C-1)/2)*0.85,-3.0,0); grid.add(m); colBars.push(m); }
-      const l1=P.label('權重 W（列 = 輸入通道）',{size:20}); l1.position.set(0,3.2,0); grid.add(l1); const l2=P.label('校準資料流過時各輸入通道的平均 x²（重要度）',{size:18}); l2.position.set(0,-4.2,0); grid.add(l2);
+      const l1=P.label('權重 W（欄 = 輸入通道）',{size:20}); l1.position.set(0,3.2,0); grid.add(l1); const l2=P.label('校準資料流過時各輸入通道的平均 x²（重要度）',{size:18}); l2.position.set(0,-4.2,0); grid.add(l2);
       const tokens=new P.TokenRow(['','','','','',''],{color:'flow',gap:0.5,size:0.3}); tokens.group.position.set(-7.2,0.6,0); root.add(tokens.group); const tl=P.label('校準資料',{size:18}); tl.position.set(-7.2,2.0,0); root.add(tl);
       const flow=new P.BeamSet(1,{maxR:0.06,minR:0.04}); root.add(flow.group);
       const quant=(v,levels)=>{ const step=2/(levels-1); return Math.round(v/step)*step; };
@@ -77,7 +77,7 @@
       ctrl.heading('換一組校準資料'); ctrl.segmented(null,Object.keys(ACT).map(id=>({id,label:LABEL[id]})),ds,id=>{ds=id;paint();});
       const set=ctrl.readouts([{id:'ds',label:'校準資料'},{id:'alloc',label:'精度分配'},{id:'bits',label:'位元預算'},{id:'eimp',label:'重要度加權誤差（有 imatrix）'},{id:'euni',label:'同樣誤差（均勻 4 bit）'}]);
       const bar=ctrl.bar('有 imatrix'); const bar2=ctrl.bar('均勻量化');
-      ctrl.note(`<p>權重誤差不是都一樣重要：如果某個輸入通道的 activation 平時都很大，它對應那一列權重的誤差就會被放大。<b>Importance matrix</b>（llama.cpp 的 imatrix）就是讓一批校準資料流過模型，統計每個通道的平均 x²，當成權重。</p>
+      ctrl.note(`<p>權重誤差不是都一樣重要：如果某個輸入通道的 activation 平時都很大，它對應那一欄權重的誤差就會被放大。<b>Importance matrix</b>（llama.cpp 的 imatrix）就是讓一批校準資料流過模型，統計每個通道的平均 x²，當成權重。</p>
         <p>量化時用它做兩件事：<b>①</b> 選 block 的 scale / min 時最小化「加權」誤差而不是普通誤差；<b>②</b>（_M / IQ 系列）把預算往重要通道傾斜。這跟 GPTQ 用 Hessian 的精神一樣，只是更輕量、不需要逐欄序列計算。</p>
         <p>所以校準資料的<b>分佈要像實際用途</b>：用英文維基校準再拿去跑中文對話或程式碼，重要度就估錯了——切換上面的資料集看分配怎麼變。</p>`);
       ctx.legend([['state','6 bit（重要通道）'],['memory','4 bit'],['inactive','2 bit（不重要通道）'],['signal','通道重要度'],['flow','校準資料']]);

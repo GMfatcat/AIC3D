@@ -42,6 +42,10 @@ class Site:
     def goto(self, hash_, settle=400):
         """Navigate to a scene (or tour) by hash and wait for it to mount."""
         self.page.evaluate("h => { location.hash = h; }", hash_)
+        if hash_ in ('', 'home'):
+            self.page.wait_for_function("!App.routing && App.home")
+            self.page.wait_for_timeout(settle)
+            return self
         # hashchange is async: wait until the scene for THIS hash is mounted and the crossfade is over
         self.page.wait_for_function("h => window.App && App.currentItem && !App.routing && (h.startsWith('tour=') || App.currentItem.id === h)", arg=hash_)
         self.page.wait_for_timeout(settle)

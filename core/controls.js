@@ -41,13 +41,18 @@ class Controls {
     list.forEach(b=>{ const e=el('button','btn'+(b.primary?' primary':''),(b.icon?icon(b.icon):'')+b.label); e.addEventListener('click',b.onClick); row.appendChild(e); out.push(e); });
     this.c.appendChild(row); return out;
   }
-  stepper({onStep,onReset,onPlay,interval=700}){
-    let playing=false, timer=null;
+  /* 進場 600ms 後自動播放一輪（先看現象再給控制）；使用者碰任何控制就停。減少動態偏好時不自動播。 */
+  stepper({onStep,onReset,onPlay,interval=700,autoplay=true}){
+    let playing=false, timer=null, auto=null, autoplaying=false;
     const row = el('div','btnrow');
     const bStep=el('button','btn',icon('step')+'單步'), bPlay=el('button','btn primary',icon('play')+'播放'), bReset=el('button','btn',icon('reset')+'重置');
-    const stop=()=>{ playing=false; bPlay.innerHTML=icon('play')+'播放'; if(timer){clearInterval(timer);timer=null;} };
+    const stop=()=>{ playing=false; autoplaying=false; bPlay.innerHTML=icon('play')+'播放'; if(timer){clearInterval(timer);timer=null;} };
+    const start=(isAuto)=>{ playing=true; autoplaying=!!isAuto; bPlay.innerHTML=icon('pause')+'暫停'; timer=setInterval(()=>{ const more=onStep(); if(more===false) stop(); }, interval); this.timers.push(timer); onPlay&&onPlay(); };
     bStep.addEventListener('click',()=>{ stop(); onStep(); });
-    bPlay.addEventListener('click',()=>{ if(playing){stop();return;} playing=true; bPlay.innerHTML=icon('pause')+'暫停'; timer=setInterval(()=>{ const more=onStep(); if(more===false) stop(); }, interval); this.timers.push(timer); onPlay&&onPlay(); });
+    bPlay.addEventListener('click',()=>{ if(playing){stop();return;} start(false); });
+    if(autoplay && !Motion.reduce){ auto=setTimeout(()=>{ auto=null; if(!playing) start(true); },600); this.timers.push(auto); }
+    const cancelAuto=e=>{ if(auto){ clearTimeout(auto); auto=null; } if(autoplaying && !row.contains(e.target)) stop(); };
+    ['pointerdown','keydown','input'].forEach(t=>this.c.addEventListener(t,cancelAuto,true));
     bReset.addEventListener('click',()=>{ stop(); onReset(); });
     row.append(bStep,bPlay,bReset); this.c.appendChild(row); return { stop };
   }

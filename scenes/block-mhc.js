@@ -12,7 +12,7 @@ App.register({
     const matvec=(M,v)=>M.map(r=>r.reduce((s,a,j)=>s+a*v[j],0));
     const rowSums=M=>M.map(r=>r.reduce((a,b)=>a+b,0)), colSums=M=>M[0].map((_,j)=>M.reduce((a,r)=>a+r[j],0));
     const specNorm=M=>{const k=M.length;let v=Array(k).fill(1/Math.sqrt(k));for(let it=0;it<60;it++){const Mv=matvec(M,v);const w=M[0].map((_,j)=>M.reduce((a,r,i)=>a+r[j]*Mv[i],0));const nm=Math.hypot(...w)||1;v=w.map(x=>x/nm);}return Math.hypot(...matvec(M,v));};
-    const sinkhorn=Mt=>{let M=Mt.map(r=>r.map(Math.exp));const steps=[{M:clone(M),label:'exp(H̃)'}];for(let t=1;t<=ROUNDS;t++){const rs=rowSums(M);M=M.map((r,i)=>r.map(x=>x/rs[i]));steps.push({M:clone(M),label:`第 ${t}/${ROUNDS} 輪 · 行歸一化`});const cs=colSums(M);M=M.map(r=>r.map((x,j)=>x/cs[j]));steps.push({M:clone(M),label:`第 ${t}/${ROUNDS} 輪 · 列歸一化`});}return steps;};
+    const sinkhorn=Mt=>{let M=Mt.map(r=>r.map(Math.exp));const steps=[{M:clone(M),label:'exp(H̃)'}];for(let t=1;t<=ROUNDS;t++){const rs=rowSums(M);M=M.map((r,i)=>r.map(x=>x/rs[i]));steps.push({M:clone(M),label:`第 ${t}/${ROUNDS} 輪 · 列歸一化`});const cs=colSums(M);M=M.map(r=>r.map((x,j)=>x/cs[j]));steps.push({M:clone(M),label:`第 ${t}/${ROUNDS} 輪 · 欄歸一化`});}return steps;};
     const propagate=M=>{let x=Array(M.length).fill(1);const out=[x.slice()];for(let l=0;l<L;l++){x=matvec(M,x).map(v=>v+C_INJECT);out.push(x.slice());}return out;};
     const short=v=>v>=1000?v.toExponential(1):v>=10?v.toFixed(0):v.toFixed(2);
 
@@ -41,7 +41,7 @@ App.register({
     const sink=ctrl.html('','sink');
     const replay=ctrl.buttons([{label:'重播 Sinkhorn',onClick:()=>commit()}])[0];
     ctrl.html('在格子上<b>上下拖曳</b>改值，或用滾輪。','hint');
-    const set=ctrl.readouts([{id:'norm',label:'‖H‖₂（譜範數）'},{id:'row',label:'行和範圍'},{id:'col',label:'列和範圍'},{id:'out',label:'第 16 層幅度'}]);
+    const set=ctrl.readouts([{id:'norm',label:'‖H‖₂（譜範數）'},{id:'row',label:'列和範圍'},{id:'col',label:'欄和範圍'},{id:'out',label:'第 16 層幅度'}]);
     const verdict=ctrl.note('');
     // energy chart in overlay (top-right)
     const chartWrap=h('div','ovl-card'); chartWrap.innerHTML='<div class="hint">每層訊號幅度（log₁₀，相對輸入）</div><canvas width="236" height="120" role="img" aria-label="每一條殘差流的訊號幅度隨層數變化的折線圖；數值見右側「第 16 層幅度」"></canvas>'; overlay.appendChild(chartWrap);
@@ -69,12 +69,12 @@ App.register({
     const stats=(M,xs)=>{const nm=specNorm(M);set('norm',nm.toFixed(3),nm>1.05?'bad':'ok');const rs=rowSums(M),cs=colSums(M);const rng=a=>`${Math.min(...a).toFixed(2)} – ${Math.max(...a).toFixed(2)}`;set('row',rng(rs));set('col',rng(cs));const last=xs[L];const mn=Math.min(...last.map(Math.abs)),mx=Math.max(...last.map(Math.abs));set('out',`${short(mn)} – ${short(mx)}`,(mx>3||mn<1/3)?'bad':'ok');
       verdict.innerHTML= mode==='residual'?'<b>單一殘差流</b>：H = [1]，identity mapping 成立，訊號只隨 block 注入慢慢累加。'
         : mode==='hc'?(nm>1.05?`<b>爆炸</b>：‖H‖₂ = ${nm.toFixed(2)} > 1，每層放大一次，16 層後幅度約 ${short(mx)} 倍。這就是 HC 在大規模訓練不穩的原因。`:(mx<1/3?`<b>熄滅</b>：‖H‖₂ = ${nm.toFixed(2)} < 1，訊號逐層衰減到 ${short(mx)}，梯度同樣會消失。`:`<b>目前穩定</b>，但這是碰巧：HC 沒有任何機制保證 ‖H‖₂ ≤ 1，訓練時權重一動就可能偏離。`))
-        : `<b>受控</b>：H 被投影到雙隨機矩陣（行和＝列和＝1），因此 ‖H‖₂ ≤ 1 且 Hx 是各流的凸組合。不管你怎麼塗，16 層後幅度仍是 ${short(mx)}。n = 1 時退化回 [1]，即標準 residual。`;};
+        : `<b>受控</b>：H 被投影到雙隨機矩陣（列和 = 欄和 = 1），因此 ‖H‖₂ ≤ 1 且 Hx 是各流的凸組合。不管你怎麼塗，16 層後幅度仍是 ${short(mx)}。n = 1 時退化回 [1]，即標準 residual。`;};
     const commit=()=>{if(timer){clearInterval(timer);timer=null;}
       if(mode==='residual'){applyEff([[1]]);sink.textContent='';return;}
       if(mode==='hc'){applyEff(clone(Ht));sink.textContent='無約束：H 可以是任何實數矩陣。';return;}
       const steps=sinkhorn(Ht); if(ctx.reduceMotion){applyEff(steps[steps.length-1].M);sink.textContent='Sinkhorn-Knopp 投影完成（20 輪）';return;}
-      let s=0;const tick=()=>{applyEff(steps[s].M);sink.textContent='Sinkhorn-Knopp：'+steps[s].label;s++;if(s>=steps.length){clearInterval(timer);timer=null;sink.textContent='Sinkhorn-Knopp 投影完成 · 行和＝列和＝1';}};tick();timer=setInterval(tick,110);};
+      let s=0;const tick=()=>{applyEff(steps[s].M);sink.textContent='Sinkhorn-Knopp：'+steps[s].label;s++;if(s>=steps.length){clearInterval(timer);timer=null;sink.textContent='Sinkhorn-Knopp 投影完成 · 列和 = 欄和 = 1';}};tick();timer=setInterval(tick,110);};
     const setMode=m=>{mode=m;seg.set(m);const showProj=m==='mhc';capProj.style.display=mProj.style.display=replay.style.display=showProj?'':'none';
       capEdit.innerHTML=m==='mhc'?'<b>你塗的 H̃</b>（任意實數）':m==='hc'?'<b>H</b>（直接使用，無約束）':'<b>H</b> = [1]';
       if(m==='residual'){nSl.set(1);nSl.disable(true);setN(1,false);}else{nSl.disable(false);if(n===1){nSl.set(4);setN(4,false);}}

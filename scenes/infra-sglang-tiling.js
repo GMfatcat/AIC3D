@@ -29,7 +29,7 @@
     init(ctx){ const {THREE:T,P,root,ctrl}=ctx; const M=8,N=8,K=8; let TS=2, step=0, lang='triton';
       const cell=0.42; const mk=(rows,cols,color,x,y)=>{ const g=new T.Group(); g.position.set(x,y,0); root.add(g); const cells=[]; for(let i=0;i<rows;i++) for(let j=0;j<cols;j++){ const m=new T.Mesh(new T.BoxGeometry(cell*0.9,cell*0.9,0.2),P.mat(color,{glow:0.12,opacity:0.9})); m.position.set((j-(cols-1)/2)*cell,((rows-1)/2-i)*cell,0); g.add(m); cells.push({m,i,j}); } return {g,cells}; };
       const A=mk(M,K,'memory',-4.6,1.4), B=mk(K,N,'state',-0.4,1.4), C=mk(M,N,'signal',3.8,1.4);
-      [['A (M×K)',-4.6],['B (K×N)',-0.4],['C = A·B',3.8]].forEach(([t,x])=>{ const l=P.label(t,{size:20}); l.position.set(x,3.4,0); root.add(l); });
+      [['A（M×K）',-4.6],['B（K×N）',-0.4],['C = A·B',3.8]].forEach(([t,x])=>{ const l=P.label(t,{size:20}); l.position.set(x,3.4,0); root.add(l); });
       // memory hierarchy: nested boxes
       const hier=new T.Group(); hier.position.set(0,-2.6,0); root.add(hier);
       const box=(w,h,d,label,color,y)=>{ const e=new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(w,h,d)),new T.LineBasicMaterial({color:P.C(color),transparent:true,opacity:0.7})); e.position.y=y; hier.add(e); const l=P.label(label,{size:16}); l.position.set(-w/2+0.9,y+h/2-0.25,d/2); hier.add(l); return e; };

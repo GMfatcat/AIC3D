@@ -34,7 +34,7 @@ App.register({
     const set=ctrl.readouts([{id:'t',label:'已生成 token'},{id:'step',label:'這一步要算'},{id:'total',label:'累計計算量'},{id:'cache',label:'cache 佔用（示意 24 token）'},{id:'big',label:'真實 context 下的 cache'}]);
     ctrl.note(`<p>每個 token 的 K、V 算一次就存起來（藍、紫片），下一步只算新 token 的 Q 去跟它們比。<b>省的是計算</b>：每步成本從「∝ 已生成長度」變成常數。</p>
       <p><b>付出的是記憶體</b>：每個 token 存 2 × 層數 × KV 頭數 × 頭維度 × bytes。這裡用 64 層 / 8 KV 頭 / 128 維 / bf16 → 每 token 256 KB，128k context 就是 32 GB。</p>
-      <p>這也是 GQA、MLA（Tab 2）和 PagedAttention（Tab 5）存在的理由——它們全在縮或管這條藍色 HBM 條。</p>`);
+      <p>這也是 <a href="#kvheads">GQA、MLA</a> 和 <a href="#vllm">PagedAttention</a> 存在的理由——它們全在縮或管這條藍色 HBM 條。</p>`);
     ctx.legend([['memory','K 片 / HBM 佔用'],['state','V 片'],['signal','已生成 token'],['alert','沒有 cache 時重算的 attention']]);
     ctx.setCamera({theta:0.3,phi:1.3});
     redraw();
