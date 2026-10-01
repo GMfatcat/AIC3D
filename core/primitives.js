@@ -72,7 +72,7 @@ class TokenRow {
       const m = new T.Mesh(geo, mat(opts.color || 'memory', {glow:0.2, opacity:1}));
       m.position.x = this.x(i); this.group.add(m); this.cubes.push(m);
       if(t===''){ this.labels.push(null); return; } // 沒字就不產生 DOM 標籤
-      const l = label(t, {size: opts.labelSize || 20}); l.position.set(this.x(i), (opts.labelBelow?-1:1)*(this.size/2+0.35), 0); // token 字用 axis 階層，不要粗體 this.group.add(l); this.labels.push(l);
+      const l = label(t, {size: opts.labelSize || 20}); l.position.set(this.x(i), (opts.labelBelow?-1:1)*(this.size/2+0.35), 0); /* token 字用 axis 階層，不要粗體 */ this.group.add(l); this.labels.push(l);
     });
   }
   x(i){ return (i - (this.n-1)/2) * this.gap; }
@@ -157,13 +157,18 @@ class Loop {
       const l = label(nm,{size:24}); l.position.copy(p).add(new T.Vector3(0,0.7,0)); this.group.add(l);
     });
     const ring = new T.Mesh(new T.TorusGeometry(this.R, 0.025, 8, 96), mat('inactive',{glow:0.1})); ring.rotation.x=Math.PI/2; this.group.add(ring);
+    // rise > 0：時間 = 高度。marker 沿螺旋往上走，一圈升 rise；畫一條淡淡的螺旋導線，並用一個看不見的盒子讓 fit() 把整段高度算進去
+    this.rise = opts.rise || 0; this.laps = opts.laps || 6;
+    if(this.rise > 0){ const pts=[]; const N=this.names.length; for(let k=0;k<=this.laps*N*12;k++){ pts.push(this.point(k/12)); } const helix=new T.Line(new T.BufferGeometry().setFromPoints(pts), new T.LineBasicMaterial({color:C('inactive'),transparent:true,opacity:0.45})); this.group.add(helix);
+      const bb=new T.Mesh(new T.BoxGeometry(this.R*2,this.rise*this.laps,this.R*2), new T.MeshBasicMaterial({visible:false})); bb.position.y=this.rise*this.laps/2; this.group.add(bb); }
     this.marker = new T.Mesh(new T.SphereGeometry(0.16,16,12), mat('signal',{glow:0.9})); this.group.add(this.marker);
     this.t = 0; this.setT(0);
   }
   angle(t){ return -Math.PI/2 + t*2*Math.PI/this.names.length; }
-  go(t, ms=550){ if(this._tw) this._tw.cancel(); const s={t:this.t}; this._tw=Motion.tween(s,{t},{ms,ease:'inOut',onUpdate:o=>this._set(o.t)}); } // marker 滑過去
-  setT(t){ if(this._tw) this._tw.cancel(); this._set(t); }
-  _set(t){ this.t=t; const a=this.angle(t); this.marker.position.set(Math.cos(a)*this.R,0.05,Math.sin(a)*this.R);
+  point(t){ const a=this.angle(t); return new T.Vector3(Math.cos(a)*this.R, 0.05 + this.rise*t/this.names.length, Math.sin(a)*this.R); } // 螺旋上 t 的位置（區域座標）
+  go(t, ms=550){ this.target=t; if(this._tw) this._tw.cancel(); const s={t:this.t}; /* target = 邏輯位置（補間中 this.t 還在路上，連按時要用 target 算下一步） */ this._tw=Motion.tween(s,{t},{ms,ease:'inOut',onUpdate:o=>this._set(o.t)}); } // marker 滑過去
+  setT(t){ this.target=t; if(this._tw) this._tw.cancel(); this._set(t); }
+  _set(t){ this.t=t; this.marker.position.copy(this.point(t));
     const active = Math.round(t) % this.names.length;
     this.nodes.forEach((n,i)=>{ n.material.emissiveIntensity = i===active?0.7:0.25; n.scale.setScalar(i===active?1.25:1); }); }
 }

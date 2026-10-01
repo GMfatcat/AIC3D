@@ -62,7 +62,7 @@ const App = {
     const v=new T.Vector3(); const r=this.canvas.getBoundingClientRect(); const W=r.width, H=r.height; const placed=[];
     // 遮擋檢查：相機或場景有動才做（每 6 幀一次），對 root 裡不透明的 mesh 射線
     const camKey=this.camera.position.x.toFixed(2)+','+this.camera.position.y.toFixed(2)+','+this.camera.position.z.toFixed(2)+'|'+this.root.children.length;
-    this._occFrame=(this._occFrame||0)+1; const checkOcc=(camKey!==this._occKey)||(this._occFrame%6===0); if(checkOcc){ this._occKey=camKey; this._occluders=[]; this.root.traverse(o=>{ if(o.isMesh && o.visible && !(o.material.transparent && o.material.opacity<0.6)) this._occluders.push(o); }); }
+    this._occFrame=(this._occFrame||0)+1; const checkOcc=(camKey!==this._occKey)||(this._occFrame%6===0); if(checkOcc){ this._occKey=camKey; this._occluders=[]; this.root.traverse(o=>{ if(o.isMesh && o.visible && o.material.visible!==false && !(o.material.transparent && o.material.opacity<0.6)) this._occluders.push(o); }); }
     const ray=this.raycaster; const dir=new T.Vector3();
     for(const l of this.labels){
       // 掛在場景裡才顯示；被 remove 的（不在 scene 樹下）隱藏

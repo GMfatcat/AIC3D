@@ -171,7 +171,7 @@
 
 ### 2D 比 3D 清楚的場景
 
-- [ ] BF16/FP8/NVFP4 是三條數軸、Agent loop / Subagent / goal 是四顆球繞一圈，3D 沒有加值。要嘛重新設計成真正用到深度的構圖，要嘛承認它是 2D 圖表做精緻。
+- [x] 3D 沒加值的場景重新構圖（2026-10-02）：fp 加了密度梳（高度 = log 點數）；Agent 三個場景的圓環改成螺旋（`Loop` 的 `rise`：時間 = 高度），agent-loop 的每段訊息是螺旋上一顆方塊、compact 時舊圈塌成底座的灰色圓盤；goal 的檢查線從每一圈連到上方的目標。
 
 ---
 
@@ -224,11 +224,11 @@
 | yolo-v10 | 單步看配對 | 三步：候選點 → 打分 → 一對一 / 一對多出框 | [x] 2026-10-02 |
 | fp | 翻位元看數值 | 位元 chip 是按鈕，點一下翻該組最低位元、x 跳到新值；數軸後加密度梳（log 點數）讓 3D 有用 | [x] 2026-10-02 |
 | dp | 與 TP 並排 | TP / DP 都有「並排看另一種」，另一種切法放後排同 k 顆、同模型 | [x] 2026-10-02 |
-| goal | 改目標看路徑變 | 只有 on/off | [ ] |
+| goal | 改目標看路徑變 | 三個目標可選（含「沒寫約束」會被作弊達成的那種），路徑與違規讀數都不同 | [x] 2026-10-02 |
 
 ### 場景份量
 
-- [ ] 偏薄要加料：yolo-v10（一個切換）、glm-flash 與 nemotron（沒有控制元件）、residual 與 rnn（2 個控制）、qat（只有 stepper）、embedding。
+- [x] 偏薄要加料（2026-10-02）：yolo（三步配對）、glm（硬體 → tok/s）、nemotron（點層跳場景）、residual（hover 各層）、rnn（LSTM 對照 + hover）、qat（hover 直方圖）、embedding（落下動畫）。
 - [ ] 偏密要拆或收：stages（3 segmented + stepper + 2 slider + 9 readout + 2 bar + 3 段說明）、ocr（3 控制 + stepper + 6 readout + 4 段說明）、mhc、engram。
 - [ ] 沒有 hover 的 slider 場景補聚焦回饋：~~rnn、mamba、rwkv、gdn~~（2026-10-02，用 `App.watchHover`）、~~attention、engram、kvheads（滑到 Q 頭亮它的 K/V 組）、residual（滑到 block 看進出幅度）、mhc（滑到流看幅度）~~（2026-10-02）、~~fp（密度梳）、exl3（選到的點）、imatrix（格子）、qat（直方圖）、gptq（格子）、kvcache（K/V 片）~~（2026-10-02）、~~stages（token）、tp/dp（權重磚）、tiling（C 格亮出 A 列 B 欄）、vllm（page）、sglang（樹節點）~~（2026-10-02）、ocr。
 - [ ] hover 回饋位置統一：cnn/transformer 改 3D，gguf/towers 改面板 `info`。

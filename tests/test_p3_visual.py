@@ -192,3 +192,10 @@ def test_sidebar_is_a_list_of_links(site):
     assert site.ev("document.getElementById('items').tagName") == "UL"
     assert site.ev("document.querySelectorAll('#items li a').length") == 5
     assert site.ev("document.querySelector('#items a[aria-current=\"page\"]').textContent") == "Residual Block"
+
+
+def test_token_row_labels_are_in_the_scene(site):
+    """Regression: an inline comment once swallowed the group.add(label) call and every token word vanished."""
+    site.goto("transformer", settle=800)
+    texts = site.ev("[...document.querySelectorAll('#labels .l3d')].map(e => e.textContent)")
+    assert texts.count("牛肉麵") == 2, texts
