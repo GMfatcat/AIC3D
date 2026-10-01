@@ -32,7 +32,10 @@ App.register({
       }
       gauges={c:gauge(-1.2,'signal','算力使用率'),m:gauge(1.2,'state','頻寬使用率')};
     };
-    const buildRow=()=>{ if(row) P.drop(row.group); const n=P_len+G_len; row=new P.TokenRow(Array(n).fill(''),{color:'signal',gap:Math.min(0.5,9/n),size:Math.min(0.32,6/n)}); row.group.position.y=-1.6; root.add(row.group); };
+    let rowHover=null;
+    const buildRow=()=>{ if(row) P.drop(row.group); const n=P_len+G_len; row=new P.TokenRow(Array(n).fill(''),{color:'signal',gap:Math.min(0.5,9/n),size:Math.min(0.32,6/n)}); row.group.position.y=-1.6; root.add(row.group);
+      const desc=i=>i<P_len?`prompt 第 ${i+1} 個 token（prefill 一次算完）`:`生成第 ${i-P_len+1} 個 token（decode 第 ${i-P_len+1} 步，整份權重讀一遍）`;
+      if(rowHover) rowHover.set(row.cubes); else rowHover=ctx.app.watchHover(row.cubes,(h,i)=>set('hov',i<0?'—':desc(i)),(m,i)=>desc(i)); };
     const redraw=()=>{ const H=HW[hw]; const PARAMS=PARAMS_(), ACT=ACTIVE_(); const bytes=PARAMS*DT[dt].b; const actBytes=ACT*DT[dt].b; /* MoE：記憶體要放全部，每步只讀啟用的專家 */ const fits=bytes<H.mem; const kvBudget=Math.max(0,H.mem-bytes);
       for(let i=0;i<P_len+G_len;i++){ const isP=i<P_len; const lit=isP?t>=1:(i-P_len)<t-1; row.style(i,{color:isP?'signal':'flow',opacity:lit?1:0.15,glow:lit?0.6:0}); }
       gpu.setFill(Math.min(1,bytes/H.mem), fits?'memory':'alert');
@@ -56,7 +59,7 @@ App.register({
     ctrl.heading('一個請求的生命週期'); ctrl.stepper({onStep:step,onReset:()=>{t=0;redraw();},interval:650});
     ctrl.slider('Prompt 長度（token）',{min:4,max:64,step:4,value:P_len,onChange:v=>{P_len=v;t=0;buildRow();redraw();}});
     ctrl.slider('生成長度（token）',{min:2,max:16,step:1,value:G_len,onChange:v=>{G_len=v;t=0;buildRow();redraw();}});
-    const set=ctrl.readouts([{id:'hw',label:'規格'},{id:'w',label:'權重大小（要放進記憶體）'},{id:'act',label:'每步要讀的權重'},{id:'fit',label:'裝得下？'},{id:'phase',label:'階段'},{id:'bound',label:'瓶頸'},{id:'time',label:'這一步最少耗時'},{id:'tps',label:'decode 上限（單 stream）'},{id:'ttft',label:'TTFT 下限'}]);
+    const set=ctrl.readouts([{id:'hw',label:'規格'},{id:'w',label:'權重大小（要放進記憶體）'},{id:'act',label:'每步要讀的權重'},{id:'fit',label:'裝得下？'},{id:'phase',label:'階段'},{id:'bound',label:'瓶頸'},{id:'time',label:'這一步最少耗時'},{id:'tps',label:'decode 上限（單 stream）'},{id:'ttft',label:'TTFT 下限'},{id:'hov',label:'滑到的 token'}]);
     const bar=ctrl.bar('算力需求（相對這一步的瓶頸）'); const bar2=ctrl.bar('頻寬需求');
     const hwNote=ctrl.note('');
     ctrl.note(`<p><b>MoE 在這張圖上的位置</b>：記憶體要放<b>全部</b>參數（284B bf16 = 568 GB，連 Mac 512 GB 都放不下，FP8 才行），但 decode 每步只讀<b>啟用</b>的 13B——所以 MoE 是「裝起來像大模型、跑起來像小模型」，在頻寬低的 unified memory 機器上特別划算：Mac 512 GB 放 284B FP8（284 GB）綽綽有餘，每步只讀 13 GB，上限 60 tok/s，比 27B dense bf16 還快；Spark 128 GB 則要壓到 3 bpw 以下或用兩台才裝得下。兩個但書：① batch 大時不同請求會踩到不同專家，實際讀取量往全部靠；② prefill 多 token 同樣會碰到更多專家（這裡示意成最多 8 份啟用權重）。</p>`);

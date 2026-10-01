@@ -13,11 +13,12 @@
       const insert=(path)=>{ let n=tree; let cached=0,fresh=0; let hitNodes=[]; path.forEach(key=>{ if(n.children[key]){ n=n.children[key]; n.hits++; cached+=TOK[key]; hitNodes.push(n); } else { const c={key,children:{},pos:new T.Vector3(),hits:1}; c.mesh=new T.Mesh(new T.SphereGeometry(0.2+Math.min(0.25,TOK[key]/2000),16,12),P.mat('memory',{glow:0.4})); root.add(c.mesh); c.label=P.label(`${SEGS[key]} ${TOK[key]}`,{size:15}); root.add(c.label); n.children[key]=c; nodes.push(c); n=c; fresh+=TOK[key]; } });
         nodes.forEach(x=>{ const shared=x.hits>1; x.mesh.material.color.copy(P.C(shared?'flow':'memory')); x.mesh.material.emissive.copy(x.mesh.material.color); x.mesh.material.emissiveIntensity=0.3+Math.min(0.8,x.hits*0.25); });
         hitNodes.forEach(x=>{ x.mesh.material.emissiveIntensity=1.2; });
-        layoutTree(); totalCached+=cached; totalNew+=fresh; reqs++;
+        layoutTree(); totalCached+=cached; totalNew+=fresh; reqs++; syncHover();
         set('this',`命中 ${cached} / 新算 ${fresh} token`); set('rate',reqs?`${Math.round(100*totalCached/Math.max(1,totalCached+totalNew))}%`:'—'); set('nodes',String(nodes.length)); set('reqs',String(reqs)); };
-      ctrl.heading('丟請求進來'); PROMPTS.forEach((p,i)=>ctrl.buttons([{label:p.label,onClick:()=>insert(p.path)}]));
-      ctrl.buttons([{label:'清空樹（模擬 LRU 全部淘汰）',onClick:()=>{ nodes.forEach(n=>{P.drop(n.mesh);P.drop(n.label);}); nodes=[]; tree.children={}; totalCached=totalNew=reqs=0; layoutTree(); set('this','—'); set('rate','—'); set('nodes','0'); set('reqs','0'); }}]);
-      const set=ctrl.readouts([{id:'reqs',label:'請求數'},{id:'nodes',label:'樹節點（KV 片段）'},{id:'this',label:'這個請求'},{id:'rate',label:'累計 prefix 命中率'}]);
+      ctrl.heading('丟請求進來'); ctrl.buttons(PROMPTS.map(p=>({label:p.label.replace('system + ',''),onClick:()=>insert(p.path)})));
+      let nodeHover=null; const syncHover=()=>{ const ms=nodes.map(n=>n.mesh); const d=(m)=>{ const n=nodes.find(x=>x.mesh===m); return n?`${SEGS[n.key]}：${TOK[n.key]} token，被 ${n.hits} 個請求用`:''; }; if(nodeHover) nodeHover.set(ms); else nodeHover=ctx.app.watchHover(ms,(h)=>set('hov',h?d(h):'—'),(m)=>d(m)); };
+      ctrl.buttons([{label:'清空樹（模擬 LRU 全部淘汰）',onClick:()=>{ nodes.forEach(n=>{P.drop(n.mesh);P.drop(n.label);}); nodes=[]; tree.children={}; totalCached=totalNew=reqs=0; layoutTree(); syncHover(); set('this','—'); set('rate','—'); set('nodes','0'); set('reqs','0'); }}]);
+      const set=ctrl.readouts([{id:'reqs',label:'請求數'},{id:'nodes',label:'樹節點（KV 片段）'},{id:'this',label:'這個請求'},{id:'rate',label:'累計 prefix 命中率'},{id:'hov',label:'滑到的節點'}]);
       ctrl.note(`<p><b>RadixAttention</b>（SGLang）：把所有請求的 KV cache 放進一棵 <b>radix tree</b>（基數樹），key 是 token 序列。新請求來時沿樹往下比對，最長共同 prefix 的 KV 直接重用，只算分岔之後的部分。</p>
         <p>和 vLLM 的 PagedAttention 互補：Paged 解決的是「記憶體怎麼放」，Radix 解決的是「什麼可以不重算」。system prompt + few-shot 動輒上千 token，多輪對話、agent 的工具迴圈、同一份文件問多個問題，命中率都很高。</p>
         <p>樹的節點按 LRU 淘汰；分岔處要處理 KV 的引用計數。SGLang 另一半核心是把 LLM 程式（分支、迴圈、多次呼叫）編譯成能共享 prefix 的執行計畫。</p>`);
@@ -37,9 +38,10 @@
       const smA=new T.Mesh(new T.BoxGeometry(0.8,0.5,0.3),P.mat('memory',{glow:0.5})); smA.position.set(-1.0,-2.75,0.3); root.add(smA); const smB=new T.Mesh(new T.BoxGeometry(0.8,0.5,0.3),P.mat('state',{glow:0.5})); smB.position.set(1.0,-2.75,0.3); root.add(smB); const regC=new T.Mesh(new T.BoxGeometry(0.5,0.3,0.3),P.mat('signal',{glow:0.8})); regC.position.set(0,-2.8,0.5); root.add(regC);
       const flow=new P.BeamSet(3,{maxR:0.05,minR:0.03}); root.add(flow.group);
       const tilesPerDim=()=>Math.ceil(M/TS); const totalSteps=()=>tilesPerDim()*tilesPerDim()*Math.ceil(K/TS);
+      let hovC=null; // 滑到的 C 格：亮出它需要的 A 列與 B 欄
       const paint=()=>{ const tpd=tilesPerDim(), kT=Math.ceil(K/TS); const s=Math.min(step,totalSteps()); const ct=Math.floor(s/kT), kk=s%kT; const ti=Math.floor(ct/tpd), tj=ct%tpd; const done=step>=totalSteps();
-        A.cells.forEach(c=>{ const on=!done&&Math.floor(c.i/TS)===ti&&Math.floor(c.j/TS)===kk; c.m.material.emissiveIntensity=on?0.9:0.12; c.m.position.z=on?0.25:0; });
-        B.cells.forEach(c=>{ const on=!done&&Math.floor(c.i/TS)===kk&&Math.floor(c.j/TS)===tj; c.m.material.emissiveIntensity=on?0.9:0.12; c.m.position.z=on?0.25:0; });
+        A.cells.forEach(c=>{ const on=!done&&Math.floor(c.i/TS)===ti&&Math.floor(c.j/TS)===kk; const hv=hovC&&c.i===hovC.i; c.m.material.emissiveIntensity=hv?0.7:on?0.9:0.12; c.m.position.z=on||hv?0.25:0; });
+        B.cells.forEach(c=>{ const on=!done&&Math.floor(c.i/TS)===kk&&Math.floor(c.j/TS)===tj; const hv=hovC&&c.j===hovC.j; c.m.material.emissiveIntensity=hv?0.7:on?0.9:0.12; c.m.position.z=on||hv?0.25:0; });
         C.cells.forEach(c=>{ const tile=Math.floor(c.i/TS)*tpd+Math.floor(c.j/TS); const cur=!done&&tile===ct; const fin=done||tile<ct; c.m.material.emissiveIntensity=cur?0.9:fin?0.5:0.1; c.m.material.color.copy(P.C(cur?'signal':fin?'flow':'inactive')); c.m.material.emissive.copy(c.m.material.color); });
         root.updateMatrixWorld(true); flow.hideAll(); if(!done){ flow.set(0,new T.Vector3(-4.6,0.9,0),smA.position,0.6,'memory'); flow.set(1,new T.Vector3(-0.4,0.9,0),smB.position,0.6,'state'); flow.set(2,regC.position,new T.Vector3(3.8,0.9,0),0.6,'signal'); }
         smA.scale.setScalar(0.6+TS*0.2); smB.scale.setScalar(0.6+TS*0.2);
@@ -48,7 +50,8 @@
       ctrl.heading('一步一個 tile'); ctrl.stepper({onStep:()=>{ if(step>=totalSteps()) return false; step++; paint(); return step<totalSteps(); },onReset:()=>{step=0;paint();},interval:350});
       ctrl.slider('tile 大小 T',{min:1,max:8,step:1,value:TS,fmt:v=>v===8?'8（整塊）':`${v}×${v}`,onChange:v=>{TS=v;step=0;paint();}});
       ctrl.segmented('寫法',[{id:'triton',label:'Triton'},{id:'tilelang',label:'TileLang'}],'triton',id=>{lang=id;langNote();});
-      const set=ctrl.readouts([{id:'step',label:'進度'},{id:'loads',label:'從 HBM 讀取總量'},{id:'ratio',label:'比 naive 省'},{id:'reuse',label:'資料重用'},{id:'smem',label:'shared memory 佔用'}]);
+      const set=ctrl.readouts([{id:'step',label:'進度'},{id:'loads',label:'從 HBM 讀取總量'},{id:'ratio',label:'比 naive 省'},{id:'reuse',label:'資料重用'},{id:'smem',label:'shared memory 佔用'},{id:'hov',label:'滑到的格子'}]);
+      ctx.app.watchHover(C.cells.map(c=>c.m),(h,idx)=>{ hovC=idx<0?null:C.cells[idx]; if(!hovC){ set('hov','—'); } else { const tpd=tilesPerDim(); set('hov',`C[${hovC.i+1},${hovC.j+1}]：tile（${Math.floor(hovC.i/TS)+1},${Math.floor(hovC.j/TS)+1}）；= A 第 ${hovC.i+1} 列 · B 第 ${hovC.j+1} 欄`); } paint(); },(m,idx)=>`C[${C.cells[idx].i+1},${C.cells[idx].j+1}]`);
       const ln=ctrl.note(''); const langNote=()=>{ ln.innerHTML= lang==='triton'
         ? `<p><b>Triton</b>：你寫的是「一個 program 處理一個 tile」——用 <code>tl.load</code> 把 A、B 的 block 搬進來、<code>tl.dot</code> 累加、<code>tl.store</code> 寫回。tile 大小、怎麼對應到 thread、shared memory 怎麼排，編譯器決定；你調的是 BLOCK_M/N/K 和 num_warps 這幾個旋鈕（通常用 autotune 掃）。</p><p>優點：幾十行就能寫出接近 cuBLAS 的 kernel，Python 語法。限制：對 layout、pipeline 階段數、跨 SM 協作（Hopper 的 TMA / cluster）的控制有限。</p>`
         : `<p><b>TileLang</b>：同樣是 tile 層級的語言，但把 Triton 藏起來的那幾件事<b>露出來讓你控</b>：<code>T.alloc_shared</code> 明確配置 shared memory、<code>T.Pipelined</code> 指定幾段 software pipeline、<code>T.annotate_layout</code> 指定 swizzle、還能直接用 TMA / WGMMA 這類硬體指令。</p><p>適合的是 FlashAttention、MLA decode、低位元 GEMM 這種「tile 的形狀和排程本身就是演算法」的 kernel——Triton 在這些地方常常差 cuBLAS 兩三成，TileLang 能追到九成以上。代價是你得懂記憶體階層。</p>`; };

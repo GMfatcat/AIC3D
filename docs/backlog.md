@@ -158,7 +158,7 @@
 - [x] segmented 改成不換行的 chip，放不下就整顆換到下一排（2026-10-02）
 - [x] 按鈕圖示統一成 inline SVG（單步 / 播放 / 暫停 / 重置 / 導覽）（2026-10-02）
 - [x] 控制順序：heading 必在其他控制前、readouts 必在 note 前，靜態測試守住；embedding 已調整（2026-10-02）
-  - [ ] vLLM 的提示在 heading 上方、sglang 每個按鈕各一列：留到 P5 逐場景處理
+  - [x] vLLM 的提示移到 heading 下、sglang 四個請求按鈕同一列（2026-10-02）
 - [ ] 動作型場景（vllm / sglang / mhc）用自訂按鈕，其他用 stepper，形式統一。
 - [x] slider 改動時 3D 的亮度 / 大小 / 透明度 ease（`TokenRow.style` 補間，300ms）（2026-10-02）
 
@@ -223,14 +223,14 @@
 | qwen3-27b | thinking 有 3D 變化 | 塔旁多一排 <think> token，budget slider 決定幾顆，答案被推後 | [x] 2026-10-02 |
 | yolo-v10 | 單步看配對 | 三步：候選點 → 打分 → 一對一 / 一對多出框 | [x] 2026-10-02 |
 | fp | 翻位元看數值 | 位元 chip 是按鈕，點一下翻該組最低位元、x 跳到新值；數軸後加密度梳（log 點數）讓 3D 有用 | [x] 2026-10-02 |
-| dp | 與 TP 並排 | 兩個分開場景 | [ ] |
+| dp | 與 TP 並排 | TP / DP 都有「並排看另一種」，另一種切法放後排同 k 顆、同模型 | [x] 2026-10-02 |
 | goal | 改目標看路徑變 | 只有 on/off | [ ] |
 
 ### 場景份量
 
 - [ ] 偏薄要加料：yolo-v10（一個切換）、glm-flash 與 nemotron（沒有控制元件）、residual 與 rnn（2 個控制）、qat（只有 stepper）、embedding。
 - [ ] 偏密要拆或收：stages（3 segmented + stepper + 2 slider + 9 readout + 2 bar + 3 段說明）、ocr（3 控制 + stepper + 6 readout + 4 段說明）、mhc、engram。
-- [ ] 沒有 hover 的 slider 場景補聚焦回饋：~~rnn、mamba、rwkv、gdn~~（2026-10-02，用 `App.watchHover`）、~~attention、engram、kvheads（滑到 Q 頭亮它的 K/V 組）、residual（滑到 block 看進出幅度）、mhc（滑到流看幅度）~~（2026-10-02）、~~fp（密度梳）、exl3（選到的點）、imatrix（格子）、qat（直方圖）、gptq（格子）、kvcache（K/V 片）~~（2026-10-02）、stages、ocr、tp/dp。
+- [ ] 沒有 hover 的 slider 場景補聚焦回饋：~~rnn、mamba、rwkv、gdn~~（2026-10-02，用 `App.watchHover`）、~~attention、engram、kvheads（滑到 Q 頭亮它的 K/V 組）、residual（滑到 block 看進出幅度）、mhc（滑到流看幅度）~~（2026-10-02）、~~fp（密度梳）、exl3（選到的點）、imatrix（格子）、qat（直方圖）、gptq（格子）、kvcache（K/V 片）~~（2026-10-02）、~~stages（token）、tp/dp（權重磚）、tiling（C 格亮出 A 列 B 欄）、vllm（page）、sglang（樹節點）~~（2026-10-02）、ocr。
 - [ ] hover 回饋位置統一：cnn/transformer 改 3D，gguf/towers 改面板 `info`。
 
 ---

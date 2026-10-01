@@ -37,12 +37,12 @@ App.register({
       ctx.legend([['inactive','空 page'],['structure','共享 page（多個請求引用）'],...seqs.map(s=>[s.color,`請求 ${s.id} 的 block / page / 對應線`])]);
       set('shared', prefixPages?`${prefixPages.length} page × ${seqs.filter(s=>s.pages.some(f=>prefixPages.includes(f))).length} 個請求`:'—');
     };
-    const msgEl=ctrl.html('','hint'); let msgTimer=null; const msg=t=>{msgEl.textContent=t; clearTimeout(msgTimer); msgTimer=setTimeout(()=>{if(msgEl.textContent===t)msgEl.textContent='';},3500);}; ctx.onDispose(()=>clearTimeout(msgTimer));
-    ctrl.heading('請求進出');
+    ctrl.heading('請求進出'); const msgEl=ctrl.html('','hint'); let msgTimer=null; const msg=t=>{msgEl.textContent=t; clearTimeout(msgTimer); msgTimer=setTimeout(()=>{if(msgEl.textContent===t)msgEl.textContent='';},3500);}; ctx.onDispose(()=>clearTimeout(msgTimer));
     const clearAll=()=>{ phys.forEach(p=>{p.refs=0;p.owner=null;p.shared=false;}); prefixPages=null; seqs=[]; redraw(); };
     ctrl.buttons([{label:'新增請求',onClick:addSeq,primary:true},{label:'全部生成一步',onClick:grow},{label:'結束一個請求',onClick:endSeq},{label:'全部清空',onClick:clearAll}]);
     ctrl.segmented('新請求的 system prompt',[{id:'no',label:'各自存一份'},{id:'yes',label:'共享 prefix page'}],'no',id=>{ share=id==='yes'; const n=seqs.length; clearAll(); for(let i=0;i<n;i++) addSeq(); }); // 切換就用新政策重放目前的請求
-    const set=ctrl.readouts([{id:'used',label:'已用 page'},{id:'frag',label:'碎片浪費'},{id:'contig',label:'若改用連續預留'},{id:'shared',label:'共享的 prefix'}]);
+    const set=ctrl.readouts([{id:'used',label:'已用 page'},{id:'frag',label:'碎片浪費'},{id:'contig',label:'若改用連續預留'},{id:'shared',label:'共享的 prefix'},{id:'hov',label:'滑到的 page'}]);
+    ctx.app.watchHover(phys.map(p=>p.mesh),(h,i)=>{ if(i<0){ set('hov','—'); return; } const p=phys[i]; const s=seqs.find(x=>x.color===p.owner); set('hov',`page ${i+1}：${p.refs===0?'空，任何請求都能拿':p.shared?`共享 prefix（${p.refs} 個請求引用）`:`請求 ${s?s.id:'?'} 的第 ${s?s.pages.indexOf(i)+1:'?'} 塊`}`); },(m,i)=>`物理 page ${i+1}`);
     const bar=ctrl.bar('紅色 = 連續預留會多佔的空間');
     ctrl.note(`<p>傳統做法替每個請求<b>預留最長可能長度</b>的連續空間，沒用到的部分別人也不能用（紅色）。</p>
       <p><b>PagedAttention</b> 把 KV cache 切成固定大小的 page，邏輯上連續、物理上散放，用一張對應表找。任何空 page 都能給任何請求，請求結束 page 立刻回收——這就是 vLLM 能把 batch 塞很大的原因。</p>
