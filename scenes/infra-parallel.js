@@ -33,7 +33,7 @@
     const build=()=>{
       main=buildStage(ctx,stage,kind,k,modelGB());
       const title=P.label(kind==='tp'?'同一批 token 進每顆 GPU，各算自己那片權重':'每顆 GPU 拿不同 batch，權重各自一份',{size:22}); title.position.set(0,-2.4,0); stage.add(title);
-      if(cmp){ other=buildStage(ctx,cmpStage,OTHER[kind],k,modelGB()); const ct=P.label(`對照：${NAME[OTHER[kind]]}（同樣 ${k} 顆、同樣模型）`,{size:22}); ct.position.set(0,4.2,0); cmpStage.add(ct); } else { P.clear(cmpStage); other=null; }
+      if(cmp){ other=buildStage(ctx,cmpStage,OTHER[kind],k,modelGB()); const ct=P.label(`對照：${NAME[OTHER[kind]]}（同樣 ${k} 顆、同樣模型）`,{size:22}); cmpStage.traverse(o=>{ if(o.isLabel) o.visible=false; }); /* 後排只留標題，GPU 名稱會和前排疊在一起 */ ct.position.set(0,4.2,0); cmpStage.add(ct); } else { P.clear(cmpStage); other=null; }
       cmpStage.visible=cmp;
       const meshes=main.bricks.map(b=>b.mesh); if(hover) hover.set(meshes); else hover=ctx.app.watchHover(meshes,(h,i)=>{ const GB=modelGB(); set('hov',i<0?'—':`GPU ${i}：${kind==='tp'?`權重第 ${i+1}/${k} 片，${(GB/k).toFixed(1)} GB`:`完整權重 ${GB} GB，處理自己的 batch`}`); },(m,i)=>`GPU ${i} 的權重`);
       redraw();
