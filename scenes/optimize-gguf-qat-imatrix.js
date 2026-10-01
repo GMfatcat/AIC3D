@@ -36,14 +36,16 @@
       const g=new T.Group(); root.add(g); const bars=[]; for(let b=0;b<BINS;b++){ const m=new T.Mesh(new T.BoxGeometry(0.2,1,0.4),P.mat('memory',{glow:0.3})); m.position.x=((b+0.5)/BINS-0.5)*9; g.add(m); bars.push(m); } // 柱子放在 bin 中心，和格點線對齊
       grid.forEach(gv=>{ const l=new T.Mesh(new T.BoxGeometry(0.04,3.2,0.6),P.mat('signal',{glow:0.6,opacity:0.6})); l.position.set(gv*4.5,1.3,0); g.add(l); const t=P.label(gv.toFixed(1),{size:16}); t.position.set(gv*4.5,-0.4,0); g.add(t); });
       const title=P.label('權重分佈直方圖（橘線 = 量化格點）',{size:20}); title.position.set(0,3.4,0); g.add(title);
-      const paint=()=>{ const counts=Array(BINS).fill(0); W.forEach(w=>{ counts[Math.min(BINS-1,Math.floor((w+1)/2*BINS))]++; }); const mx=Math.max(...counts,1); bars.forEach((m,b)=>{ const h=0.05+2.6*counts[b]/mx; m.scale.y=h; m.position.y=h/2; });
+      let lastCounts=null;
+      const paint=()=>{ const counts=Array(BINS).fill(0); W.forEach(w=>{ counts[Math.min(BINS-1,Math.floor((w+1)/2*BINS))]++; }); lastCounts=counts; const mx=Math.max(...counts,1); bars.forEach((m,b)=>{ const h=0.05+2.6*counts[b]/mx; m.scale.y=h; m.position.y=h/2; });
         const Wq=W.map(q); set('step',String(stepN)); set('fp',err(W).toFixed(3)); set('q',err(Wq).toFixed(3),err(Wq)>0.5?'bad':'ok'); set('ptq',err(W0.map(q)).toFixed(3)); set('dist',(W.reduce((s,w)=>s+Math.abs(w-q(w)),0)/NW).toFixed(3)); bar([{frac:Math.min(1,err(Wq)/1.5),color:'signal'}]); bar2([{frac:Math.min(1,err(W0.map(q))/1.5),color:'alert'}]); };
       const train=()=>{ if(stepN>=40) return false; stepN++; // fake-quant forward, STE backward：梯度用量化權重算，更新加在浮點權重上
         const lr=0.02; const Wq=W.map(q); const grad=Array(NW).fill(0); X.forEach((x,n)=>{ const y=x.reduce((a,xi,i)=>a+xi*Wq[i],0); const e=y-target[n]; x.forEach((xi,i)=>grad[i]+=e*xi); });
         W=W.map((w,i)=>Math.max(-1,Math.min(1,w-lr*grad[i]/X.length))); paint(); return stepN<40; };
       const reset=()=>{ W=W0.slice(); stepN=0; paint(); };
       ctrl.heading('用 fake-quant 訓練 40 步'); ctrl.stepper({onStep:train,onReset:reset,interval:150});
-      const set=ctrl.readouts([{id:'step',label:'訓練步'},{id:'fp',label:'浮點權重的任務誤差'},{id:'q',label:'量化後的任務誤差（QAT）'},{id:'ptq',label:'直接量化原權重（PTQ）'},{id:'dist',label:'權重到格點平均距離'}]);
+      const set=ctrl.readouts([{id:'step',label:'訓練步'},{id:'fp',label:'浮點權重的任務誤差'},{id:'q',label:'量化後的任務誤差（QAT）'},{id:'ptq',label:'直接量化原權重（PTQ）'},{id:'dist',label:'權重到格點平均距離'},{id:'hov',label:'滑到的 bin'}]);
+      ctx.app.watchHover(bars,(h,b)=>{ if(b<0){ set('hov','—'); return; } const lo=-1+2*b/BINS, hi=-1+2*(b+1)/BINS; set('hov',`[${lo.toFixed(2)}, ${hi.toFixed(2)})：${lastCounts?lastCounts[b]:0} 個權重`); },(m,b)=>`區間 ${(-1+2*b/BINS).toFixed(2)}`);
       const bar=ctrl.bar('QAT'); const bar2=ctrl.bar('PTQ');
       ctrl.note(`<p><b>PTQ</b>（訓練後量化，GPTQ / GGUF 都是）：模型訓練完才 snap 到格點，權重落在格點之間的誤差只能靠補償技巧減少。</p>
         <p><b>QAT</b>：訓練時在 forward 插一個 <b>fake-quant</b>——用量化後的權重算輸出和 loss，但 backward 時假裝量化是 identity（straight-through estimator），把梯度加回浮點權重。結果是模型<b>自己學會把權重擺在格點附近</b>、或把任務轉嫁給不敏感的權重——看直方圖往橘線聚、量化誤差往下掉，而浮點誤差幾乎不變。</p>
@@ -65,7 +67,8 @@
       const tokens=new P.TokenRow(['','','','','',''],{color:'flow',gap:0.5,size:0.3}); tokens.group.position.set(-7.2,0.6,0); root.add(tokens.group); const tl=P.label('校準資料',{size:18}); tl.position.set(-7.2,2.0,0); root.add(tl);
       const flow=new P.BeamSet(1,{maxR:0.06,minR:0.04}); root.add(flow.group);
       const quant=(v,levels)=>{ const step=2/(levels-1); return Math.round(v/step)*step; };
-      const paint=()=>{ const imp=ACT[ds]; const sorted=imp.map((v,j)=>[v,j]).sort((a,b)=>b[0]-a[0]); const levels=Array(C).fill(0); // 預算：平均剛好 4 bit（3 欄 6 bit + 4 欄 4 bit + 3 欄 2 bit = 40 bit / 10 欄），才能和均勻 4 bit 公平比
+      let lastLevels=null;
+      const paint=()=>{ const imp=ACT[ds]; const sorted=imp.map((v,j)=>[v,j]).sort((a,b)=>b[0]-a[0]); const levels=Array(C).fill(0); lastLevels=levels; // 預算：平均剛好 4 bit（3 欄 6 bit + 4 欄 4 bit + 3 欄 2 bit = 40 bit / 10 欄），才能和均勻 4 bit 公平比
         sorted.forEach(([v,j],rank)=>{ levels[j]= ds==='none'?16 : rank<3?64 : rank<7?16 : 4; });
         cells.forEach(c=>{ const lv=levels[c.j]; const bits=Math.log2(lv); const col=bits>=6?'state':bits>=4?'memory':'inactive'; c.m.material.color.copy(P.C(col)); c.m.material.emissive.copy(c.m.material.color); c.m.material.emissiveIntensity=0.15+Math.abs(W[c.i][c.j])*0.6; });
         colBars.forEach((m,j)=>{ m.scale.y=0.1+imp[j]*2; m.position.y=-3.5+m.scale.y/2; m.material.emissiveIntensity=0.2+imp[j]; });
@@ -75,7 +78,8 @@
         set('ds',LABEL[ds]); set('bits',avgBits.toFixed(2)+' bpw（平均）'); set('alloc',ds==='none'?'全部 4 bit':'前 3 欄 6 bit、中間 4 bit、後 3 欄 2 bit'); set('eimp',Math.sqrt(eImp).toFixed(3)); set('euni',Math.sqrt(eUni).toFixed(3)); bar([{frac:Math.min(1,Math.sqrt(eImp)/1.2),color:'signal'}]); bar2([{frac:Math.min(1,Math.sqrt(eUni)/1.2),color:'alert'}]);
         root.updateMatrixWorld(true); flow.set(0,new T.Vector3(-5.6,0.6,0),new T.Vector3(-4.6,0.6,0),0.7,'flow'); tokens.styleAll({color:'flow',glow:0.5,opacity:ds==='none'?0.2:1}); };
       ctrl.heading('換一組校準資料'); ctrl.segmented(null,Object.keys(ACT).map(id=>({id,label:LABEL[id]})),ds,id=>{ds=id;paint();});
-      const set=ctrl.readouts([{id:'ds',label:'校準資料'},{id:'alloc',label:'精度分配'},{id:'bits',label:'位元預算'},{id:'eimp',label:'重要度加權誤差（有 imatrix）'},{id:'euni',label:'同樣誤差（均勻 4 bit）'}]);
+      const set=ctrl.readouts([{id:'ds',label:'校準資料'},{id:'alloc',label:'精度分配'},{id:'bits',label:'位元預算'},{id:'eimp',label:'重要度加權誤差（有 imatrix）'},{id:'euni',label:'同樣誤差（均勻 4 bit）'},{id:'hov',label:'滑到的權重'}]);
+      ctx.app.watchHover(cells.map(c=>c.m),(h,idx)=>{ if(idx<0||!lastLevels){ set('hov','—'); return; } const c=cells[idx]; const lv=lastLevels[c.j]; const w=W[c.i][c.j]; set('hov',`第 ${c.i+1} 列 第 ${c.j+1} 欄：w ${w.toFixed(2)}，${Math.log2(lv)} bit，重要度 ${ACT[ds][c.j].toFixed(2)}，誤差 ${Math.abs(w-quant(w,lv)).toFixed(3)}`); },(m,idx)=>`第 ${cells[idx].i+1} 列 第 ${cells[idx].j+1} 欄`);
       const bar=ctrl.bar('有 imatrix'); const bar2=ctrl.bar('均勻量化');
       ctrl.note(`<p>權重誤差不是都一樣重要：如果某個輸入通道的 activation 平時都很大，它對應那一欄權重的誤差就會被放大。<b>Importance matrix</b>（llama.cpp 的 imatrix）就是讓一批校準資料流過模型，統計每個通道的平均 x²，當成權重。</p>
         <p>量化時用它做兩件事：<b>①</b> 選 block 的 scale / min 時最小化「加權」誤差而不是普通誤差；<b>②</b>（_M / IQ 系列）把預算往重要通道傾斜。這跟 GPTQ 用 Hessian 的精神一樣，只是更輕量、不需要逐欄序列計算。</p>

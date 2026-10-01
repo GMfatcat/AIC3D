@@ -31,7 +31,9 @@ App.register({
     ctrl.segmented(null,[{id:'on',label:'有 KV cache'},{id:'off',label:'沒有 cache（每步重算）'}],'on',id=>{useCache=id==='on';redraw();});
     ctrl.stepper({onStep:step,onReset:()=>{t=0;flash=0;redraw();},interval:450});
     const ctxSl=ctrl.slider('換算：真實 context 長度（k tokens）',{min:1,max:128,value:8,fmt:v=>v+'k',onChange:()=>redraw()});
-    const set=ctrl.readouts([{id:'t',label:'已生成 token'},{id:'step',label:'這一步要算'},{id:'total',label:'累計計算量'},{id:'cache',label:'cache 佔用（示意 24 token）'},{id:'big',label:'真實 context 下的 cache'}]);
+    const set=ctrl.readouts([{id:'t',label:'已生成 token'},{id:'step',label:'這一步要算'},{id:'total',label:'累計計算量'},{id:'cache',label:'cache 佔用（示意 24 token）'},{id:'big',label:'真實 context 下的 cache'},{id:'hov',label:'滑到的 K/V 片'}]);
+    const slabMeshes=[...slabs.map(p=>p[0]),...slabs.map(p=>p[1])]; // 先 K 列再 V 列
+    ctx.app.watchHover(slabMeshes,(h,idx)=>{ if(idx<0){ set('hov','—'); return; } const i=idx%MAXT; set('hov',`token ${i+1}「${WORDS[i]}」的 ${idx<MAXT?'K':'V'}：${fmtB(perTokB/2)}（${MODEL.layers} 層 × ${MODEL.kvHeads} 頭 × ${MODEL.dim} 維 × ${MODEL.bytes} B）`); },(m,idx)=>`token「${WORDS[idx%MAXT]}」的 ${idx<MAXT?'K':'V'} 片`);
     ctrl.note(`<p>每個 token 的 K、V 算一次就存起來（藍、紫片），下一步只算新 token 的 Q 去跟它們比。<b>省的是計算</b>：每步成本從「∝ 已生成長度」變成常數。</p>
       <p><b>付出的是記憶體</b>：每個 token 存 2 × 層數 × KV 頭數 × 頭維度 × bytes。這裡用 64 層 / 8 KV 頭 / 128 維 / bf16 → 每 token 256 KB，128k context 就是 32 GB。</p>
       <p>這也是 <a href="#kvheads">GQA、MLA</a> 和 <a href="#vllm">PagedAttention</a> 存在的理由——它們全在縮或管這條藍色 HBM 條。</p>`);

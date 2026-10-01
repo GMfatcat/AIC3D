@@ -14,32 +14,43 @@
 
   App.register({ id:'fp', tab:'optimize', question:'位元怎麼分配、精度到底在哪裡？',
     init(ctx){ const {THREE:T,P,root,ctrl}=ctx; let x=1.3, blockMax=2.0; const RANGE=4, LEN=10;
-      const rows=[['bf16',1.6],['fp8',0],['fp4',-1.6]]; const objs={};
+      const rows=[['bf16',1.6],['fp8',0],['fp4',-1.6]]; const objs={}; const BINS=40; const allBars=[];
       rows.forEach(([id,y])=>{ const f=FORMATS[id]; const g=new T.Group(); g.position.y=y; root.add(g);
+        // 密度梳：數軸後面每個區間一根柱，高度 = log(該區間的可表示點數)，讓「跨一個 2 的冪密度減半」在 3D 看得到
+        const bars=[]; for(let b=0;b<BINS;b++){ const m=new T.Mesh(new T.BoxGeometry(LEN/BINS*0.8,1,0.14),P.mat(f.color,{glow:0.15,opacity:0.35})); m.position.set(((b+0.5)/BINS-0.5)*LEN,0.05,-0.4); m.userData={bin:b,fmt:id,count:0}; g.add(m); bars.push(m); allBars.push(m); }
         const axis=new T.Mesh(new T.CylinderGeometry(0.012,0.012,LEN,6),P.mat('structure',{glow:0.1})); axis.rotation.z=Math.PI/2; g.add(axis);
         const pts=new T.Points(new T.BufferGeometry(),new T.PointsMaterial({color:P.C(f.color),size:0.17,sizeAttenuation:true})); g.add(pts);
         const marker=new T.Mesh(new T.SphereGeometry(0.14,16,12),P.mat('alert',{glow:0.9})); g.add(marker); const tgt=new T.Mesh(new T.SphereGeometry(0.07,10,8),P.mat('structure',{glow:0.6})); tgt.position.y=0.35; g.add(tgt);
         const lab=P.label(f.name,{size:22}); lab.position.set(-LEN/2-1.1,0,0); g.add(lab); const err=P.label('',{size:18,color:P.hex('alert')}); err.position.set(0,-0.45,0); g.add(err);
         for(const tick of [0,1,2,3,4]){ const l=P.label(String(tick),{size:16}); l.position.set((tick/RANGE-0.5)*LEN,-0.3,0); g.add(l); }
-        objs[id]={g,pts,marker,tgt,err,f}; });
+        objs[id]={g,pts,marker,tgt,err,f,bars}; });
       const X=v=>(v/RANGE-0.5)*LEN;
       const redraw=()=>{ const html=[];
         rows.forEach(([id])=>{ const o=objs[id], f=o.f; let vals; let scale=1;
           if(id==='fp4'){ const raw=fpValues(f.E,f.M,f.bias,f.maxCode); const fp4max=6; scale=snap(fpValues(4,3,7,15),blockMax/fp4max); vals=raw.map(v=>v*scale); }
           else vals=fpValues(f.E,f.M,f.bias,f.maxCode);
-          vals=vals.filter(v=>v<=RANGE); const pos=new Float32Array(vals.length*3); vals.forEach((v,i)=>{pos[i*3]=X(v);}); o.pts.geometry.setAttribute('position',new T.BufferAttribute(pos,3)); o.pts.geometry.computeBoundingSphere();
+          vals=vals.filter(v=>v<=RANGE); const counts=Array(BINS).fill(0); vals.forEach(v=>{ counts[Math.min(BINS-1,Math.floor(v/RANGE*BINS))]++; }); const mxc=Math.max(1,...counts); o.bars.forEach((m,b)=>{ const hgt=0.06+0.9*Math.log(1+counts[b])/Math.log(1+mxc); m.scale.y=hgt; m.position.y=0.05+hgt/2; m.userData.count=counts[b]; });
+          const pos=new Float32Array(vals.length*3); vals.forEach((v,i)=>{pos[i*3]=X(v);}); o.pts.geometry.setAttribute('position',new T.BufferAttribute(pos,3)); o.pts.geometry.computeBoundingSphere();
           const q=snap(vals,x); o.marker.position.x=X(q); o.tgt.position.x=X(x); const rel=Math.abs(q-x)/Math.max(x,1e-9); o.err.userData.setText(`→ ${q.toPrecision(4)}  誤差 ${(rel*100).toFixed(2)}%`); o.err.position.x=X(q);
-          const n1=vals.filter(v=>v>=1&&v<2).length; html.push(`<div class="bitrow"><b>${f.name}</b> <span class="hint">${f.bits}</span><div class="bits">${bits(f, id==='fp4'? q/scale : q).split(' ').map((s,i)=>`<span class="bitchip ${['sign','exp','man'][i]}">${s}</span>`).join(' ')}${id==='fp4'?` <span class="hint">× scale ${scale.toPrecision(3)}</span>`:''}</div><div class="hint">[1, 2) 之間有 ${n1} 個點${id==='fp4'?'（隨 scale 伸縮）':''}</div></div>`); });
+          const n1=vals.filter(v=>v>=1&&v<2).length; html.push(`<div class="bitrow"><b>${f.name}</b> <span class="hint">${f.bits}</span><div class="bits">${bits(f, id==='fp4'? q/scale : q).split(' ').map((s,i)=>`<button type="button" class="bitchip ${['sign','exp','man'][i]}" data-fmt="${id}" data-g="${i}" title="點一下翻這組的最低位元，看值跳到哪">${s}</button>`).join(' ')}${id==='fp4'?` <span class="hint">× scale ${scale.toPrecision(3)}</span>`:''}</div><div class="hint">[1, 2) 之間有 ${n1} 個點${id==='fp4'?'（隨 scale 伸縮）':''}</div></div>`); });
         bitsEl.innerHTML=html.join(''); };
-      ctrl.heading('一個數字、三種格式'); ctrl.slider('要表示的值 x',{min:0.01,max:4,step:0.01,value:x,fmt:v=>v.toFixed(2),onChange:v=>{x=v;redraw();}});
+      ctrl.heading('一個數字、三種格式'); const xSl=ctrl.slider('要表示的值 x',{min:0.01,max:4,step:0.001,value:x,fmt:v=>v.toFixed(3),onChange:v=>{x=v;redraw();}}); // 三位小數：BF16 翻一個 mantissa 位元差 0.008，兩位小數會看不到
       ctrl.slider('NVFP4：這一組 16 個值的最大絕對值',{min:0.25,max:4,step:0.05,value:blockMax,fmt:v=>v.toFixed(2),onChange:v=>{blockMax=v;redraw();}});
       ctrl.html('<span class="hint">位元佈局：<span class="bitchip sign">sign</span> <span class="bitchip exp">exponent</span> <span class="bitchip man">mantissa</span></span>');
       const bitsEl=ctrl.html('');
+      // 翻位元：把該格式目前 snap 到的值的某一組（exponent / mantissa）最低位元翻過來，x 跳到新值
+      bitsEl.addEventListener('click',e=>{ const b=e.target.closest('button.bitchip'); if(!b||b.dataset.g==='0') return; const f=FORMATS[b.dataset.fmt]; const id=b.dataset.fmt;
+        let scale=1; let vals; if(id==='fp4'){ scale=snap(fpValues(4,3,7,15),blockMax/6); vals=fpValues(f.E,f.M,f.bias,f.maxCode).map(v=>v*scale); } else vals=fpValues(f.E,f.M,f.bias,f.maxCode);
+        const q=snap(vals.filter(v=>v<=RANGE),x); const parts=bits(f,id==='fp4'?q/scale:q).split(' '); const gi=+b.dataset.g; parts[gi]=parts[gi].slice(0,-1)+(parts[gi].slice(-1)==='1'?'0':'1');
+        const code=parseInt(parts[1],2), m=parseInt(parts[2],2); const v=(code===0?Math.pow(2,1-f.bias)*(m/(1<<f.M)):Math.pow(2,code-f.bias)*(1+m/(1<<f.M)))*scale;
+        x=Math.max(0.01,Math.min(RANGE,v)); xSl.set(+x.toFixed(3)); redraw(); });
+      ctx.app.watchHover(allBars,(h,i)=>{ if(i<0){ set('hov','—'); return; } const u=h.userData; const lo=u.bin/BINS*RANGE, hi=(u.bin+1)/BINS*RANGE; set('hov',`${FORMATS[u.fmt].name}：[${lo.toFixed(1)}, ${hi.toFixed(1)}) 有 ${u.count} 個點`); },(m)=>`${FORMATS[m.userData.fmt].name} 區間 ${(m.userData.bin/BINS*RANGE).toFixed(1)}`);
+      const set=ctrl.readouts([{id:'hov',label:'滑到的區間'}]);
       ctrl.note(`<p>浮點數的點<b>不是均勻的</b>：每跨一個 2 的冪，點的密度就減半。exponent 位元決定「能表示多大的範圍」，mantissa 位元決定「每個範圍裡有幾個點」。</p>
         <p><b>BF16</b>：8 個 exponent 跟 FP32 一樣，所以範圍一樣大、不會 overflow，但 mantissa 只有 7 位——每個 2 的冪之間 128 個點。訓練用它就是圖「範圍安全」。</p>
         <p><b>FP8 E4M3</b>：範圍 ±448，每個區間 8 個點。要搭配 per-tensor 或 per-block 的 scale 把數值移到好用的區間。</p>
         <p><b>NVFP4</b>：每個區間只有 2 個點（0.5 的倍數 ×2ⁿ），自己幾乎沒精度；靠 <b>16 個值共用一個 FP8 scale</b>，讓格點貼著這一小塊的實際範圍伸縮。拉第二支滑桿看格點跟著動。</p>`);
-      ctx.legend([['memory','BF16 可表示的值'],['flow','FP8 可表示的值'],['signal','NVFP4 可表示的值（已乘 scale）'],['alert','x 被 snap 到的點']]);
+      ctx.legend([['memory','BF16 可表示的值'],['flow','FP8 可表示的值'],['signal','NVFP4 可表示的值（已乘 scale）'],['alert','x 被 snap 到的點'],['structure','數軸後的柱 = 該區間有幾個點（log）']]);
       ctx.setCamera({theta:0.0,phi:1.5}); redraw(); } });
 
   /* ---------------- GPTQ ---------------- */
@@ -62,7 +73,8 @@
       const reset=()=>{ W=W0.map(r=>r.slice()); Q=W0.map(r=>r.map(()=>0)); col=0; waveT=0; wave.material.opacity=0; paint(); };
       ctrl.heading('一欄一欄量化'); ctrl.segmented(null,[{id:'on',label:'GPTQ：補償'},{id:'off',label:'直接四捨五入'}],'on',id=>{comp=id==='on';reset();});
       ctrl.stepper({onStep:doStep,onReset:reset,interval:600});
-      const set=ctrl.readouts([{id:'col',label:'已量化的欄'},{id:'err',label:'輸出誤差（這個方法）'},{id:'naive',label:'輸出誤差（直接四捨五入）'}]);
+      const set=ctrl.readouts([{id:'col',label:'已量化的欄'},{id:'err',label:'輸出誤差（這個方法）'},{id:'naive',label:'輸出誤差（直接四捨五入）'},{id:'hov',label:'滑到的權重'}]);
+      ctx.app.watchHover(cells.map(c=>c.m),(h,idx)=>{ if(idx<0){ set('hov','—'); return; } const c=cells[idx]; const done=c.j<col; set('hov',`第 ${c.i+1} 列 第 ${c.j+1} 欄：原 ${W0[c.i][c.j].toFixed(2)} → 補償後 ${W[c.i][c.j].toFixed(2)}${done?`，量化成 ${Q[c.i][c.j].toFixed(2)}`:'（還沒量化）'}`); },(m,idx)=>`第 ${cells[idx].i+1} 列 第 ${cells[idx].j+1} 欄`);
       const bar=ctrl.bar('這個方法'); const bar2=ctrl.bar('直接四捨五入');
       ctrl.note(`<p>把第 j 欄的權重 snap 到最近格點時會產生誤差 e。<b>GPTQ</b> 不是忍下來，而是用校準資料算出的 Hessian 反矩陣，把 e 按欄之間的相關性<b>分攤到還沒量化的欄</b>（紅色波傳向右邊）：後面的欄先往反方向調一點，讓整層的輸出 XW 盡量不變。</p>
         <p>所以 GPTQ 最小化的是<b>輸出誤差</b>，不是權重誤差——這就是它比直接四捨五入好、而且 4-bit 還能用的原因。代價是需要一批校準資料、以及逐欄的序列計算（實務上分 block 做）。</p>
@@ -99,7 +111,8 @@
       const l2=P.label('後排：均勻格點（GGUF 類，整數 bpw）',{size:18}); l2.position.set(0,2.5,-1.2); g.add(l2);
       const X=t=>(t-(G-1)/2)*1.1, Y=v=>Math.max(-2.2,Math.min(2.2,v*1.1));
       const a=new T.Vector3(), b=new T.Vector3();
-      const redraw=()=>{ const w=weights(); const tr=viterbi(w); const un=uniform(w,bpw); const sigma=Math.sqrt(w.reduce((s,x)=>s+x*x,0)/G)||1;
+      let lastW=null, lastTr=null;
+      const redraw=()=>{ const w=weights(); const tr=viterbi(w); const un=uniform(w,bpw); lastW=w; lastTr=tr; const sigma=Math.sqrt(w.reduce((s,x)=>s+x*x,0)/G)||1;
         const pos=[]; for(let t=0;t<G;t++){ const p=t?tr.path[t-1]:0; for(let s=0;s<tr.k;s++){ pos.push(X(t),Y(val(s,p,tr.k,sigma)),0); } } cand.geometry.setAttribute('position',new T.BufferAttribute(new Float32Array(pos),3)); cand.geometry.computeBoundingSphere();
         const upos=[]; const mx=Math.max(...w.map(Math.abs))||1; for(let t=0;t<G;t++) for(let i=0;i<un.k;i++){ upos.push(X(t),Y(-mx+i*2*mx/(un.k-1)),-1.2); } uniPts.geometry.setAttribute('position',new T.BufferAttribute(new Float32Array(upos),3)); uniPts.geometry.computeBoundingSphere();
         for(let t=0;t<G;t++){ chosen[t].position.set(X(t),Y(tr.qv[t]),0); target[t].position.set(X(t),Y(w[t]),0.25); uniChosen[t].position.set(X(t),Y(un.qv[t]),-1.2); if(t<G-1){ a.copy(chosen[t].position); b.set(X(t+1),Y(tr.qv[t+1]),0); path.set(t,a,b,0.8,'signal'); } }
@@ -107,7 +120,8 @@
         bar([{frac:Math.min(1,tr.err/0.6),color:'signal'}]); bar2([{frac:Math.min(1,un.err/0.6),color:'flow'}]); };
       ctrl.heading('位元率是連續的'); ctrl.slider('bpw（每個權重的位元）',{min:1.6,max:5,step:0.05,value:bpw,fmt:v=>v.toFixed(2),onChange:v=>{bpw=v;redraw();}});
       ctrl.segmented('先做 Hadamard 旋轉',[{id:'on',label:'是'},{id:'off',label:'否'}],'on',id=>{rotate=id==='on';redraw();});
-      const set=ctrl.readouts([{id:'k',label:'trellis 每欄狀態數'},{id:'rot',label:'旋轉後離群值'},{id:'terr',label:'EXL3 誤差（RMS）'},{id:'uerr',label:'均勻格點誤差'}]);
+      const set=ctrl.readouts([{id:'k',label:'trellis 每欄狀態數'},{id:'rot',label:'旋轉後離群值'},{id:'terr',label:'EXL3 誤差（RMS）'},{id:'uerr',label:'均勻格點誤差'},{id:'hov',label:'滑到的欄'}]);
+      ctx.app.watchHover(chosen,(h,t)=>{ if(t<0||!lastTr){ set('hov','—'); return; } set('hov',`第 ${t+1} 欄：w ${lastW[t].toFixed(2)} → 選 ${lastTr.qv[t].toFixed(2)}（狀態 ${lastTr.path[t]}），誤差 ${Math.abs(lastW[t]-lastTr.qv[t]).toFixed(3)}`); },(m,t)=>`第 ${t+1} 欄選到的值`);
       const bar=ctrl.bar('EXL3'); const bar2=ctrl.bar('均勻格點');
       ctrl.note(`<p><b>均勻格點</b>：每個權重獨立 snap 到 2ⁿ 個固定點，所以 bpw 只能是整數，而且離群值會把格點撐得很稀。</p>
         <p><b>EXL3 的 trellis（格狀）量化</b>（來自 QTIP）：<b>①</b> 先用 Hadamard 矩陣把一組權重旋轉，離群值被攤平、整組變成近似高斯；<b>②</b> 每個位置的候選值不是固定的，而是由「前一個位置選了哪個狀態」決定——所以整組權重對應的是 trellis 上的<b>一條路徑</b>，用 Viterbi 找誤差最小的那條。</p>
