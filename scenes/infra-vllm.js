@@ -39,8 +39,9 @@ App.register({
     };
     const msgEl=ctrl.html('','hint'); let msgTimer=null; const msg=t=>{msgEl.textContent=t; clearTimeout(msgTimer); msgTimer=setTimeout(()=>{if(msgEl.textContent===t)msgEl.textContent='';},3500);}; ctx.onDispose(()=>clearTimeout(msgTimer));
     ctrl.heading('請求進出');
-    ctrl.buttons([{label:'新增請求',onClick:addSeq,primary:true},{label:'全部生成一步',onClick:grow},{label:'結束一個請求',onClick:endSeq}]);
-    ctrl.segmented('新請求的 system prompt',[{id:'no',label:'各自存一份'},{id:'yes',label:'共享 prefix page'}],'no',id=>{share=id==='yes';});
+    const clearAll=()=>{ phys.forEach(p=>{p.refs=0;p.owner=null;p.shared=false;}); prefixPages=null; seqs=[]; redraw(); };
+    ctrl.buttons([{label:'新增請求',onClick:addSeq,primary:true},{label:'全部生成一步',onClick:grow},{label:'結束一個請求',onClick:endSeq},{label:'全部清空',onClick:clearAll}]);
+    ctrl.segmented('新請求的 system prompt',[{id:'no',label:'各自存一份'},{id:'yes',label:'共享 prefix page'}],'no',id=>{ share=id==='yes'; const n=seqs.length; clearAll(); for(let i=0;i<n;i++) addSeq(); }); // 切換就用新政策重放目前的請求
     const set=ctrl.readouts([{id:'used',label:'已用 page'},{id:'frag',label:'碎片浪費'},{id:'contig',label:'若改用連續預留'},{id:'shared',label:'共享的 prefix'}]);
     const bar=ctrl.bar('紅色 = 連續預留會多佔的空間');
     ctrl.note(`<p>傳統做法替每個請求<b>預留最長可能長度</b>的連續空間，沒用到的部分別人也不能用（紅色）。</p>

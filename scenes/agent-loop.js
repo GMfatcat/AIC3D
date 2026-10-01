@@ -28,7 +28,7 @@ App.register({
       {node:2,text:'tool: bash("git commit -am ...")',size:1},
       {node:3,text:'結果：committed',size:1},
     ];
-    const CAP=40; let i=0, chunks=[], compactions=0, animFrom=0, animTo=0, animT=1;
+    const CAP=40; let i=0, chunks=[], compactions=0;
     const COLORS=['signal','state','flow','memory'];
     const ctxBar=ctrl.html('','ctxbar'); const log=ctrl.html('','log');
     const total=()=>chunks.reduce((n,c)=>n+c.size,0);
@@ -36,12 +36,12 @@ App.register({
       set('ctx',`${tot} / ${CAP}`,tot>CAP*0.85?'bad':'ok'); set('turns',String(i)); set('comp',String(compactions)); };
     const END='（腳本結束，按重置）';
     const step=()=>{ if(i>=SCRIPT.length){ if(!log.textContent.endsWith(END)) log.textContent+='\n'+END; return false; }
-      const s=SCRIPT[i]; chunks.push({node:s.node,size:s.size,text:s.text}); animFrom=loop.t; animTo=loop.t+((s.node-Math.round(loop.t)%4+4)%4||4); animT=0; i++;
+      const s=SCRIPT[i]; chunks.push({node:s.node,size:s.size,text:s.text}); loop.go(loop.t+((s.node-Math.round(loop.t)%4+4)%4||4)); i++;
       const lines=log.textContent?log.textContent.split('\n'):[]; lines.push(s.text); log.textContent=lines.slice(-6).join('\n'); log.scrollTop=1e6;
       if(total()>CAP*0.85){ // compact: everything except the last 3 chunks -> one summary chunk
         const keep=chunks.slice(-3), old=chunks.slice(0,-3); if(old.length>2){ const sz=Math.max(2,Math.round(old.reduce((n,c)=>n+c.size,0)*0.15)); chunks=[{node:0,size:sz,summary:true,text:`摘要（${old.length} 段壓成 ${sz}）`},...keep]; compactions++; log.textContent+=`\n[compact] ${old.length} 段舊訊息 → ${sz} 單位摘要`; } }
       render(); return true; };
-    const reset=()=>{ i=0; chunks=[]; compactions=0; loop.setT(0); animT=1; log.textContent=''; render(); };
+    const reset=()=>{ i=0; chunks=[]; compactions=0; loop.setT(0); log.textContent=''; render(); };
     ctrl.heading('Pi 修一個 CI 失敗');
     ctrl.stepper({onStep:step,onReset:reset,interval:900});
     ctrl.html('<span class="hint">Context window（每格 = 一段訊息，灰色 = compact 後的摘要）</span>');
@@ -53,6 +53,5 @@ App.register({
     ctx.legend([['signal','使用者訊息'],['state','LLM 推理'],['flow','工具呼叫'],['memory','工具結果'],['structure','compact 後的摘要']]);
     ctx.setCamera({theta:0.4,phi:0.95});
     render();
-    this.update=(dt)=>{ if(animT<1){ animT=Math.min(1,animT+(ctx.reduceMotion?1:dt*2.2)); const e=1-Math.pow(1-animT,3); loop.setT(animFrom+(animTo-animFrom)*e); } };
   },
 });

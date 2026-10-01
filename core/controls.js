@@ -44,7 +44,7 @@ class Controls {
   readouts(keys){ // keys: [{id,label}] -> setter(id, text, cls)
     const dl=el('dl','readouts'); const dds={};
     keys.forEach(k=>{ dl.appendChild(el('dt',null,k.label)); const dd=el('dd',null,'—'); dl.appendChild(dd); dds[k.id]=dd; });
-    this.c.appendChild(dl); return (id,text,cls)=>{ const d=dds[id]; if(!d) return; d.textContent=text; d.className=cls||''; };
+    this.c.appendChild(dl); return (id,text,cls)=>{ const d=dds[id]; if(!d) return; Motion.text(d,String(text)); d.className=cls||''; }; // 數字會滾動補間；data-final 永遠是目標值
   }
   bar(label){ // stacked bar: set([{frac,color}])
     const w=el('div','ctl'); if(label) w.appendChild(el('label',null,`<span>${label}</span>`));

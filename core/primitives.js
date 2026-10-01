@@ -160,7 +160,9 @@ class Loop {
     this.t = 0; this.setT(0);
   }
   angle(t){ return -Math.PI/2 + t*2*Math.PI/this.names.length; }
-  setT(t){ this.t=t; const a=this.angle(t); this.marker.position.set(Math.cos(a)*this.R,0.05,Math.sin(a)*this.R);
+  go(t, ms=550){ if(this._tw) this._tw.cancel(); const s={t:this.t}; this._tw=Motion.tween(s,{t},{ms,ease:'inOut',onUpdate:o=>this._set(o.t)}); } // marker 滑過去
+  setT(t){ if(this._tw) this._tw.cancel(); this._set(t); }
+  _set(t){ this.t=t; const a=this.angle(t); this.marker.position.set(Math.cos(a)*this.R,0.05,Math.sin(a)*this.R);
     const active = Math.round(t) % this.names.length;
     this.nodes.forEach((n,i)=>{ n.material.emissiveIntensity = i===active?0.7:0.25; n.scale.setScalar(i===active?1.25:1); }); }
 }

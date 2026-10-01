@@ -99,8 +99,9 @@
           for(let i=0;i<D;i++) for(let j=0;j<D;j++) S[i][j]+=beta*v[i]*k[j]; paint(TEAL,0.5); phase=0; set('phase',`t=${t+1}「${WORDS[t]}」：寫入 β·vₜkₜᵀ`); t++; return t<N; } };
       const reset=()=>{ S=Array.from({length:D},()=>Array(D).fill(0)); t=0; phase=0; paint(); set('phase','—'); row.styleAll({color:'memory',glow:0.2}); };
       ctrl.heading('一步拆成兩個半步'); ctrl.stepper({onStep:step,onReset:reset,interval:700});
-      ctrl.slider('β 寫入強度（也是擦除強度）',{min:0,max:1,step:0.05,value:beta,fmt:v=>v.toFixed(2),onChange:v=>{beta=v;}});
-      ctrl.slider('α 遺忘閘（整體衰減）',{min:0.5,max:1,step:0.01,value:alpha,fmt:v=>v.toFixed(2),onChange:v=>{alpha=v;}});
+      const replay=()=>{ const n=t*2+phase; reset(); for(let i=0;i<n;i++) step(); }; // 參數一改就用新參數重走到目前這一步
+      ctrl.slider('β 寫入強度（也是擦除強度）',{min:0,max:1,step:0.05,value:beta,fmt:v=>v.toFixed(2),onChange:v=>{beta=v;replay();}});
+      ctrl.slider('α 遺忘閘（整體衰減）',{min:0.5,max:1,step:0.01,value:alpha,fmt:v=>v.toFixed(2),onChange:v=>{alpha=v;replay();}});
       const set=ctrl.readouts([{id:'phase',label:'目前半步'},{id:'energy',label:'‖S‖（狀態總量）'}]);
       ctrl.note(`<p>線性 attention 的狀態是 S = Σ vₛkₛᵀ，只會<b>一直加</b>——同一個 key 被寫兩次，兩個 value 會疊在一起變糊。</p>
         <p><b>Delta rule</b>（DeltaNet）：寫入前先把 S 在 kₜ 方向上的舊值擦掉（紅），再寫新的 vₜ（青綠）。效果是「同一個 key 用新 value 覆蓋舊的」，狀態像一張可以改寫的查表，而不是一堆疊加。</p>

@@ -10,7 +10,7 @@ App.register({
     const WITH=[ ['LLM：讀 log → 失敗在 TestPortAlloc',0.85],['檢查目標：還沒綠 → 繼續',null],['LLM：改 mutex 範圍',0.55],['檢查目標：還沒綠、沒改測試 ✓',null],['LLM：重跑測試 → 全綠',0.0],['檢查目標：達成，停止',null] ];
     const WITHOUT=[ ['LLM：讀 log → 失敗在 TestPortAlloc',0.85],['LLM：順便把 log 格式也整理一下',0.9],['LLM：發現另一個 flaky test，把它標 skip',0.7],['LLM：重構了 port 配置模組',0.8],['LLM：測試還是紅的，再看一次 log',0.75],['LLM：把失敗的測試註解掉 → 「綠了」',0.0] ];
     const paint=()=>{ prog.scale.y=Math.max(0.02,dist*4); prog.position.y=0.4-2+prog.scale.y/2; prog.material.color.copy(P.C(dist<0.2?'flow':dist<0.6?'signal':'alert')); prog.material.emissive.copy(prog.material.color); goal.visible=goalL.visible=useGoal; check.hideAll(); logEl.textContent=log.slice(-5).join('\n'); set('step',String(step)); set('dist',Math.round(dist*100)+'%'); set('violate',useGoal?'0':(step>=6?'1（註解掉測試 = 違反「不改測試」）':step>=3?'1（skip 測試）':'0')); };
-    const doStep=()=>{ const S=useGoal?WITH:WITHOUT; if(step>=S.length) return false; const [txt,d]=S[step]; step++; log.push(txt); if(d!==null) dist=d; if(d!==null) loop.setT(loop.t+1); // 檢查目標不是迴圈上的節點：marker 留在原地，只畫一條到目標的線
+    const doStep=()=>{ const S=useGoal?WITH:WITHOUT; if(step>=S.length) return false; const [txt,d]=S[step]; step++; log.push(txt); if(d!==null) dist=d; if(d!==null) loop.go(loop.t+1); // 檢查目標不是迴圈上的節點：marker 留在原地，只畫一條到目標的線
       if(d===null){ root.updateMatrixWorld(true); check.set(0,loop.marker.position,goal.position,0.8,'signal'); paint(); check.meshes[0].visible=true; } else paint(); return step<S.length; };
     const reset=()=>{ step=0; dist=1.0; log=[]; loop.setT(0); paint(); };
     ctrl.heading('同一個任務'); ctrl.segmented(null,[{id:'on',label:'有 /goal'},{id:'off',label:'沒有'}],'on',id=>{useGoal=id==='on';reset();});

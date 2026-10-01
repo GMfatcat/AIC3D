@@ -9,6 +9,7 @@
     const {THREE:T,P,root,ctrl,overlay}=ctx; const L=spec.layers.length; const h=Math.min(0.34, 14/L), gap=h*0.28; const W=2.6, D=1.7;
     const tower=new T.Group(); tower.position.set(-2.2,-(L*(h+gap))/2,0); root.add(tower); const meshes=[];
     spec.layers.forEach((ly,i)=>{ const t=TYPE[ly]; const m=new T.Mesh(new T.BoxGeometry(W,h,D),P.mat(t.color,{glow:0.2,opacity:0.95})); m.position.y=i*(h+gap); m.userData={i,type:ly}; tower.add(m); meshes.push(m); });
+    ctx.app.focusTargets(meshes,m=>`第 ${m.userData.i+1} 層：${TYPE[m.userData.type].label}`);
     const tl=P.label(spec.title,{size:24}); tl.position.set(0,L*(h+gap)+0.6,0); tower.add(tl);
     if(spec.mhc){ for(let s=0;s<4;s++){ const tube=new T.Mesh(new T.CylinderGeometry(0.04,0.04,L*(h+gap),8),P.mat('signal',{glow:0.4,opacity:0.7})); tube.position.set(-W/2-0.35,L*(h+gap)/2-h/2,(s-1.5)*0.35); tower.add(tube); } const ml=P.label('mHC ×4 殘差流',{size:15}); ml.position.set(-W/2-0.35,-0.6,0); tower.add(ml); }
     // token travelling up
@@ -28,7 +29,7 @@
     ctx.setCamera({theta:0.35,phi:1.35});
     let hovered=null, lastExp=-1; let eseed=spec.layers.length; const erand=()=>{ eseed=(eseed*9301+49297)%233280; return eseed/233280; }; // 固定種子：每次看到的專家一樣
     return { dispose(){ P.drop(tower); if(experts) P.drop(experts); },
-      update(dt){ ty=(ty+dt*(spec.speed||2.5))%(L*(h+gap)+1); tok.position.y=ty-0.5; const li=Math.min(L-1,Math.max(0,Math.floor((ty-0.5)/(h+gap))));
+      update(dt){ if(ctx.reduceMotion){ const park=Math.max(0,spec.layers.findIndex((ly,i)=>spec.isMoe?spec.isMoe(i,ly):(ly==='moe'||ly==='hash'))); ty=0.5+(park+0.5)*(h+gap); } else ty=(ty+dt*(spec.speed||2.5))%(L*(h+gap)+1); tok.position.y=ty-0.5; const li=Math.min(L-1,Math.max(0,Math.floor((ty-0.5)/(h+gap))));
         meshes.forEach((m,i)=>{ m.material.emissiveIntensity = (i===li?0.9:0.2) + (m===hovered?0.5:0); });
         if(experts){ const ly=spec.layers[li]; const isMoe=spec.isMoe?spec.isMoe(li,ly):(ly==='moe'||ly==='hash'); if(isMoe && li!==lastExp){ lastExp=li; expCells.forEach(c=>{c.material.emissiveIntensity=0.08;c.scale.setScalar(1);}); const k=Math.min(spec.topk,expCells.length); const used=new Set(); while(used.size<k){ used.add(Math.floor(erand()*expCells.length)); } used.forEach(i=>{expCells[i].material.emissiveIntensity=1;expCells[i].scale.setScalar(1.25);}); } }
         const hv=ctx.app.hover(meshes); if(hv!==hovered){ hovered=hv; if(hv){ const t=TYPE[hv.userData.type]; const target=ctx.app.catalog.find(x=>x.id===t.link); hoverInfo.innerHTML=`第 ${hv.userData.i+1} 層：<b>${t.label}</b> `; const go=window.h('button','btn sm',`看「${target?target.title:t.link}」→`); go.addEventListener('click',()=>{ location.hash=t.link; }); hoverInfo.appendChild(go); } } } };

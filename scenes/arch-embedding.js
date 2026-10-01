@@ -43,16 +43,17 @@ App.register({
     const cloud = EmbedCloud.build(ctx, root);
     const set = ctrl.readouts([{id:'n1',label:'最近鄰 1'},{id:'n2',label:'最近鄰 2'},{id:'n3',label:'最近鄰 3'}]);
     ctrl.heading('丟一個新詞進去');
-    ctrl.segmented(null, EmbedCloud.QUERIES.map((q,i)=>({id:String(i),label:q.label.replace(/（.*）/,'')})), null, (id)=>{
+    const seg = ctrl.segmented(null, EmbedCloud.QUERIES.map((q,i)=>({id:String(i),label:q.label.replace(/（.*）/,'')})), null, (id)=>{
       const q=EmbedCloud.QUERIES[+id]; const pos=new T.Vector3(...q.pos); const nn=cloud.highlight(pos,q.label);
       nn.forEach((x,i)=>set('n'+(i+1), `${x.p.word}  距離 ${x.d.toFixed(2)}`)); // 最近鄰就是用這個歐氏距離排的，讀數和畫面一致
       note.innerHTML = q.c ? `<p><b>${q.label}</b> 落在「${{animal:'動物',food:'食物',tech:'技術'}[q.c]}」那一群旁邊。模型從沒看過這個詞也沒關係，只要它出現的語境相似，向量就會被訓練到相近的位置。</p>`
         : `<p><b>${q.label}</b> 同時跟動物和食物有關，所以落在兩群中間。這是 embedding 比關鍵字比對強的地方：關係是連續的，不是非此即彼。</p>`;
     });
-    ctrl.buttons([{label:'清除',onClick:()=>{cloud.clear();['n1','n2','n3'].forEach(k=>set(k,'—'));}}]);
-    const note = ctrl.note(`<p>每個詞是空間裡的一個點（這裡是 3 維示意，真實模型是 384～4096 維）。訓練目標是讓語境相似的詞靠近。</p>
+    ctrl.buttons([{label:'清除',onClick:()=>{cloud.clear();['n1','n2','n3'].forEach(k=>set(k,'—')); seg.set(null); note.innerHTML=NOTE_DEFAULT;}}]);
+    const NOTE_DEFAULT = `<p>每個詞是空間裡的一個點（這裡是 3 維示意，真實模型是 384～4096 維）。訓練目標是讓語境相似的詞靠近。</p>
       <p><b>word2vec</b>：一個詞一個固定點。<b>sentence embedding</b>（如 all-MiniLM）：整句話壓成一個點。<b>late interaction</b>（如 ColBERT）：每個 token 各留一個點，查詢時逐 token 比對再加總。</p>
-      <p class="hint">座標是手排的示意，不是真實向量。</p>`);
+      <p class="hint">座標是手排的示意，不是真實向量。</p>`;
+    const note = ctrl.note(NOTE_DEFAULT);
     ctx.legend([['signal','動物'],['flow','食物'],['memory','技術'],['state','新詞與最近鄰']]);
     ctx.setCamera({theta:0.7,phi:1.15});
   },

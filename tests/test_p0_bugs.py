@@ -126,7 +126,7 @@ def test_goal_marker_rests_on_a_node_after_every_step(site):
     site.goto("goal")
     for step in range(6):
         site.ctrl_button("單步").click()
-        site.page.wait_for_timeout(50)
+        site.page.wait_for_timeout(900)  # the marker glides to its node; it must come to rest ON one
         assert site.ev(MARKER_ON_NODE), f"after step {step + 1} the marker sits between nodes"
 
 

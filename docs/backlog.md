@@ -120,15 +120,16 @@
 
 ## P2 — 動態與過渡（手感）
 
-- [ ] **場景交叉淡入**：目前切場景是瞬間清空再出現。400ms 淡出 → 淡入，面板同步。
-- [ ] **鏡頭 ease**：`setCamera` / 雙擊重置 / 導覽切換都是瞬跳，改成補間。
-- [ ] **數值補間**：readout 直接換字，slider 一拉 3D 瞬跳。數字與 3D 屬性（scale、emissive、position）加 ease。
-- [ ] **統一「聚焦」機制**：hover 只有滑鼠能用，cnn / transformer / gguf / 模型塔的 hover 資訊在觸控與鍵盤上拿不到。做一個 focus 抽象：滑鼠 hover、觸控 tap、鍵盤 Tab 都能觸發。
-- [ ] **減少動態偏好全面支援**：目前只有 agent-loop:55、minilm:32、mhc:73 處理。未處理：`model-towers.js:30` token 無限往上跑 + 專家隨機閃爍、`optimize-kvcache.js:41` flash、`optimize-quant.js:71` GPTQ 波。
-- [ ] 迴圈 marker 動畫一致：agent-loop 有補間，subagent 與 goal 直接 `setT` 跳。
-- [ ] 一般模式鍵盤快捷鍵：上下場景、切分頁（目前只有導覽模式有 `[` `]`）。
-- [ ] 控制元件即時反應：GDN 的 β/α slider 下一步才生效（`arch-recurrent.js:103-104`）；vLLM 共享開關切換不重置。
-- [ ] 重置補齊：vLLM 沒有「全部清空」；Embedding「清除」不還原 segmented 的 `aria-pressed` 與說明文字（`arch-embedding.js:53`）。
+- [x] **場景交叉淡入**：舞台與面板 220ms 淡出 → 換場景 → 淡入；期間 `App.routing` 為 true；新場景從 1.12 倍距離 settle-in 700ms（2026-10-02）
+- [x] **鏡頭 ease**：`App.flyTo(spec, ms)`；雙擊重置用它；使用者拖曳 / 滾輪 / `fit()` 會取消進行中的補間（2026-10-02）
+- [x] **數值補間**：`core/motion.js` 的 `Motion.tween` 與 `Motion.text`；readout 的數字會滾動（`data-final` 存目標值）；Loop marker 用 `go()` 滑過去（2026-10-02）
+  - [ ] 3D 屬性（scale / emissive / position）在 slider 改動時的 ease，留到各場景逐一打磨（P3 視覺升級時一起）
+- [x] **統一「聚焦」機制**：`App.hover()` 優先回傳鍵盤聚焦物件；`App.focusTargets(objects, describe)` 在舞台放一排視覺隱藏、可 Tab 的按鈕；觸控點一下的位置會留著。已登記：cnn 輸出格、transformer query、gguf 張量磚、四座模型塔的層（2026-10-02）
+- [x] **減少動態偏好**：交叉淡入與所有補間瞬間完成；模型塔 token 停在第一個 MoE 層、專家格固定亮；kvcache 重算連線留著不淡出；GPTQ 波不移動（2026-10-02）
+- [x] 迴圈 marker 動畫一致：agent-loop / goal / subagent 都用 `Loop.go()`（2026-10-02）
+- [x] 一般模式鍵盤快捷鍵：`[` `]` 上下一個場景、`1`–`6` 切分頁；導覽模式時 `[` `]` 仍是上下一步（2026-10-02）
+- [x] GDN 的 β/α 一改就用新參數重走到目前的半步；vLLM 共享開關切換會用新政策重放目前的請求（2026-10-02）
+- [x] vLLM 加「全部清空」；Embedding「清除」還原 segmented 與說明（2026-10-02）
 
 ---
 

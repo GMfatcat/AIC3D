@@ -49,7 +49,7 @@ App.register({
     ctx.legend([['signal','Query token'],['memory','Key/Value token'],['flow','attention 權重（粗 = 大）'],['state','cross attention']]);
     ctx.setCamera({theta:0.15,phi:1.35});
     build();
-    this._hoverTargets = ()=> this.q.cubes; this._app = ctx.app;
+    this._hoverTargets = ()=> this.q.cubes; this._app = ctx.app; ctx.app.focusTargets(this.q.cubes,(m,i)=>`Query token ${i+1}`);
   },
   update(){
     const h = this._app.hover(this._hoverTargets());

@@ -58,8 +58,8 @@
       const errNaive=()=>{ let e=0,n=0; for(const x of Xin){ for(let j=0;j<C;j++){ let a=0,b=0; for(let i=0;i<R;i++){ a+=x[i]*W0[i][j]; b+=x[i]*(j<col?q(W0[i][j]):W0[i][j]); } e+=(a-b)*(a-b); n++; } } return Math.sqrt(e/n); };
       const paint=()=>{ cells.forEach(c=>{ const done=c.j<col; const v=done?Q[c.i][c.j]:W[c.i][c.j]; c.m.material.color.copy(P.C(done?'signal':'memory')); c.m.material.emissive.copy(c.m.material.color); c.m.material.emissiveIntensity=0.15+Math.abs(v)*0.8; c.m.scale.y=0.3+Math.abs(v)*0.7; c.m.position.y=((R-1)/2-c.i)*0.85+(v>0?0.1:-0.1)*Math.abs(v); });
         set('col',`${col} / ${C}`); const e=err(), en=errNaive(); set('err',e.toFixed(3)); set('naive',en.toFixed(3)); bar([{frac:Math.min(1,e/1.2),color:'signal'}]); bar2([{frac:Math.min(1,en/1.2),color:'alert'}]); };
-      const doStep=()=>{ if(col>=C) return false; const j=col; for(let i=0;i<R;i++){ Q[i][j]=q(W[i][j]); const e=W[i][j]-Q[i][j]; if(comp) for(let k=j+1;k<C;k++) W[i][k]-=e*Hinv(j,k); } col++; wave.position.x=(j-(C-1)/2)*0.85; waveT=1; paint(); return col<C; };
-      const reset=()=>{ W=W0.map(r=>r.slice()); Q=W0.map(r=>r.map(()=>0)); col=0; waveT=0; paint(); };
+      const doStep=()=>{ if(col>=C) return false; const j=col; for(let i=0;i<R;i++){ Q[i][j]=q(W[i][j]); const e=W[i][j]-Q[i][j]; if(comp) for(let k=j+1;k<C;k++) W[i][k]-=e*Hinv(j,k); } col++; wave.position.x=(j-(C-1)/2)*0.85; if(ctx.reduceMotion){ waveT=0; wave.material.opacity=0.25; } else waveT=1; paint(); return col<C; };
+      const reset=()=>{ W=W0.map(r=>r.slice()); Q=W0.map(r=>r.map(()=>0)); col=0; waveT=0; wave.material.opacity=0; paint(); };
       ctrl.heading('一欄一欄量化'); ctrl.segmented(null,[{id:'on',label:'GPTQ：補償'},{id:'off',label:'直接四捨五入'}],'on',id=>{comp=id==='on';reset();});
       ctrl.stepper({onStep:doStep,onReset:reset,interval:600});
       const set=ctrl.readouts([{id:'col',label:'已量化的欄'},{id:'err',label:'輸出誤差（這個方法）'},{id:'naive',label:'輸出誤差（直接四捨五入）'}]);

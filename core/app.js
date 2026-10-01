@@ -32,7 +32,7 @@ const App = {
     this.grid = new T.GridHelper(200, 200, 0x1B2536, 0x16202E); this.scene.add(this.grid);
     this.labelLayer = document.getElementById('labels');
     (window.__pendingLabels||[]).forEach(l=>this.labels.add(l));
-    this.reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches; Motion.reduce = this.reduceMotion;
     this.clock = new T.Clock();
     this._orbit(); this._nav();
     // 舞台大小會在沒有 window resize 的情況下變（字型載入、手機版面板高度），所以直接觀察舞台元素
@@ -42,6 +42,7 @@ const App = {
     const loop = ()=>{
       const dt=Math.min(0.05,this.clock.getDelta());
       if(this.current?.update) this.current.update(dt);
+      Motion.tick(dt);
       if(this.autoSpin && !this.dragging && !this.reduceMotion){ this.cam.theta += 0.072*dt; this._placeCamera(); } // 以時間計，120Hz 和 60Hz 轉一樣快
       this._shadows(); this.renderer.render(this.scene,this.camera); this._projectLabels();
       requestAnimationFrame(loop);
@@ -73,19 +74,23 @@ const App = {
     this.cam = {theta:0.5, phi:1.2, dist:18, zoom:1, target:new T.Vector3()}; this.camHome = null; this.bounds=null; this._disposers=[];
     const c=this.canvas; let drag=null, mode=null; const touches=new Map();
     c.addEventListener('contextmenu',e=>e.preventDefault());
-    c.addEventListener('pointerdown',e=>{ touches.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(touches.size===2){ mode='pinch'; return; } drag={x:e.clientX,y:e.clientY}; mode=(e.button===2||e.button===1||e.shiftKey)?'pan':'rotate'; this.dragging=true; this.autoSpin=false; c.setPointerCapture(e.pointerId); });
+    c.addEventListener('pointerdown',e=>{ this._camTween&&this._camTween.cancel(); this._setPointer(e); touches.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(touches.size===2){ mode='pinch'; return; } drag={x:e.clientX,y:e.clientY}; mode=(e.button===2||e.button===1||e.shiftKey)?'pan':'rotate'; this.dragging=true; this.autoSpin=false; c.setPointerCapture(e.pointerId); });
     c.addEventListener('pointermove',e=>{
       if(mode==='pinch' && touches.has(e.pointerId)){ const prev=[...touches.values()]; const pc={x:(prev[0].x+prev[1].x)/2,y:(prev[0].y+prev[1].y)/2}; const pd=Math.hypot(prev[0].x-prev[1].x,prev[0].y-prev[1].y); touches.set(e.pointerId,{x:e.clientX,y:e.clientY}); const cur=[...touches.values()]; const cc={x:(cur[0].x+cur[1].x)/2,y:(cur[0].y+cur[1].y)/2}; const cd=Math.hypot(cur[0].x-cur[1].x,cur[0].y-cur[1].y); this._pan(cc.x-pc.x, cc.y-pc.y); if(pd>0) this.cam.dist=this._clampDist(this.cam.dist*pd/cd); this._placeCamera(); return; }
       if(!drag) return; const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag={x:e.clientX,y:e.clientY};
       if(mode==='pan') this._pan(dx,dy); else { this.cam.theta-=dx*0.006; this.cam.phi=Math.max(0.15,Math.min(2.95,this.cam.phi-dy*0.006)); }
       this._placeCamera(); });
     const up=e=>{ touches.delete(e.pointerId); if(touches.size<2){ mode=null; drag=null; this.dragging=false; } }; c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up);
-    c.addEventListener('wheel',e=>{ e.preventDefault(); this.cam.dist=this._clampDist(this.cam.dist*(1+Math.sign(e.deltaY)*0.08)); this._placeCamera(); },{passive:false});
-    c.addEventListener('dblclick',()=>{ if(this.camHome) this.setCamera(this.camHome,true); });
-    addEventListener('keydown',e=>{ if(e.target.closest('input,select,textarea,button')) return; const k=e.key; const step=0.08*this.cam.dist; if(k==='ArrowLeft') this._pan(-step*12,0); else if(k==='ArrowRight') this._pan(step*12,0); else if(k==='ArrowUp') this._pan(0,-step*12); else if(k==='ArrowDown') this._pan(0,step*12); else if(k==='f'||k==='F'){ this.fit(); return; } else return; e.preventDefault(); this._placeCamera(); });
+    c.addEventListener('wheel',e=>{ e.preventDefault(); this._camTween&&this._camTween.cancel(); this.cam.dist=this._clampDist(this.cam.dist*(1+Math.sign(e.deltaY)*0.08)); this._placeCamera(); },{passive:false});
+    c.addEventListener('dblclick',()=>{ if(this.camHome) this.flyTo(this.camHome,500); });
+    addEventListener('keydown',e=>{ if(e.target.closest('input,select,textarea,button')) return; const k=e.key;
+      if(!this._inTour && this.currentItem){ // [ ] 上下一個場景、1–6 切分頁（導覽模式的 [ ] 由 tours.js 接手）
+        if(k===']'||k==='['){ const i=catalog.indexOf(this.currentItem); location.hash=catalog[(i+(k===']'?1:-1)+catalog.length)%catalog.length].id; e.preventDefault(); return; }
+        if(/^[1-6]$/.test(k)){ const first=catalog.find(x=>x.tab===TABS[+k-1].id); if(first){ location.hash=first.id; e.preventDefault(); } return; } }
+      const step=0.08*this.cam.dist; if(k==='ArrowLeft') this._pan(-step*12,0); else if(k==='ArrowRight') this._pan(step*12,0); else if(k==='ArrowUp') this._pan(0,-step*12); else if(k==='ArrowDown') this._pan(0,step*12); else if(k==='f'||k==='F'){ this.fit(); return; } else return; e.preventDefault(); this._placeCamera(); });
     this.pointer = new T.Vector2(-9,-9); this.raycaster = new T.Raycaster();
-    c.addEventListener('pointermove',e=>{ const r=c.getBoundingClientRect(); this.pointer.set(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1); });
-    c.addEventListener('pointerleave',()=>this.pointer.set(-9,-9));
+    c.addEventListener('pointermove',e=>this._setPointer(e));
+    c.addEventListener('pointerleave',e=>{ if(e.pointerType!=='touch') this.pointer.set(-9,-9); }); // 觸控：點一下的位置要留著，hover 資訊才拿得到
   },
   _pan(dx,dy){ // 螢幕像素 → 世界位移（沿攝影機的右/上向量），限制在 bounds 內
     const r=this.canvas.getBoundingClientRect(); const h=2*this.cam.dist*Math.tan(this.camera.fov*Math.PI/360); const k=h/r.height;
@@ -98,7 +103,7 @@ const App = {
   /* 場景能決定的是視角（theta / phi）與 zoom（相對自動取景距離的倍數）；距離與目標由 fit() 依內容算 */
   setCamera({theta,phi,zoom,dist,target},isHome){ Object.assign(this.cam,{theta,phi}); if(zoom) this.cam.zoom=zoom; if(isHome){ if(dist) this.cam.dist=dist; if(target) this.cam.target.copy(target); } this._placeCamera(); },
   /* 以 root 的 bounding box 自動定距離與目標；保留場景給的 theta/phi，乘上 zoom */
-  fit(){
+  fit(){ this._camTween&&this._camTween.cancel(); // 重新取景就取消進行中的鏡頭補間
     const box=new T.Box3().setFromObject(this.root); if(box.isEmpty()){ this.camHome={...this.cam,target:this.cam.target.clone()}; return; }
     const size=box.getSize(new T.Vector3()), center=box.getCenter(new T.Vector3());
     const aspect=this.camera.aspect||1.6; const fovV=this.camera.fov*Math.PI/180; const fovH=2*Math.atan(Math.tan(fovV/2)*aspect);
@@ -113,7 +118,15 @@ const App = {
   },
   _placeCamera(){ const {theta,phi,dist,target}=this.cam; this.camera.position.set(dist*Math.sin(phi)*Math.sin(theta), dist*Math.cos(phi), dist*Math.sin(phi)*Math.cos(theta)).add(target); this.camera.lookAt(target); },
   _resize(){ const r=this.canvas.parentElement.getBoundingClientRect(); this.renderer.setSize(r.width,r.height,false); this.camera.aspect=r.width/r.height; this.camera.updateProjectionMatrix(); this._placeCamera(); },
-  hover(objects){ this.raycaster.setFromCamera(this.pointer,this.camera); const hits=this.raycaster.intersectObjects(objects,false); return hits.length?hits[0].object:null; },
+  _setPointer(e){ const r=this.canvas.getBoundingClientRect(); this.pointer.set(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1); },
+  /* 統一的「聚焦」：鍵盤聚焦的物件優先，否則用滑鼠 / 觸控位置 raycast */
+  hover(objects){ if(this.keyFocus && objects.includes(this.keyFocus)) return this.keyFocus; this.raycaster.setFromCamera(this.pointer,this.camera); const hits=this.raycaster.intersectObjects(objects,false); return hits.length?hits[0].object:null; },
+  /* 場景把可 hover 的物件登記進來，就會得到一排視覺上隱藏、但可 Tab 到的按鈕（鍵盤與螢幕閱讀器的路徑） */
+  focusTargets(objects, describe){ let list=this._focusList; if(!list){ list=document.createElement('div'); list.className='focuslist'; list.setAttribute('aria-label','可用鍵盤聚焦的 3D 物件'); document.getElementById('stage').appendChild(list); this._focusList=list; }
+    list.innerHTML=''; this.keyFocus=null; objects.forEach((o,i)=>{ const b=document.createElement('button'); b.type='button'; b.textContent=describe?describe(o,i):`物件 ${i+1}`; b.addEventListener('focus',()=>{ this.keyFocus=o; }); b.addEventListener('blur',()=>{ if(this.keyFocus===o) this.keyFocus=null; }); list.appendChild(b); }); },
+  /* 鏡頭補間到指定視角（雙擊重置、導覽切換用） */
+  flyTo({theta,phi,dist,target},ms=500){ this.autoSpin=false; const cur=this.cam; const d=((theta-cur.theta+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI; this._camTween&&this._camTween.cancel();
+    this._camTween=Motion.tween(cur,{theta:cur.theta+d,phi,dist},{ms,ease:'inOut',onUpdate:()=>this._placeCamera()}); if(target) Motion.tween(cur.target,{x:target.x,y:target.y,z:target.z},{ms,ease:'inOut'}); },
 
   /* ---------- navigation ---------- */
   _nav(){
@@ -133,8 +146,12 @@ const App = {
     document.querySelectorAll('#tabs button').forEach(b=>{ const on=b.dataset.tab===item.tab; b.setAttribute('aria-selected',String(on)); b.tabIndex=on?0:-1; });
     const list=document.getElementById('items'); list.innerHTML='';
     catalog.filter(i=>i.tab===item.tab).forEach(i=>{ const b=document.createElement('button'); b.textContent=i.title; if(!scenes[i.id]){ b.classList.add('todo'); b.innerHTML=`${i.title}<i>規劃中</i>`; } b.setAttribute('aria-current',String(i.id===item.id)); b.addEventListener('click',()=>location.hash=i.id); list.appendChild(b); });
-    this.show(item);
+    this._go(item);
   },
+  /* 交叉淡入：舞台與面板淡出 → 換場景 → 淡入。期間 App.routing 為 true。 */
+  _go(item){ if(this.routing){ this._pendingItem=item; return; } if(!this.current || this.reduceMotion){ this.show(item); return; }
+    this.routing=true; this._pendingItem=item; document.body.classList.add('is-switching');
+    setTimeout(()=>{ const it=this._pendingItem; this._pendingItem=null; this.show(it); requestAnimationFrame(()=>{ document.body.classList.remove('is-switching'); this.routing=false; }); }, 220); },
 
   /* ---------- scene lifecycle ---------- */
   show(item){
@@ -146,7 +163,7 @@ const App = {
     this.ctrl = new Controls(document.getElementById('ctrl'));
     document.getElementById('i-title').textContent=item.title; document.getElementById('i-q').textContent=item.question||'';
     this.canvas.setAttribute('aria-label',`3D 場景：${item.title}。${item.question||''} 文字說明在右側面板。`);
-    this.autoSpin = true; this.cam.zoom = 1;
+    this.autoSpin = true; this.cam.zoom = 1; this.currentItem=item; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML='';
     const def = scenes[item.id];
     if(!def){ this.current = this._placeholder(item); this.fit(); return; }
     const ctx = { app:this, THREE:T, P, scene:this.scene, root:this.root, ctrl:this.ctrl, overlay:document.getElementById('overlay'), legend:(items)=>this.legend(items), setCamera:(c)=>this.setCamera(c), reduceMotion:this.reduceMotion,
@@ -155,6 +172,7 @@ const App = {
     const inst = Object.create(def); inst.init(ctx); this.current = inst;
     document.getElementById('i-q').textContent = def.question || item.question || '';
     this.root.updateMatrixWorld(true); this.fit();
+    if(!this.reduceMotion){ const home=this.cam.dist; this.cam.dist=home*1.12; this._placeCamera(); this._camTween=Motion.tween(this.cam,{dist:home},{ms:700,ease:'out',onUpdate:()=>this._placeCamera()}); } // 從稍遠處緩緩靠近（settle-in）
   },
   legend(items){ const l=document.getElementById('legend'); l.innerHTML=''; items.forEach(([color,text])=>{ const s=document.createElement('span'); const hx=P.hex(color); s.innerHTML=`<i style="background:${hx}"></i>${text}`; l.appendChild(s); }); },
   _placeholder(item){

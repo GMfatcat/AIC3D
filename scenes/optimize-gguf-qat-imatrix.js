@@ -22,7 +22,7 @@
         <p>搭配 Imatrix（下一個場景）時，量化器會依重要度決定每個 block 的 scale 怎麼取——型別不變、誤差更小。</p>`);
       ctx.legend([['memory','F16'],['flow','Q8_0'],['state','Q6_K'],['signal','Q5_K'],['signal:dim','Q4_K'],['inactive','Q3_K'],['structure','F32（norm 等小張量）']]);
       ctx.setCamera({theta:0.15,phi:1.4}); layout();
-      const brickMeshes=bricks.map(b=>b.mesh); this.update=()=>{ const hv=ctx.app.hover(brickMeshes); if(hv!==hovered){ hovered=hv; bricks.forEach(b=>{ b.mesh.material.emissiveIntensity=b.mesh===hv?0.7:0.15; }); describe(); } }; } });
+      const brickMeshes=bricks.map(b=>b.mesh); ctx.app.focusTargets(brickMeshes,m=>m.userData.t.n); this.update=()=>{ const hv=ctx.app.hover(brickMeshes); if(hv!==hovered){ hovered=hv; bricks.forEach(b=>{ b.mesh.material.emissiveIntensity=b.mesh===hv?0.7:0.15; }); describe(); } }; } });
 
   /* ---------------- QAT ---------------- */
   App.register({ id:'qat', tab:'optimize', question:'訓練時就知道會被量化，有什麼差？',

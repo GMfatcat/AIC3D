@@ -42,7 +42,8 @@ class Site:
     def goto(self, hash_, settle=400):
         """Navigate to a scene (or tour) by hash and wait for it to mount."""
         self.page.evaluate("h => { location.hash = h; }", hash_)
-        self.page.wait_for_function("window.App && App.current")
+        # hashchange is async: wait until the scene for THIS hash is mounted and the crossfade is over
+        self.page.wait_for_function("h => window.App && App.currentItem && !App.routing && (h.startsWith('tour=') || App.currentItem.id === h)", arg=hash_)
         self.page.wait_for_timeout(settle)
         return self
 
@@ -68,8 +69,14 @@ class Site:
                 const dts = [...document.querySelectorAll('#ctrl .readouts dt')];
                 const dt = dts.find(d => d.textContent.trim() === label);
                 if (!dt) throw new Error('readout not found: ' + label);
-                return dt.nextElementSibling.textContent;
+                const dd = dt.nextElementSibling; return dd.dataset.final ?? dd.textContent;  // the value it is settling to
             }""", label_text)
+
+    def readout_text(self, label_text):
+        """What the readout literally shows right now (mid-tween)."""
+        return self.page.evaluate(
+            """label => { const dt = [...document.querySelectorAll('#ctrl .readouts dt')].find(d => d.textContent.trim() === label);
+                return dt.nextElementSibling.textContent; }""", label_text)
 
     def assert_clean(self):
         assert not self.errors, "\n".join(self.errors)
@@ -81,7 +88,7 @@ def site(browser, dist_url):
     page = ctx.new_page()
     s = Site(page)
     page.goto(dist_url)
-    page.wait_for_function("window.App && App.current")
+    page.wait_for_function("window.App && App.current && !App.routing")
     yield s
     ctx.close()
 

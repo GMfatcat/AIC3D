@@ -38,6 +38,6 @@ App.register({
     ctx.legend([['memory','K 片 / HBM 佔用'],['state','V 片'],['signal','已生成 token'],['alert','沒有 cache 時重算的 attention']]);
     ctx.setCamera({theta:0.3,phi:1.3});
     redraw();
-    this.update=(dt)=>{ if(flash>0){ flash=Math.max(0,flash-dt*1.6); if(!useCache) paintFlash(); } }; // 每幀只更新連線，不重寫 readout
+    this.update=(dt)=>{ if(flash>0 && !ctx.reduceMotion){ flash=Math.max(0,flash-dt*1.6); if(!useCache) paintFlash(); } }; // 減少動態：連線留著不淡出 // 每幀只更新連線，不重寫 readout
   },
 });

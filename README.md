@@ -49,6 +49,8 @@ id 必須對應 `_catalog.js` 裡的 id，存檔後 `python build.py` 即可。
 - 相機：`ctx.setCamera({theta, phi, zoom})`。距離與目標由 `fit()` 依內容自動算，`zoom` 是倍數（1.3 = 退遠一點）。
 - 重建物件時用 `P.drop(obj)`（移除 + 釋放）或 `P.clear(group)`，不要只 `remove`。被 remove 的 3D 文字標籤會自動註銷。
 - 自己開的 timer / listener 用 `ctx.onDispose(() => ...)` 登記清理。
-- hover 用 `ctx.app.hover(meshes)`，不要碰全域 `App`。
+- hover 用 `ctx.app.hover(meshes)`，不要碰全域 `App`。可 hover 的物件同時用 `ctx.app.focusTargets(meshes, (m, i) => '描述')` 登記，鍵盤與螢幕閱讀器才有路徑。
+- 動畫用 `Motion.tween(obj, {x: 1}, {ms, ease, onUpdate})`；`prefers-reduced-motion` 時會瞬間完成，場景自己的每幀動畫要看 `ctx.reduceMotion`。迴圈 marker 用 `loop.go(t)`。readout 的數字會自動滾動補間。
+- 換場景有 220ms 交叉淡入，`App.routing` 為 true 時表示還在切換；測試用 `site.goto(id)` 會等到切換完成。
 - 面板樣式用 theme.css 的 class（`.log`、`.ovl-card`、`.bitchip`、`.complist`…），不要 inline style。
 - 圖例顏色不能重複；每個 readout 的 `bad` / `ok` 自帶 ▲ / ✓。

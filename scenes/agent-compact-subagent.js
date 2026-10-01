@@ -45,8 +45,8 @@
       const render=()=>{ const put=(bar,ch)=>{ bar.innerHTML=''; ch.forEach(c=>{ const el=h('i'); el.style.width=(100*c.n/CAP)+'%'; el.style.background=`var(--${KIND[c.k]||'inactive'})`; bar.appendChild(el); }); return ch.reduce((s,c)=>s+c.n,0); };
         const mt=put(mainBar,mainChunks), st=put(subBar,subChunks); set('main',`${mt} / ${CAP}`,mt>CAP*0.85?'bad':'ok'); set('sub',mode==='sub'?`${st} / ${CAP}`:'—'); subLabel.style.display=mode==='sub'?'':'none'; subBar.style.display=mode==='sub'?'':'none'; };
       const step=()=>{ const S=mode==='sub'?SCRIPT_SUB:SCRIPT_FLAT; if(i>=S.length) return false; const s=S[i++];
-        if(s.s){ sub.group.visible=true; s.s.forEach((n,j)=>{ subChunks.push({n,k:['tool','result'][j%2]}); }); sub.setT(sub.t+3); root.updateMatrixWorld(true); const a=main.pos[2].clone().add(main.group.position), b=sub.pos[0].clone().add(sub.group.position); link.set(0,a,b,0.7,'flow'); }
-        else { mainChunks.push({n:s.n,k:s.k}); main.setT(main.t+((s.m-Math.round(main.t)%4+4)%4||4)); if(s.k==='summary'){ root.updateMatrixWorld(true); const a=sub.pos[3].clone().add(sub.group.position), b=main.pos[3].clone().add(main.group.position); link.set(1,a,b,0.7,'memory'); } }
+        if(s.s){ sub.group.visible=true; s.s.forEach((n,j)=>{ subChunks.push({n,k:['tool','result'][j%2]}); }); sub.go(sub.t+3); root.updateMatrixWorld(true); const a=main.pos[2].clone().add(main.group.position), b=sub.pos[0].clone().add(sub.group.position); link.set(0,a,b,0.7,'flow'); }
+        else { mainChunks.push({n:s.n,k:s.k}); main.go(main.t+((s.m-Math.round(main.t)%4+4)%4||4)); if(s.k==='summary'){ root.updateMatrixWorld(true); const a=sub.pos[3].clone().add(sub.group.position), b=main.pos[3].clone().add(main.group.position); link.set(1,a,b,0.7,'memory'); } }
         render(); return i<S.length; };
       const reset=()=>{ i=0; mainChunks=[]; subChunks=[]; main.setT(0); sub.setT(0); sub.group.visible=false; link.hideAll(); render(); };
       ctrl.heading('同一個任務，兩種做法');
