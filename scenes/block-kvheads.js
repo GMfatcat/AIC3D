@@ -15,7 +15,7 @@ App.register({
     const kvG=new T.Group(); kvG.position.y=-1.4; root.add(kvG);
     const kvs=[]; for(let i=0;i<NQ;i++){ const m=new T.Mesh(plateGeo,P.mat('memory',{glow:0.4})); kvG.add(m); kvs.push(m); }
     const latent=new T.Mesh(new T.CylinderGeometry(0.3,0.3,1.4,24),P.mat('state',{glow:0.6})); latent.visible=false; kvG.add(latent);
-    const upProj=new T.Mesh(new T.CylinderGeometry(2.6,0.3,0.9,32,1,true),new T.MeshStandardMaterial({color:P.C('state'),emissive:P.C('state'),emissiveIntensity:0.2,transparent:true,opacity:0.18,side:T.DoubleSide})); upProj.position.y=1.2; upProj.visible=false; kvG.add(upProj);
+    const upProj=new T.Mesh(new T.CylinderGeometry(2.6,0.3,0.9,32,1,true),P.mat('state',{glow:0.2,opacity:0.18,extra:{side:T.DoubleSide}})); upProj.position.y=1.2; upProj.visible=false; kvG.add(upProj);
     const kl=P.label('',{size:22}); kl.position.set(0,-1.1,0); kvG.add(kl);
     const beams=new P.BeamSet(NQ,{maxR:0.05,minR:0.03}); root.add(beams.group);
     // cache bar in 3D (right side)
@@ -37,7 +37,7 @@ App.register({
     const set=ctrl.readouts([{id:'kv',label:'K/V 頭數'},{id:'dim',label:'每 token 存的維度'},{id:'cache',label:'cache 相對大小'},{id:'q',label:'表達力'}]);
     const note=ctrl.note('');
     ctx.legend([['signal','Q 頭'],['memory','K/V 頭'],['flow','Q → 它用的 K/V'],['state','MLA 的 latent 與上投影']]);
-    ctx.setCamera({theta:0.2,phi:1.35,dist:14});
+    ctx.setCamera({theta:0.2,phi:1.35});
     apply(0);
   },
 });

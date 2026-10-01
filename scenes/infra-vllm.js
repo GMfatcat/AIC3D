@@ -23,7 +23,7 @@ App.register({
     const grow=()=>{ seqs.forEach(s=>{ if(s.len>=MAXLEN) return; const f=freePage(); if(f<0) return; phys[f].refs++; phys[f].owner=s.color; s.pages.push(f); s.len++; }); redraw(); };
     let logicMeshes=[]; const a=new T.Vector3(), b=new T.Vector3();
     const redraw=()=>{
-      logicMeshes.forEach(m=>logicG.remove(m)); logicMeshes=[];
+      logicMeshes.forEach(m=>P.drop(m)); logicMeshes=[];
       phys.forEach(p=>{ const c=p.refs===0?'inactive':p.shared?'structure':p.owner; p.mesh.material.color.copy(P.C(c)); p.mesh.material.emissive.copy(P.C(c)); p.mesh.material.emissiveIntensity=p.refs===0?0.05:0.45; p.mesh.material.opacity=p.refs===0?0.5:1; p.mesh.scale.y=p.refs===0?1:1+0.25*p.refs; });
       beams.hideAll(); root.updateMatrixWorld(true); let bi=0;
       seqs.forEach((s,si)=>{ const y=2.0-si*0.95; const lab=P.label(`請求 ${s.id} · ${s.len} block`,{size:18}); lab.position.set(-3.2,y,0); logicG.add(lab); logicMeshes.push(lab);
@@ -37,7 +37,7 @@ App.register({
       ctx.legend([['inactive','空 page'],['structure','共享 page（多個請求引用）'],...seqs.map(s=>[s.color,`請求 ${s.id} 的 block / page / 對應線`])]);
       set('shared', prefixPages?`${prefixPages.length} page × ${seqs.filter(s=>s.pages.some(f=>prefixPages.includes(f))).length} 個請求`:'—');
     };
-    const msgEl=ctrl.html('','hint'); const msg=t=>{msgEl.textContent=t; setTimeout(()=>{if(msgEl.textContent===t)msgEl.textContent='';},3500);};
+    const msgEl=ctrl.html('','hint'); let msgTimer=null; const msg=t=>{msgEl.textContent=t; clearTimeout(msgTimer); msgTimer=setTimeout(()=>{if(msgEl.textContent===t)msgEl.textContent='';},3500);}; ctx.onDispose(()=>clearTimeout(msgTimer));
     ctrl.heading('請求進出');
     ctrl.buttons([{label:'新增請求',onClick:addSeq,primary:true},{label:'全部生成一步',onClick:grow},{label:'結束一個請求',onClick:endSeq}]);
     ctrl.segmented('新請求的 system prompt',[{id:'no',label:'各自存一份'},{id:'yes',label:'共享 prefix page'}],'no',id=>{share=id==='yes';});
@@ -46,7 +46,7 @@ App.register({
     ctrl.note(`<p>傳統做法替每個請求<b>預留最長可能長度</b>的連續空間，沒用到的部分別人也不能用（紅色）。</p>
       <p><b>PagedAttention</b> 把 KV cache 切成固定大小的 page，邏輯上連續、物理上散放，用一張對應表找。任何空 page 都能給任何請求，請求結束 page 立刻回收——這就是 vLLM 能把 batch 塞很大的原因。</p>
       <p>同一個 page 可以被多個請求<b>引用</b>（灰色）：共享 system prompt 只存一份，用 copy-on-write 處理分岔。</p>`);
-    ctx.setCamera({theta:0.35,phi:1.05,dist:17,target:new T.Vector3(-1.5,0,0)});
+    ctx.setCamera({theta:0.35,phi:1.05});
     addSeq(); addSeq(); redraw();
   },
 });

@@ -1,6 +1,6 @@
 :root{
   --bg:#0E1420; --bg2:#151D2C; --bg3:#1C2637; --panel:rgba(21,29,44,.88); --line:#2A3446;
-  --fg:#E8ECF3; --fg2:#9AA6BA; --fg3:#5F6C83;
+  --fg:#E8ECF3; --fg2:#9AA6BA; --fg3:#7F8BA0; /* fg3 在 bg2 上 4.9:1，12px 提示字才過 AA */
   /* 語意色（--signal、--memory、--state、--flow、--alert、--moe、--inactive、--structure 與 -dim / -hot）由 core/primitives.js 的 P.ROLE 產生，這裡不另外定義 */
   --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
@@ -71,6 +71,16 @@ select.sel{font:inherit;font-size:13px;background:var(--bg3);color:var(--fg);bor
 .readouts{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px;}
 .readouts dt{color:var(--fg2);} .readouts dd{margin:0;font-family:var(--mono);text-align:right;}
 .readouts dd.bad{color:var(--alert);} .readouts dd.ok{color:var(--flow);}
+.readouts dd.bad::before{content:'▲ ';font-size:9px;vertical-align:1px;} .readouts dd.ok::before{content:'✓ ';font-size:11px;} /* 不只靠顏色 */
+.log{font-family:var(--mono);font-size:11.5px;color:var(--fg3);white-space:pre-wrap;max-height:120px;min-height:80px;overflow:auto;}
+.complist{display:flex;flex-direction:column;gap:3px;font-size:13px;} .complist div{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.complist i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;} .complist .n{font-family:var(--mono);}
+.btn.sm{padding:2px 8px;font-size:12px;margin-left:6px;}
+.bitrow{margin-bottom:8px;} .bits{font-family:var(--mono);font-size:12px;margin-top:2px;} .bitchip{padding:1px 4px;border-radius:3px;} .bitchip.sign{background:var(--inactive);} .bitchip.exp{background:var(--flow);} .bitchip.man{background:var(--state);}
+/* 舞台右上角的浮動圖卡（mHC 能量圖、Engram U 曲線） */
+.ovl-card{position:absolute;right:14px;top:14px;width:260px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;backdrop-filter:blur(8px);}
+.ovl-card .hint{margin-bottom:4px;} .ovl-card canvas{display:block;width:100%;}
+@media (max-width:900px){ .ovl-card{width:min(220px,46%);padding:8px 10px;} }
 .note{font-size:13px;color:var(--fg2);border-top:1px solid var(--line);padding-top:12px;}
 .note b{color:var(--fg);font-weight:500;}
 .note p{margin:0 0 8px;}

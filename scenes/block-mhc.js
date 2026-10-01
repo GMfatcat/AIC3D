@@ -20,7 +20,7 @@ App.register({
     const g=new T.Group(); root.add(g); g.position.y=-(L*LAYER_H)/2;
     const segGeo=new T.CylinderGeometry(1,1,SEG_H,20,1); let segs=[]; let beams;
     const sx=(i,k)=>(i-(k-1)/2)*DX;
-    const build=k=>{ while(g.children.length) g.remove(g.children[0]); segs=[];
+    const build=k=>{ P.clear(g); segs=[];
       for(let l=0;l<=L;l++)for(let i=0;i<k;i++){const m=new T.Mesh(segGeo,P.mat('signal',{glow:0.5}));m.position.set(sx(i,k),l*LAYER_H,0);g.add(m);segs.push(m);}
       beams=new P.BeamSet(L*k*k,{maxR:0.07,minR:0.012}); g.add(beams.group);
       const l0=P.label('輸入 x₀',{size:24}); l0.position.set(0,-0.9,0); g.add(l0); const l1=P.label('第 16 層 x₁₆',{size:24}); l1.position.set(0,L*LAYER_H+0.9,0); g.add(l1); };
@@ -44,8 +44,7 @@ App.register({
     const set=ctrl.readouts([{id:'norm',label:'‖H‖₂（譜範數）'},{id:'row',label:'行和範圍'},{id:'col',label:'列和範圍'},{id:'out',label:'第 16 層幅度'}]);
     const verdict=ctrl.note('');
     // energy chart in overlay (top-right)
-    const chartWrap=h('div'); chartWrap.style.cssText='position:absolute;right:14px;top:14px;width:260px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;backdrop-filter:blur(8px)';
-    chartWrap.innerHTML='<div class="hint" style="margin-bottom:4px">每層訊號幅度（log₁₀，相對輸入）</div><canvas width="236" height="120" style="display:block;width:100%"></canvas>'; overlay.appendChild(chartWrap);
+    const chartWrap=h('div','ovl-card'); chartWrap.innerHTML='<div class="hint">每層訊號幅度（log₁₀，相對輸入）</div><canvas width="236" height="120" role="img" aria-label="每一條殘差流的訊號幅度隨層數變化的折線圖；數值見右側「第 16 層幅度」"></canvas>'; overlay.appendChild(chartWrap);
     const chart=chartWrap.querySelector('canvas'), cg=chart.getContext('2d');
     const drawChart=xs=>{const W=chart.width,Hh=chart.height;cg.clearRect(0,0,W,Hh);const css=getComputedStyle(document.documentElement);const x0=28,x1=W-6,y0=6,y1=Hh-16;const yOf=v=>y1-(Math.max(-2,Math.min(3,v))+2)/5*(y1-y0);
       cg.fillStyle=P.rgba('signal',0.10);cg.fillRect(x0,yOf(0.5),x1-x0,yOf(-0.5)-yOf(0.5));cg.strokeStyle=css.getPropertyValue('--line').trim();cg.lineWidth=1;cg.font='10px IBM Plex Mono, monospace';
@@ -59,10 +58,10 @@ App.register({
     const renderGrid=(el,M,editable,sums)=>{const k=M.length;el.innerHTML='';el.style.gridTemplateColumns=`repeat(${k+(sums?1:0)},36px)`;const rs=sums?rowSums(M):null,cs=sums?colSums(M):null;const refs={cells:[],rowSum:[],colSum:[]};
       for(let i=0;i<k;i++){refs.cells.push([]);for(let j=0;j<k;j++){const d=h('div','cell',fmt(M[i][j]));d.style.background=cellColor(M[i][j]);d.title=`第 ${j+1} 流 → 第 ${i+1} 流`;if(editable)bind(d,i,j);el.appendChild(d);refs.cells[i].push(d);}if(sums){const s=h('div','cell sum',rs[i].toFixed(2));el.appendChild(s);refs.rowSum.push(s);}}
       if(sums){for(let j=0;j<k;j++){const s=h('div','cell sum',cs[j].toFixed(2));el.appendChild(s);refs.colSum.push(s);}const c=h('div','cell corner','Σ');c.style.color='var(--fg3)';el.appendChild(c);}return refs;};
-    const bind=(d,i,j)=>{let st=null;d.addEventListener('pointerdown',e=>{st={y:e.clientY,v:Ht[i][j]};d.setPointerCapture(e.pointerId);});d.addEventListener('pointermove',e=>{if(st)setCell(i,j,st.v-(e.clientY-st.y)*0.01);});d.addEventListener('pointerup',()=>{if(st){st=null;commit();}});d.addEventListener('wheel',e=>{e.preventDefault();setCell(i,j,Ht[i][j]-Math.sign(e.deltaY)*0.1);commit();},{passive:false});};
+    const bind=(d,i,j)=>{let st=null;d.tabIndex=0;d.setAttribute('role','spinbutton');d.setAttribute('aria-label',`第 ${j+1} 流到第 ${i+1} 流的權重`);d.setAttribute('aria-valuemin','-3');d.setAttribute('aria-valuemax','3');d.setAttribute('aria-valuenow',fmt(Ht[i][j]));d.addEventListener('keydown',e=>{const k=e.key==='ArrowUp'?0.1:e.key==='ArrowDown'?-0.1:0;if(!k)return;e.preventDefault();setCell(i,j,Ht[i][j]+k);commit();});d.addEventListener('pointerdown',e=>{st={y:e.clientY,v:Ht[i][j]};d.setPointerCapture(e.pointerId);});d.addEventListener('pointermove',e=>{if(st)setCell(i,j,st.v-(e.clientY-st.y)*0.01);});d.addEventListener('pointerup',()=>{if(st){st=null;commit();}});d.addEventListener('wheel',e=>{e.preventDefault();setCell(i,j,Ht[i][j]-Math.sign(e.deltaY)*0.1);commit();},{passive:false});};
     let editRefs=null;
     const setCell=(i,j,v)=>{const lim=mode==='mhc'?3:1.5;Ht[i][j]=Math.max(-lim,Math.min(lim,Math.round(v*100)/100));
-      const d=editRefs&&editRefs.cells[i]&&editRefs.cells[i][j]; if(d){d.textContent=fmt(Ht[i][j]);d.style.background=cellColor(Ht[i][j]);}
+      const d=editRefs&&editRefs.cells[i]&&editRefs.cells[i][j]; if(d){d.textContent=fmt(Ht[i][j]);d.style.background=cellColor(Ht[i][j]);d.setAttribute('aria-valuenow',fmt(Ht[i][j]));}
       if(mode==='hc'){const rs=rowSums(Ht),cs=colSums(Ht);editRefs.rowSum.forEach((s,r)=>s.textContent=rs[r].toFixed(2));editRefs.colSum.forEach((s,c)=>s.textContent=cs[c].toFixed(2));applyEff(clone(Ht));}};
     const renderEdit=()=>{editRefs=renderGrid(mEdit,Ht,mode!=='residual',mode==='hc');};
 
@@ -83,7 +82,7 @@ App.register({
     const setN=(k,doCommit=true)=>{n=k;Ht=resize(Ht,k);build(k);renderEdit();if(doCommit)commit();};
 
     ctx.legend([['signal','訊號幅度正常'],['alert','幅度爆炸（> 3×）'],['inactive','幅度熄滅（< ⅓）'],['flow','層間混合權重 Hᵢⱼ（粗 = 大）']]);
-    ctx.setCamera({theta:0.55,phi:1.3,dist:31});
+    ctx.setCamera({theta:0.55,phi:1.3});
     build(4); setMode('mhc');
     this._timerRef=()=>timer;
   },

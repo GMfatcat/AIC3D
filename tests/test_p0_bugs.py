@@ -170,7 +170,7 @@ def test_qat_histogram_bars_sit_on_bin_centres(site):
 
 def test_agent_loop_log_has_no_leading_blank_and_ends_once(site):
     site.goto("agent-loop")
-    log = site.page.locator("#ctrl .ctxbar + .hint")  # the running log sits right under the context bar
+    log = site.page.locator("#ctrl .ctxbar + .log")  # the running log sits right under the context bar
     step = site.ctrl_button("單步")
     step.click()
     assert not log.text_content().startswith("\n")

@@ -39,7 +39,7 @@ App.register({
     const set=ctrl.readouts([{id:'jac',label:'每層導數'},{id:'fwd',label:`${L} 層後訊號幅度`},{id:'grad',label:`回傳到第 1 層的梯度`}]);
     const note=ctrl.note('');
     ctx.legend([['signal','訊號（粗 = 大）'],['flow','F(x) block'],['alert','爆炸'],['inactive','消失']]);
-    ctx.setCamera({theta:0.45,phi:1.3,dist:17});
+    ctx.setCamera({theta:0.45,phi:1.3});
     redraw();
   },
 });

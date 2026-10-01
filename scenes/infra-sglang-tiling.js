@@ -16,13 +16,13 @@
         layoutTree(); totalCached+=cached; totalNew+=fresh; reqs++;
         set('this',`命中 ${cached} / 新算 ${fresh} token`); set('rate',reqs?`${Math.round(100*totalCached/Math.max(1,totalCached+totalNew))}%`:'—'); set('nodes',String(nodes.length)); set('reqs',String(reqs)); };
       ctrl.heading('丟請求進來'); PROMPTS.forEach((p,i)=>ctrl.buttons([{label:p.label,onClick:()=>insert(p.path)}]));
-      ctrl.buttons([{label:'清空樹（模擬 LRU 全部淘汰）',onClick:()=>{ nodes.forEach(n=>{root.remove(n.mesh);root.remove(n.label);}); nodes=[]; tree.children={}; totalCached=totalNew=reqs=0; layoutTree(); set('this','—'); set('rate','—'); set('nodes','0'); set('reqs','0'); }}]);
+      ctrl.buttons([{label:'清空樹（模擬 LRU 全部淘汰）',onClick:()=>{ nodes.forEach(n=>{P.drop(n.mesh);P.drop(n.label);}); nodes=[]; tree.children={}; totalCached=totalNew=reqs=0; layoutTree(); set('this','—'); set('rate','—'); set('nodes','0'); set('reqs','0'); }}]);
       const set=ctrl.readouts([{id:'reqs',label:'請求數'},{id:'nodes',label:'樹節點（KV 片段）'},{id:'this',label:'這個請求'},{id:'rate',label:'累計 prefix 命中率'}]);
       ctrl.note(`<p><b>RadixAttention</b>（SGLang）：把所有請求的 KV cache 放進一棵 <b>radix tree</b>（基數樹），key 是 token 序列。新請求來時沿樹往下比對，最長共同 prefix 的 KV 直接重用，只算分岔之後的部分。</p>
         <p>和 vLLM 的 PagedAttention 互補：Paged 解決的是「記憶體怎麼放」，Radix 解決的是「什麼可以不重算」。system prompt + few-shot 動輒上千 token，多輪對話、agent 的工具迴圈、同一份文件問多個問題，命中率都很高。</p>
         <p>樹的節點按 LRU 淘汰；分岔處要處理 KV 的引用計數。SGLang 另一半核心是把 LLM 程式（分支、迴圈、多次呼叫）編譯成能共享 prefix 的執行計畫。</p>`);
       ctx.legend([['memory','只被一個請求用到的 KV 片段'],['flow','被多個請求共享'],['inactive','root']]);
-      ctx.setCamera({theta:0.0,phi:1.4,dist:11}); insert(PROMPTS[0].path); insert(PROMPTS[1].path); } });
+      ctx.setCamera({theta:0.0,phi:1.4}); insert(PROMPTS[0].path); insert(PROMPTS[1].path); } });
 
   /* ---------------- Tiling (Triton / TileLang) ---------------- */
   App.register({ id:'tiling', tab:'infra', question:'為什麼把矩陣切成 tile 會快？',
@@ -54,5 +54,5 @@
         : `<p><b>TileLang</b>：同樣是 tile 層級的語言，但把 Triton 藏起來的那幾件事<b>露出來讓你控</b>：<code>T.alloc_shared</code> 明確配置 shared memory、<code>T.Pipelined</code> 指定幾段 software pipeline、<code>T.annotate_layout</code> 指定 swizzle、還能直接用 TMA / WGMMA 這類硬體指令。</p><p>適合的是 FlashAttention、MLA decode、低位元 GEMM 這種「tile 的形狀和排程本身就是演算法」的 kernel——Triton 在這些地方常常差 cuBLAS 兩三成，TileLang 能追到九成以上。代價是你得懂記憶體階層。</p>`; };
       ctrl.note(`<p class="hint">為什麼快：矩陣乘法每個元素要被用 N 次，但 HBM 頻寬遠低於算力。把一塊 T×T 搬進 shared memory 後能重用 T 次，HBM 讀取量就除以 T。T 越大越省，直到 shared memory 放不下或暫存器爆掉——這就是 tile 大小要調的原因。</p>`);
       langNote(); ctx.legend([['memory','A 的 tile'],['state','B 的 tile'],['signal','正在累加的 C tile'],['flow','已完成的 C tile']]);
-      ctx.setCamera({theta:0.1,phi:1.35,dist:13}); paint(); } });
+      ctx.setCamera({theta:0.1,phi:1.35}); paint(); } });
 })();

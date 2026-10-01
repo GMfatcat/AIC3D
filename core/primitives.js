@@ -71,6 +71,7 @@ class TokenRow {
     labels.forEach((t,i)=>{
       const m = new T.Mesh(geo, mat(opts.color || 'memory', {glow:0.2, opacity:1}));
       m.position.x = this.x(i); this.group.add(m); this.cubes.push(m);
+      if(t===''){ this.labels.push(null); return; } // 沒字就不產生 DOM 標籤
       const l = label(t, {size: 24}); l.position.set(this.x(i), (opts.labelBelow?-1:1)*(this.size/2+0.35), 0); this.group.add(l); this.labels.push(l);
     });
   }
@@ -198,5 +199,12 @@ class Tower {
 }
 
 function wire(color='inactive', opacity=0.6){ return new T.MeshBasicMaterial({ color: C(color), wireframe:true, transparent:true, opacity }); }
-window.P = { ROLE, ALIAS, COL, C, hex, rgba, css, theme, roleOf, label, mat, edges, highlight, wire, TokenRow, BeamSet, TensorBrick, GPUBox, Loop, Grid1D, State, Tower };
+
+/* ---------- 釋放：three.js 不會自動回收 geometry / material，移除物件時要一起 dispose ---------- */
+function disposeOf(obj){
+  obj.traverse(o=>{ if(o.geometry) o.geometry.dispose(); const ms=Array.isArray(o.material)?o.material:(o.material?[o.material]:[]); ms.forEach(m=>{ if(m.map) m.map.dispose(); if(m.dispose) m.dispose(); }); });
+}
+function drop(obj){ if(obj.parent) obj.parent.remove(obj); disposeOf(obj); } // 從場景移除並釋放
+function clear(group){ while(group.children.length) drop(group.children[group.children.length-1]); }
+window.P = { ROLE, ALIAS, COL, C, hex, rgba, css, theme, roleOf, label, mat, edges, highlight, wire, disposeOf, drop, clear, TokenRow, BeamSet, TensorBrick, GPUBox, Loop, Grid1D, State, Tower };
 })();

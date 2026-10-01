@@ -17,7 +17,7 @@
       const before=MSGS.map(m=>({...m}));
       const compact=()=>{ const pinned=before.filter(m=>m.k==='sys'); const rest=before.filter(m=>m.k!=='sys'); const keep=rest.slice(-keepLast), old=rest.slice(0,-keepLast);
         const oldN=old.reduce((s,m)=>s+m.n,0); const sum={k:'summary',n:Math.max(3,Math.round(oldN*0.12)),t:`摘要：${old.length} 段 → 「CI 失敗原因是 TestPortAlloc race，已改 mutex 範圍並測試通過」`}; return {msgs:[...pinned,sum,...keep],dropped:old,oldN,sum}; };
-      let rows=[]; const draw=()=>{ rows.forEach(r=>root.remove(r.group)); rows=[];
+      let rows=[]; const draw=()=>{ rows.forEach(r=>P.drop(r.group)); rows=[];
         const r1=makeRow(ctx,root,before,1.2); rows.push(r1); const l1=P.label(`compact 前：${r1.total} 單位`,{size:20}); l1.position.set(0,2.1,0); r1.group.add(l1);
         const c=compact(); const r2=makeRow(ctx,root,c.msgs,-1.2); rows.push(r2); const l2=P.label(`compact 後：${r2.total} 單位`,{size:20}); l2.position.set(0,-2.1,0); r2.group.add(l2);
         before.forEach(m=>{ const dropped=c.dropped.includes(m); m.mesh.material.opacity=1; m.mesh.material.transparent=true; if(state==='after'&&dropped){ m.mesh.material.opacity=0.2; } });
@@ -30,7 +30,7 @@
         <p><b>一定保留原文</b>：system prompt（工具定義、規則，不能失真）、最近幾段（正在進行的事）。<b>最先被壓</b>：工具結果——它們體積最大、而且結論通常已經寫進 LLM 的下一句話裡。</p>
         <p>代價：摘要會丟細節。如果之後 LLM 需要那 3,800 行 log 的某一行，得重新呼叫工具。所以 compact 的門檻和保留段數是 harness 的重要參數。</p>`);
       ctx.legend([['inactive','system prompt（釘住）'],['signal','使用者'],['state','LLM'],['flow','工具呼叫'],['memory','工具結果'],['structure','摘要']]);
-      ctx.setCamera({theta:0.15,phi:1.4,dist:14}); draw();
+      ctx.setCamera({theta:0.15,phi:1.4}); draw();
     } });
 
   App.register({ id:'subagent', tab:'agent', question:'為什麼要把工作丟到另一個 context？',
@@ -45,7 +45,7 @@
       const render=()=>{ const put=(bar,ch)=>{ bar.innerHTML=''; ch.forEach(c=>{ const el=h('i'); el.style.width=(100*c.n/CAP)+'%'; el.style.background=`var(--${KIND[c.k]||'inactive'})`; bar.appendChild(el); }); return ch.reduce((s,c)=>s+c.n,0); };
         const mt=put(mainBar,mainChunks), st=put(subBar,subChunks); set('main',`${mt} / ${CAP}`,mt>CAP*0.85?'bad':'ok'); set('sub',mode==='sub'?`${st} / ${CAP}`:'—'); subLabel.style.display=mode==='sub'?'':'none'; subBar.style.display=mode==='sub'?'':'none'; };
       const step=()=>{ const S=mode==='sub'?SCRIPT_SUB:SCRIPT_FLAT; if(i>=S.length) return false; const s=S[i++];
-        if(s.s){ sub.group.visible=true; let t=0; s.s.forEach((n,j)=>{ subChunks.push({n,k:['tool','result'][j%2]}); }); sub.setT(sub.t+3); root.updateMatrixWorld(true); const a=main.pos[2].clone().add(main.group.position), b=sub.pos[0].clone().add(sub.group.position); link.set(0,a,b,0.7,'flow'); }
+        if(s.s){ sub.group.visible=true; s.s.forEach((n,j)=>{ subChunks.push({n,k:['tool','result'][j%2]}); }); sub.setT(sub.t+3); root.updateMatrixWorld(true); const a=main.pos[2].clone().add(main.group.position), b=sub.pos[0].clone().add(sub.group.position); link.set(0,a,b,0.7,'flow'); }
         else { mainChunks.push({n:s.n,k:s.k}); main.setT(main.t+((s.m-Math.round(main.t)%4+4)%4||4)); if(s.k==='summary'){ root.updateMatrixWorld(true); const a=sub.pos[3].clone().add(sub.group.position), b=main.pos[3].clone().add(main.group.position); link.set(1,a,b,0.7,'memory'); } }
         render(); return i<S.length; };
       const reset=()=>{ i=0; mainChunks=[]; subChunks=[]; main.setT(0); sub.setT(0); sub.group.visible=false; link.hideAll(); render(); };
@@ -58,6 +58,6 @@
         <p>丟給 <b>subagent</b>：它有自己的 context，跑完只回一句結論（灰色小塊）給主 agent。主 context 乾淨，而且子任務可以平行開好幾個。</p>
         <p>代價：subagent 看不到主對話的脈絡，任務描述要寫清楚；多一次 LLM 呼叫的延遲與成本。</p>`);
       ctx.legend([['state','LLM'],['flow','工具 / 派發任務'],['memory','工具結果'],['structure','子代理回傳的摘要']]);
-      ctx.setCamera({theta:0.3,phi:1.0,dist:13.5}); reset();
+      ctx.setCamera({theta:0.3,phi:1.0}); reset();
     } });
 })();

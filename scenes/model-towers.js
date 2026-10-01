@@ -19,19 +19,19 @@
       const el=P.label(`${spec.experts} 個專家（示意 ${n} 格）· 每 token 用 top-${spec.topk}${spec.shared?' + 1 共享':''}`,{size:16}); el.position.set(0,(cols/2)*cs+0.5,0); experts.add(el); }
     // controls
     ctrl.heading('組成'); const counts={}; spec.layers.forEach(l=>counts[l]=(counts[l]||0)+1);
-    ctrl.html(Object.entries(counts).map(([k,v])=>`<div style="display:flex;justify-content:space-between;font-size:13px"><span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${P.css(TYPE[k].color)};margin-right:6px"></i>${TYPE[k].label}</span><span style="font-family:var(--mono)">${v} 層</span></div>`).join(''));
+    const el=window.h; /* blueprint 裡的 h 是層高，DOM helper 要用 window.h */ const comp=ctrl.html('','complist'); Object.entries(counts).forEach(([k,v])=>{ const row=el('div'); const sw=el('i'); sw.style.background=P.css(TYPE[k].color); const name=el('span'); name.append(sw, TYPE[k].label); row.append(name, el('span','n',`${v} 層`)); comp.appendChild(row); });
     const set=ctrl.readouts(spec.stats.map(([id,label])=>({id,label}))); spec.stats.forEach(([id,label,val])=>set(id,val));
     const hoverInfo=ctrl.html('<span class="hint">滑鼠移到任一層看它是什麼、要到哪個 Block 場景。</span>');
     if(spec.extraControls) spec.extraControls(ctrl,set);
     ctrl.note(spec.note);
     const legendItems=Object.keys(counts).map(k=>[TYPE[k].color,TYPE[k].label]); if(spec.mhc) legendItems.push(['signal','mHC 殘差流']); if(spec.experts && !counts.moe && !counts.hash) legendItems.push(['moe','MoE 專家格（亮 = 這個 token 用到的）']); /* 有 MoE 層型時圖例已經有 moe 色 */ ctx.legend(legendItems);
-    ctx.setCamera({theta:0.35,phi:1.35,dist:Math.max(14,L*(h+gap)*1.65)});
-    let hovered=null, lastExp=-1;
-    return { dispose(){ root.remove(tower); if(experts) root.remove(experts); },
+    ctx.setCamera({theta:0.35,phi:1.35});
+    let hovered=null, lastExp=-1; let eseed=spec.layers.length; const erand=()=>{ eseed=(eseed*9301+49297)%233280; return eseed/233280; }; // 固定種子：每次看到的專家一樣
+    return { dispose(){ P.drop(tower); if(experts) P.drop(experts); },
       update(dt){ ty=(ty+dt*(spec.speed||2.5))%(L*(h+gap)+1); tok.position.y=ty-0.5; const li=Math.min(L-1,Math.max(0,Math.floor((ty-0.5)/(h+gap))));
         meshes.forEach((m,i)=>{ m.material.emissiveIntensity = (i===li?0.9:0.2) + (m===hovered?0.5:0); });
-        if(experts){ const ly=spec.layers[li]; const isMoe=spec.isMoe?spec.isMoe(li,ly):(ly==='moe'||ly==='hash'); if(isMoe && li!==lastExp){ lastExp=li; expCells.forEach(c=>{c.material.emissiveIntensity=0.08;c.scale.setScalar(1);}); const k=Math.min(spec.topk,expCells.length); const used=new Set(); while(used.size<k){ used.add(Math.floor(Math.random()*expCells.length)); } used.forEach(i=>{expCells[i].material.emissiveIntensity=1;expCells[i].scale.setScalar(1.25);}); } experts.visible=true; }
-        const hv=App.hover(meshes); if(hv!==hovered){ hovered=hv; if(hv){ const t=TYPE[hv.userData.type]; hoverInfo.innerHTML=`第 ${hv.userData.i+1} 層：<b>${t.label}</b> <button class="btn" style="padding:2px 8px;font-size:12px;margin-left:6px" onclick="location.hash='${t.link}'">看 ${t.link} 場景 →</button>`; } } } };
+        if(experts){ const ly=spec.layers[li]; const isMoe=spec.isMoe?spec.isMoe(li,ly):(ly==='moe'||ly==='hash'); if(isMoe && li!==lastExp){ lastExp=li; expCells.forEach(c=>{c.material.emissiveIntensity=0.08;c.scale.setScalar(1);}); const k=Math.min(spec.topk,expCells.length); const used=new Set(); while(used.size<k){ used.add(Math.floor(erand()*expCells.length)); } used.forEach(i=>{expCells[i].material.emissiveIntensity=1;expCells[i].scale.setScalar(1.25);}); } }
+        const hv=ctx.app.hover(meshes); if(hv!==hovered){ hovered=hv; if(hv){ const t=TYPE[hv.userData.type]; const target=ctx.app.catalog.find(x=>x.id===t.link); hoverInfo.innerHTML=`第 ${hv.userData.i+1} 層：<b>${t.label}</b> `; const go=window.h('button','btn sm',`看「${target?target.title:t.link}」→`); go.addEventListener('click',()=>{ location.hash=t.link; }); hoverInfo.appendChild(go); } } } };
   }
   const rep=(pattern,times)=>Array.from({length:times},()=>pattern).flat();
   let dsVariant='flash';
@@ -67,7 +67,7 @@
     init(ctx){ const layers=[]; let m=0,e=0,a=0; for(let i=0;i<52;i++){ if((i+4)%9===0 && a<6){ layers.push('attn'); a++; } else if(layers.length&&layers[layers.length-1]==='mamba'&&e<23){ layers.push('moe'); e++; } else if(m<23){ layers.push('mamba'); m++; } else { layers.push('moe'); e++; } }
       this._inner=blueprint(ctx,{title:'Nemotron 3.5 Lightning（hybrid Mamba-Transformer-MoE）',layers,experts:128,topk:6,shared:true,expertsShown:64,
         stats:[['layers','層數','52 = 23 Mamba-2 + 23 MoE + 6 Attention'],['attn','全注意力','6 層 GQA（2 KV 頭），約每 8 層一層'],['moe','MoE','128 路由 + 1 共享，每 token top-6'],['mamba','Mamba-2','state 128，取代大部分 token mixing'],['ctx','context','1M'],['fp','量化','官方 NVFP4 checkpoint，敏感層保高精度']],
-        note:`<p>三種 block 各做一件事：<b>Mamba-2</b>（橘）做便宜的序列混合，線性時間、固定狀態；<b>Attention</b>（青）只放 6 層，負責需要精確「指回某個 token」的任務；<b>MoE</b>（紫）取代 FFN，用 128 個專家擴參數但每 token 只算 6 個。</p>
+        note:`<p>三種 block 各做一件事：<b>Mamba-2</b>（紫）做便宜的序列混合，線性時間、固定狀態；<b>Attention</b>（青）只放 6 層，負責需要精確「指回某個 token」的任務；<b>MoE</b>（粉紅）取代 FFN，用 128 個專家擴參數但每 token 只算 6 個。</p>
           <p>為什麼不全用 Mamba：純 SSM 在長距離精確檢索（needle-in-haystack、複製）上會輸；為什麼不全用 Attention：吞吐量和 context 成本。NVIDIA 的 Nemotron-H → 3 → 3.5 一路都在調這個比例，Qwen3.8 和 GLM-5.3 用 Gated DeltaNet / KDA 達到同一個目的。</p>
           <p class="hint">層型態順序是依公開的數量與「約每 8 層一層注意力」規則排的示意，不是官方逐層表。</p>`}); }, update(dt){ this._inner.update(dt); } });
 })();

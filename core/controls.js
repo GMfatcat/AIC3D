@@ -4,18 +4,19 @@
 const el = (tag, cls, html) => { const e=document.createElement(tag); if(cls) e.className=cls; if(html!==undefined) e.innerHTML=html; return e; };
 
 class Controls {
-  constructor(container){ this.c = container; this.c.innerHTML=''; this.timers=[]; }
-  heading(text){ this.c.appendChild(el('h2',null,text)); }
+  constructor(container){ this.c = container; this.c.innerHTML=''; this.timers=[]; this.lastHeading=''; }
+  heading(text){ this.c.appendChild(el('h2',null,text)); this.lastHeading=text; }
   slider(label, {min,max,step=1,value,fmt=(v)=>v,onChange}){
     const w = el('div','ctl'); const lab = el('label',null,`<span>${label}</span><output>${fmt(value)}</output>`);
     const inp = el('input'); inp.type='range'; inp.min=min; inp.max=max; inp.step=step; inp.value=value;
+    inp.id = 'ctl-' + (Controls.seq = (Controls.seq||0) + 1); lab.htmlFor = inp.id; // label 綁到 input，螢幕閱讀器才讀得到名稱
     inp.addEventListener('input',()=>{ lab.querySelector('output').textContent=fmt(+inp.value); onChange && onChange(+inp.value); });
     w.append(lab,inp); this.c.appendChild(w);
     return { get value(){return +inp.value;}, set(v){inp.value=v;lab.querySelector('output').textContent=fmt(v);}, disable(d){inp.disabled=d;} };
   }
   segmented(label, options, value, onChange){ // options: [{id,label}]
     const w = el('div','ctl'); if(label) w.appendChild(el('label',null,`<span>${label}</span>`));
-    const seg = el('div','seg'); const btns={};
+    const seg = el('div','seg'); const btns={}; seg.setAttribute('role','group'); seg.setAttribute('aria-label', label || this.lastHeading || '選項');
     options.forEach(o=>{ const b=el('button',null,o.label); b.setAttribute('aria-pressed',String(o.id===value)); b.addEventListener('click',()=>{ set(o.id); onChange && onChange(o.id); }); seg.appendChild(b); btns[o.id]=b; });
     const set = id => { Object.entries(btns).forEach(([k,b])=>b.setAttribute('aria-pressed',String(k===id))); };
     w.appendChild(seg); this.c.appendChild(w); return { set };

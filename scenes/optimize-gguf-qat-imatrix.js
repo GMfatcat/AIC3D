@@ -21,8 +21,8 @@
         <p>K-quant（Q4_K、Q6_K）的精髓是<b>兩層 scale</b>：256 個權重一個 super-block，裡面再切小 block 各有自己的 scale/min，所以 bpw 是 4.5 而不是 4。名字尾巴的 _S / _M / _L 就是「哪些敏感張量升級」的配方差異。</p>
         <p>搭配 Imatrix（下一個場景）時，量化器會依重要度決定每個 block 的 scale 怎麼取——型別不變、誤差更小。</p>`);
       ctx.legend([['memory','F16'],['flow','Q8_0'],['state','Q6_K'],['signal','Q5_K'],['signal:dim','Q4_K'],['inactive','Q3_K'],['structure','F32（norm 等小張量）']]);
-      ctx.setCamera({theta:0.15,phi:1.4,dist:13.5}); layout();
-      this.update=()=>{ const hv=App.hover(bricks.map(b=>b.mesh)); if(hv!==hovered){ hovered=hv; bricks.forEach(b=>{ b.mesh.material.emissiveIntensity=b.mesh===hv?0.7:0.15; }); describe(); } }; } });
+      ctx.setCamera({theta:0.15,phi:1.4}); layout();
+      const brickMeshes=bricks.map(b=>b.mesh); this.update=()=>{ const hv=ctx.app.hover(brickMeshes); if(hv!==hovered){ hovered=hv; bricks.forEach(b=>{ b.mesh.material.emissiveIntensity=b.mesh===hv?0.7:0.15; }); describe(); } }; } });
 
   /* ---------------- QAT ---------------- */
   App.register({ id:'qat', tab:'optimize', question:'訓練時就知道會被量化，有什麼差？',
@@ -49,7 +49,7 @@
         <p><b>QAT</b>：訓練時在 forward 插一個 <b>fake-quant</b>——用量化後的權重算輸出和 loss，但 backward 時假裝量化是 identity（straight-through estimator），把梯度加回浮點權重。結果是模型<b>自己學會把權重擺在格點附近</b>、或把任務轉嫁給不敏感的權重——看直方圖往橘線聚、量化誤差往下掉，而浮點誤差幾乎不變。</p>
         <p>代價：要重新訓練（至少 fine-tune），需要資料和算力。所以 4-bit 以上多用 PTQ，2～3 bit 或邊緣部署才值得 QAT；Gemma、Qwen 近年都有官方 QAT 版本。</p>`);
       ctx.legend([['memory','權重分佈'],['signal','量化格點']]);
-      ctx.setCamera({theta:0.05,phi:1.45,dist:10}); reset(); } });
+      ctx.setCamera({theta:0.05,phi:1.45}); reset(); } });
 
   /* ---------------- Imatrix ---------------- */
   App.register({ id:'imatrix', tab:'optimize', question:'為什麼量化需要校準資料？',
@@ -81,5 +81,5 @@
         <p>量化時用它做兩件事：<b>①</b> 選 block 的 scale / min 時最小化「加權」誤差而不是普通誤差；<b>②</b>（_M / IQ 系列）把預算往重要通道傾斜。這跟 GPTQ 用 Hessian 的精神一樣，只是更輕量、不需要逐欄序列計算。</p>
         <p>所以校準資料的<b>分佈要像實際用途</b>：用英文維基校準再拿去跑中文對話或程式碼，重要度就估錯了——切換上面的資料集看分配怎麼變。</p>`);
       ctx.legend([['state','6 bit（重要通道）'],['memory','4 bit'],['inactive','2 bit（不重要通道）'],['signal','通道重要度'],['flow','校準資料']]);
-      ctx.setCamera({theta:0.1,phi:1.4,dist:14}); paint(); } });
+      ctx.setCamera({theta:0.1,phi:1.4}); paint(); } });
 })();

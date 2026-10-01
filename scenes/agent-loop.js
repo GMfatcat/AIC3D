@@ -30,7 +30,7 @@ App.register({
     ];
     const CAP=40; let i=0, chunks=[], compactions=0, animFrom=0, animTo=0, animT=1;
     const COLORS=['signal','state','flow','memory'];
-    const ctxBar=ctrl.html('','ctxbar'); const log=ctrl.html('','hint'); log.style.cssText='font-family:var(--mono);font-size:11.5px;max-height:120px;overflow:auto;white-space:pre-wrap';
+    const ctxBar=ctrl.html('','ctxbar'); const log=ctrl.html('','log');
     const total=()=>chunks.reduce((n,c)=>n+c.size,0);
     const render=()=>{ ctxBar.innerHTML=''; const tot=total(); chunks.forEach(c=>{ const el=h('i'); el.style.width=(100*c.size/CAP)+'%'; el.style.background=c.summary?'var(--structure)':`var(--${COLORS[c.node]})`; el.title=c.text; ctxBar.appendChild(el); });
       set('ctx',`${tot} / ${CAP}`,tot>CAP*0.85?'bad':'ok'); set('turns',String(i)); set('comp',String(compactions)); };
@@ -51,7 +51,7 @@ App.register({
       <p>注意吃 context 的不是 LLM 自己的話，而是<b>工具結果</b>（藍色）：一個 log 檔就能吃掉幾千 token。所以 Pi 這類 harness 一定要有 <b>compact</b>（舊訊息壓成摘要）和 <b>subagent</b>（把吃 context 的工作丟到另一個 context）。</p>
       <p class="hint">Compact 與 Subagent 在左邊有獨立場景（規劃中）。</p>`);
     ctx.legend([['signal','使用者訊息'],['state','LLM 推理'],['flow','工具呼叫'],['memory','工具結果'],['structure','compact 後的摘要']]);
-    ctx.setCamera({theta:0.4,phi:0.95,dist:11});
+    ctx.setCamera({theta:0.4,phi:0.95});
     render();
     this.update=(dt)=>{ if(animT<1){ animT=Math.min(1,animT+(ctx.reduceMotion?1:dt*2.2)); const e=1-Math.pow(1-animT,3); loop.setT(animFrom+(animTo-animFrom)*e); } };
   },

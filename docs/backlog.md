@@ -67,53 +67,54 @@
 
 目前三套互不相符：3D 用 `P.ROLE`、DOM 進度條用 theme.css 舊變數（`--blue:#6F8CFF`）、canvas 圖表用寫死 hex。
 
-- [ ] 由 `P.ROLE` 自動產生 CSS 變數（`--role-signal`、`--role-memory`…），theme.css 舊色變數退場；`controls.js:50` 的 `ctrl.bar`、`agent-loop.js:35`、`agent-compact-subagent.js:45` 改吃新變數。
-- [ ] 清掉場景裡寫死的 hex（都是舊色票，與 ROLE 不同）：
+- [x] 由 `P.ROLE` 自動產生 CSS 變數（`--signal`、`--signal-dim`、`--signal-hot`…），theme.css 舊色變數退場（2026-10-01）
+- [x] 清掉場景裡寫死的 hex（靜態測試 `test_scene_has_no_hardcoded_colours` 守住）（2026-10-01）：
   `#49B6A3`→flow `#3FBFA8`、`#E2554F`→alert `#F0665C`、`#B48CFF`→state `#A98BFF`
   位置：`arch-cnn-crnn.js:35,47,49`、`arch-embedding.js:25`、`block-attention.js:20`、`block-engram.js:33`、`block-kvheads.js:24`、`block-mhc.js:51,53,56`、`infra-stages.js:31`、`model-vision.js:6,23,46`、`optimize-quant.js:21`。
-- [ ] 場景全部改用 ROLE 名稱（目前 38 個場景全用 amber/blue/violet 舊別名）。
-- [ ] 修正語意色挪用：
+- [x] 場景全部改用 ROLE 名稱；支援 `'flow:dim'` 這種 role:tier 寫法（2026-10-01）
+- [x] 修正語意色挪用（2026-10-01；GGUF Q4_K 改 `signal:dim`，MoE 改 moe，SSM/線性注意力改 state，FFN 改 structure）：
   - `red`（alert）被當 Q4_K（`gguf:6`）、vLLM 請求色（`infra-vllm.js:6`）、DP batch 色（`infra-parallel.js:21`）。後兩者與同畫面「紅 = 通訊 / 浪費」衝突。
   - `amber`（signal）被當 Mamba/GDN 層色（`model-towers.js:5`）。
   - `blue`（memory）被當 Tower FFN 層色（`primitives.js:181`）。
   - `ROLE.moe` 完全沒用到，MoE 在 Tower 與 OCR 都用 `violet`。
-- [ ] 同一概念同一色：摘要塊在 agent-loop 用 `grey`，compact/subagent 用 `fg2`；compact 的「灰色塊」與 system prompt 同為 `grey` 分不開（`agent-compact-subagent.js:29,32`）。
-- [ ] 模型塔圖例出現兩項同色：`swa`/`attn` 都 teal、`gdn`/`mamba` 都 amber（`model-towers.js:4-5`）。
-- [ ] GGUF 圖例缺 F32（`:23`）；imatrix 的 token 色隨資料集變但 violet 已代表「6 bit」（`:76`）；vLLM 圖例沒列請求色（`:48`）。
-- [ ] `block-kvheads.js:18`、`model-vision.js:6,44` 直接 new `MeshStandardMaterial`，繞過 `P.mat` 的 emissive 壓制。
+- [x] 同一概念同一色：摘要塊統一用 structure（2026-10-01）
+- [x] 模型塔圖例不再同色：swa 用 `flow:dim`、gdn/mamba 用 state；全站圖例顏色唯一由 `test_legend_entries_have_distinct_colours` 守住（2026-10-01）
+- [x] GGUF 圖例補 F32；imatrix token 固定 flow 並進圖例；vLLM 圖例隨請求動態列出（2026-10-01）
+- [x] `block-kvheads.js`、`model-vision.js` 的裸 `MeshStandardMaterial` 改走 `P.mat(color,{extra})`，靜態測試守住（2026-10-01）
 
 ### 相機 API 修成有效
 
-- [ ] `core/app.js:105-110` 的 `fit()` 在 init 後一律覆寫 `cam.dist` 與 `cam.target`，所有場景的 `setCamera({dist,target})` 都是死碼（`vllm:49`、`minilm:42` 的 target 也無效）。`_userCam` 寫了沒人讀。決定一個語意：場景可覆寫 fit 結果，或場景只給 theta/phi 並把 dist 參數移除。
-- [ ] 自動旋轉改成以 `dt` 為基礎（`app.js` loop 內 `theta += 0.0012` 是每幀固定值，120Hz 轉速是 60Hz 兩倍）。
+- [x] 相機 API：`setCamera({theta,phi,zoom})`，zoom 是自動取景距離的倍數；場景的死參數 dist/target 已移除，靜態測試守住（2026-10-01）
+- [x] 自動旋轉改成以 `dt` 為基礎（2026-10-01）
 - [ ] 手機直式：浮動圖表卡片（mHC 能量圖、Engram U 曲線）要縮小或移到面板裡，目前蓋住塔頂；`fit()` 可考慮扣掉 overlay 佔的區域。
 
 ### 資源管理
 
-- [ ] `App.show()` 切場景時 traverse root，對 geometry / material 呼叫 `dispose()`（目前只 `root.remove`）。
-- [ ] 標籤註銷：`P.label` 註冊進 `App.labels` 後永不移除；`_projectLabels` 每幀走一遍 parent 鏈。被 remove 的物件應從集合移除。累積點：vLLM 每次 redraw（`:29`）、transformer 切 mask（`:14-15`）、crnn slider（`:47-49`）、stages 每拉 slider 新建最多 80 個空字串 label（`:35`）、compact `draw`（`:21-22`）。
-- [ ] 空字串 label 不該產生 DOM：`infra-parallel.js:17,21`、`infra-stages.js:35`、`optimize-gguf-qat-imatrix.js:65`。
-- [ ] 每次操作重建 Mesh 的場景改為池化或只更新屬性，最嚴重：`model-vision.js:55,61`（OCR 每 250ms 重建最多 400 個 BoxGeometry）。其餘：`infra-vllm.js:29-30`、`arch-cnn-crnn.js:13,42-50`、`agent-compact-subagent.js:21-22`、`arch-jev.js:15-21`、`arch-transformer.js:10-16`、`block-mhc.js:23-26`、`infra-parallel.js:8-25`、`infra-sglang-tiling.js:13`、`infra-stages.js:17-35`、`model-minilm.js:25`、`model-vision.js:21-23`。
-- [ ] 每幀成本：`optimize-kvcache.js:41` flash 期間每幀完整 `redraw()`（24 個 token 樣式 + 5 個 readout DOM 寫入）；`model-towers.js:30-33` 每幀設 emissive、raycast、`Math.random` 選專家（不可重現）；`arch-cnn-crnn.js:29`、`optimize-gguf-qat-imatrix.js:25` 每幀配陣列。
-- [ ] `optimize-quant.js:27-28` 的 fp 每次 redraw 重新枚舉 25.7k 個 BF16 值，應快取。
-- [ ] `infra-vllm.js:39` 的 `setTimeout` 沒清。
-- [ ] 全站只有 mHC 有 `dispose()`；補上 dispose 慣例（至少清自己的 timer / listener）。模型塔的 blueprint 已回傳 `dispose()`，可當範本。
-- [ ] `App.hover` 用全域 `App` 而非 `ctx.app`（cnn:29、transformer:55、gguf:25、towers:33）。
-- [ ] 未使用變數：`arch-recurrent.js:18` GREY、`arch-cnn-crnn.js:40` charW、`arch-jev.js:25` mi、`agent-compact-subagent.js:48` t、`optimize-quant.js:76` seed/rnd。
+- [x] `App.show()` 用 `P.clear(root)` 釋放 geometry / material；測試 `test_switching_scenes_releases_gpu_geometries`（2026-10-01）
+- [x] 標籤註銷：被 remove 的標籤在下一幀自動從 `App.labels` 移除（要重新掛回得 `App.labels.add`）；測試 `test_vllm_redraw_does_not_accumulate_labels`（2026-10-01）
+- [x] 空字串 label 不產生 DOM（TokenRow）（2026-10-01）
+- [x] 重建 Mesh 的場景改用 `P.drop` / `P.clear`（移除 + dispose）：OCR、YOLO、vLLM、CNN/CRNN、compact、stages、sglang、minilm、mHC、parallel、transformer、jev（2026-10-01）。池化（只更新屬性）留到 P2 動畫改造時一起做。
+- [x] 每幀成本：kvcache flash 只更新連線；模型塔專家改固定種子、不再每幀設 visible；cnn/gguf hover 目標陣列快取（2026-10-01）
+- [x] fp 的 BF16 枚舉快取（2026-10-01）
+- [x] vLLM 的 `setTimeout` 經 `ctx.onDispose` 清掉（2026-10-01）
+- [x] dispose 慣例：`ctx.onDispose(fn)` 登記清理；`P.drop(obj)`、`P.clear(group)` 釋放 3D 資源；模型塔 blueprint 回傳 `dispose()`（2026-10-01）
+- [x] `App.hover` 改 `ctx.app.hover`，靜態測試守住（2026-10-01）
+- [x] 未使用變數清掉（2026-10-01）
 
 ### 無障礙基礎
 
-- [ ] `controls.js:9-10` slider 的 `<label>` 沒用 `for/id` 綁 `<input>`，螢幕閱讀器讀不到名稱。segmented 補 `role="group"` + `aria-label`。
-- [ ] 分頁 `role="tab"` 沒有 `tablist` 鍵盤左右鍵與 `aria-controls`；側欄項目沒有語意角色。
-- [ ] canvas `#gl` 加 `aria-label` / 文字替代；engram U 曲線與 mHC 能量圖兩個 canvas 加文字替代。
-- [ ] readout 的 `bad`/`ok` 只靠顏色，補圖示或文字。
-- [ ] `--fg3:#5F6C83` 在 `#151D2C` 上約 3.3:1，12px 的 `.hint` 不及格。
-- [ ] mHC 矩陣格補 `tabindex` / `role="spinbutton"` / `aria-valuenow`，鍵盤上下鍵可改值。
+- [x] slider 的 label 以 `for/id` 綁定；segmented 有 `role="group"` + `aria-label`（2026-10-01）
+- [x] 分頁是 `tablist`，左右鍵切換、roving tabindex（2026-10-01）
+  - [ ] 側欄項目沒有語意角色（歸 P3 側欄重做時一起）
+- [x] `#gl` 有描述場景的 `aria-label`；兩個圖表 canvas 有 `role="img"` + `aria-label`（2026-10-01）
+- [x] readout 的 bad / ok 加 ▲ / ✓ 前綴（2026-10-01）
+- [x] `--fg3` 改 `#7F8BA0`，在 bg2 上 4.9:1（2026-10-01）
+- [x] mHC 矩陣格可鍵盤操作：`spinbutton`、上下鍵 ±0.1、`aria-valuenow`（2026-10-01）
 
 ### 死碼與資料
 
-- [ ] `app.js:130,155` 的 placeholder 路徑、catalog 的 `show`/`interact` 欄位，38/38 都有場景後已是死碼；決定保留（未來新場景用）或移除。
-- [ ] `inline style` 抽成 class：`.log`（`agent-loop.js:33`、`agent-goal.js:18`）、`.ovl-card`（`block-engram.js:32`、`block-mhc.js:47`）、`.bitchip`（`optimize-quant.js:31,35`）、`model-towers.js:22,33`（組成列表、inline onclick）。
+- [x] placeholder 路徑與 catalog 的 `show`/`interact`：決定**保留**，新場景上線前會用到（2026-10-01）
+- [x] inline style 抽成 class：`.log`、`.ovl-card`、`.bitchip`、`.complist`、`.btn.sm`；模型塔的跳轉鈕改 addEventListener 並顯示場景標題；靜態測試守住（2026-10-01）
 
 ---
 

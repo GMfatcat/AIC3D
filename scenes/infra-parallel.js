@@ -8,7 +8,7 @@
     const stage=new T.Group(); root.add(stage);
     let gpus=[], beams=null, bricks=[], rows=[];
     const build=()=>{
-      while(stage.children.length) stage.remove(stage.children[0]); gpus=[]; bricks=[]; rows=[];
+      P.clear(stage); gpus=[]; bricks=[]; rows=[];
       const span=Math.min(3.2, 14/k);
       for(let i=0;i<k;i++){
         const g=new P.GPUBox({w:span*0.9,h:3.2,d:2.2,label:`GPU ${i}`,fillColor:'memory'}); g.group.position.x=(i-(k-1)/2)*span; stage.add(g.group); gpus.push(g);
@@ -47,7 +47,7 @@
       ? `<p><b>切權重</b>：每顆 GPU 只放矩陣的 1/k（例如 FFN 的一部分欄、attention 的一部分頭），同一批 token 同時進所有 GPU。每層算完要 <b>all-reduce</b> 把部分和加起來，所以 TP 對 GPU 間頻寬極敏感——只在 NVLink 內（單機 8 卡）用，跨機通常不划算。</p><p>推論也要通訊：這是 70B 以上模型單卡放不下時的標準解法，代價是每層多一次同步。切到 70B、GPU 數拉到 1 看「放不下」怎麼變成「放得下」。</p>`
       : `<p><b>切資料</b>：每顆 GPU 拿完整模型、不同的 batch。訓練時 backward 完要 all-reduce 梯度（量 = 整個模型大小），但一個 step 才一次；推論時各卡獨立處理不同請求，<b>完全不用通訊</b>。</p><p>限制很直接：模型必須單卡放得下。切到 70B 就會看到不管幾顆 GPU 都「放不下」——這時要先 TP 再 DP，或改用 pipeline / expert parallel。</p>`);
     ctx.legend([['state','權重'],['memory','HBM 佔用'],['signal','token / batch'],['alert','GPU 間通訊']]);
-    ctx.setCamera({theta:0.2,phi:1.3,dist:19});
+    ctx.setCamera({theta:0.2,phi:1.3});
     build();
   }
   App.register({ id:'tp', tab:'infra', question:'切權重要付出什麼通訊代價？', init(ctx){ layout(ctx,'tp'); } });

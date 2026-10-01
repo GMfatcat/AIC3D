@@ -22,7 +22,7 @@ App.register({
     let anim=null;
     const a=new T.Vector3(), b=new T.Vector3();
     const run=(s)=>{
-      if(tokens){ towerG.remove(tokens.group); } tokens=new P.TokenRow(s.tokens,{color:'memory',gap:0.6,size:0.4,labelBelow:true}); tokens.group.position.y=-1.1; towerG.add(tokens.group);
+      if(tokens){ P.drop(tokens.group); } tokens=new P.TokenRow(s.tokens,{color:'memory',gap:0.6,size:0.4,labelBelow:true}); tokens.group.position.y=-1.1; towerG.add(tokens.group);
       towerG.updateMatrixWorld(true); beams.hideAll();
       for(let i=0;i<s.tokens.length;i++){ tokens.pos(i,a); a.y+=0.2; b.copy(pool.position).applyMatrix4(towerG.matrixWorld); beams.set(i,a,b,0.5,'state'); }
       cloud.clear(); flyer.visible=true; flyer.position.copy(pool.position).applyMatrix4(towerG.matrixWorld);
@@ -39,6 +39,6 @@ App.register({
       <p>6 層、384 維、約 22M 參數，CPU 跑一句話幾毫秒。它不是生成模型，是 Encoder-only（看 Tab 1 的 Transformer 場景，mask 是「全部可見」）。</p>
       <p class="hint">右邊點雲和 Tab 1 的 Embedding 場景是同一個。</p>`);
     ctx.legend([['flow','Attention 層'],['memory','FFN 層'],['state','pooling 後的句向量']]);
-    ctx.setCamera({theta:0.25,phi:1.3,dist:19,target:new T.Vector3(-1,0,0)});
+    ctx.setCamera({theta:0.25,phi:1.3});
   },
 });

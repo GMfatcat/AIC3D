@@ -37,7 +37,7 @@ App.register({
       <p>1/√d 那個縮放是在控制 softmax 的尖銳度：d 大時內積數值大，不縮放的話權重會變 one-hot、梯度消失。拉溫度滑桿就能看到。</p>
       <p class="hint">向量用 2D 方向示意；真實的 Q/K 是 64～128 維。</p>`);
     ctx.legend([['signal','Query 與 attention 權重'],['flow','Key 向量'],['state','Value'],['memory','token']]);
-    ctx.setCamera({theta:0.1,phi:1.45,dist:14.5});
+    ctx.setCamera({theta:0.1,phi:1.45});
     redraw();
   },
 });

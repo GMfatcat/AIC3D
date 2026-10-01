@@ -14,7 +14,7 @@ App.register({
     let hw='h100', dt='bf16', P_len=16, G_len=8, t=0; let hwGroup=null, gpu=null, gauges=null, row=null;
     const fmtB=n=>n>=1e9?(n/1e9).toFixed(0)+' GB':(n/1e6).toFixed(0)+' MB';
     const gauge=(x,color,text)=>{ const bg=new T.Mesh(new T.BoxGeometry(0.6,2.0,0.6),P.mat('inactive',{glow:0.05,opacity:0.4})); bg.position.set(x,gpu.computeY+1.0,0); gpu.group.add(bg); const fg=new T.Mesh(new T.BoxGeometry(0.5,1,0.5),P.mat(color,{glow:0.6})); fg.position.set(x,gpu.computeY,0); gpu.group.add(fg); const l=P.label(text,{size:16}); l.position.set(x,gpu.computeY+2.3,0); gpu.group.add(l); return v=>{ const f=Math.max(0.02,Math.min(1,v)); fg.scale.y=2.0*f; fg.position.y=gpu.computeY+f; }; };
-    const buildHW=()=>{ if(hwGroup) root.remove(hwGroup); hwGroup=new T.Group(); root.add(hwGroup); const H=HW[hw];
+    const buildHW=()=>{ if(hwGroup) P.drop(hwGroup); hwGroup=new T.Group(); root.add(hwGroup); const H=HW[hw];
       if(H.unified){
         gpu=new P.GPUBox({w:8.5,h:3.4,d:2.4,label:'SoC：CPU + GPU 同一顆，同一池記憶體',fillColor:'inactive',hbmH:0.8,memLabel:'Unified'}); gpu.group.position.set(0,1.0,0); hwGroup.add(gpu.group);
         const cpu=new T.Mesh(new T.BoxGeometry(1.4,0.8,0.8),P.mat('structure',{glow:0.3})); cpu.position.set(-3.0,gpu.computeY+0.6,0); gpu.group.add(cpu); const cl=P.label('CPU 核',{size:15}); cl.position.set(-3.0,gpu.computeY+1.3,0); gpu.group.add(cl);
@@ -32,7 +32,7 @@ App.register({
       }
       gauges={c:gauge(-1.2,'signal','算力使用率'),m:gauge(1.2,'state','頻寬使用率')};
     };
-    const buildRow=()=>{ if(row) root.remove(row.group); const n=P_len+G_len; row=new P.TokenRow(Array(n).fill(''),{color:'signal',gap:Math.min(0.5,9/n),size:Math.min(0.32,6/n)}); row.group.position.y=-1.6; root.add(row.group); };
+    const buildRow=()=>{ if(row) P.drop(row.group); const n=P_len+G_len; row=new P.TokenRow(Array(n).fill(''),{color:'signal',gap:Math.min(0.5,9/n),size:Math.min(0.32,6/n)}); row.group.position.y=-1.6; root.add(row.group); };
     const redraw=()=>{ const H=HW[hw]; const PARAMS=PARAMS_(), ACT=ACTIVE_(); const bytes=PARAMS*DT[dt].b; const actBytes=ACT*DT[dt].b; /* MoE：記憶體要放全部，每步只讀啟用的專家 */ const fits=bytes<H.mem; const kvBudget=Math.max(0,H.mem-bytes);
       for(let i=0;i<P_len+G_len;i++){ const isP=i<P_len; const lit=isP?t>=1:(i-P_len)<t-1; row.style(i,{color:isP?'signal':'flow',opacity:lit?1:0.15,glow:lit?0.6:0}); }
       gpu.setFill(Math.min(1,bytes/H.mem), fits?'memory':'alert');
@@ -63,7 +63,7 @@ App.register({
     ctrl.note(`<p><b>Prefill</b>：prompt 所有 token 一次算完，每 token 2×參數量 FLOP，權重只讀一次 → 卡算力，決定 TTFT。<b>Decode</b>：每步 1 個 token，卻要把整份權重讀一遍 → 卡頻寬，決定 tok/s。</p>
       <p class="hint">峰值估算；Spark、Mac 的 bf16 算力是概略值，忽略 KV 讀取與 kernel 效率。多人併發時 H100 的優勢遠大於這裡的單 stream 數字。</p>`);
     ctx.legend([['signal','prompt token / 算力'],['flow','生成的 token'],['state','頻寬'],['memory','記憶體中的權重（裝得下）'],['alert','放不下 / PCIe']]);
-    ctx.setCamera({theta:0.3,phi:1.3,dist:15});
+    ctx.setCamera({theta:0.3,phi:1.3});
     buildHW(); buildRow(); redraw();
   },
 });

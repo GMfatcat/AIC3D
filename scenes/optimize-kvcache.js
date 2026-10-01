@@ -17,11 +17,11 @@ App.register({
     const a=new T.Vector3(), b=new T.Vector3(); let flash=0;
     const perTokB=2*MODEL.layers*MODEL.kvHeads*MODEL.dim*MODEL.bytes;
     const fmtB=n=>n>=1<<30?(n/(1<<30)).toFixed(2)+' GB':n>=1<<20?(n/(1<<20)).toFixed(1)+' MB':(n/1024).toFixed(0)+' KB';
+    const paintFlash=()=>{ beams.hideAll(); if(!useCache && t>0 && flash>0){ root.updateMatrixWorld(true); for(let j=0;j<t-1;j++){ row.pos(j,a); a.y+=0.15; row.pos(t-1,b); b.y+=0.15; beams.set(j,a,b,0.6*flash,'alert'); } } };
     const redraw=()=>{
       for(let i=0;i<MAXT;i++){ const on=i<t; slabs[i][0].visible=slabs[i][1].visible=on&&useCache; row.style(i,{opacity:on?1:0.12,glow:i===t-1?0.9:on?0.3:0}); }
       gpu.setFill(useCache?t/MAXT:0.02, 'memory');
-      beams.hideAll(); root.updateMatrixWorld(true);
-      if(!useCache && t>0 && flash>0){ for(let j=0;j<t-1;j++){ row.pos(j,a); a.y+=0.15; row.pos(t-1,b); b.y+=0.15; beams.set(j,a,b,0.6*flash,'alert'); } }
+      paintFlash();
       set('t',String(t)); set('cache',useCache?fmtB(perTokB*t):'0（不存）');
       set('step',useCache?'1 個 token 的 K/V':`${t} 個 token 的 K/V（重算）`); set('total',useCache?`∝ ${t}`:`∝ ${t*(t+1)/2}（二次成長）`);
       set('big',fmtB(perTokB*ctxSl.value*1024));
@@ -36,8 +36,8 @@ App.register({
       <p><b>付出的是記憶體</b>：每個 token 存 2 × 層數 × KV 頭數 × 頭維度 × bytes。這裡用 64 層 / 8 KV 頭 / 128 維 / bf16 → 每 token 256 KB，128k context 就是 32 GB。</p>
       <p>這也是 GQA、MLA（Tab 2）和 PagedAttention（Tab 5）存在的理由——它們全在縮或管這條藍色 HBM 條。</p>`);
     ctx.legend([['memory','K 片 / HBM 佔用'],['state','V 片'],['signal','已生成 token'],['alert','沒有 cache 時重算的 attention']]);
-    ctx.setCamera({theta:0.3,phi:1.3,dist:14});
+    ctx.setCamera({theta:0.3,phi:1.3});
     redraw();
-    this.update=(dt)=>{ if(flash>0){ flash=Math.max(0,flash-dt*1.6); if(!useCache) redraw(); } };
+    this.update=(dt)=>{ if(flash>0){ flash=Math.max(0,flash-dt*1.6); if(!useCache) paintFlash(); } }; // 每幀只更新連線，不重寫 readout
   },
 });

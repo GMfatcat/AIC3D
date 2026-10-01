@@ -7,7 +7,7 @@ App.catalogAdd([
   {id:'transformer', tab:'arch', title:'Transformer 系列', show:'Token 列 + 全對全連線束', interact:'toggle mask：雙向 / 因果 / cross', question:'Encoder、Decoder、Enc-Dec 三種 mask 差在哪？'},
   {id:'mamba', tab:'arch', title:'Mamba 系列', show:'狀態矩陣 + 每個 token 的選擇閘', interact:'hover token 看閘值；與 RNN 並排', question:'選擇性狀態更新是什麼意思？'},
   {id:'rwkv', tab:'arch', title:'RWKV 系列', show:'Time-mix 衰減尾跡 + Channel-mix', interact:'toggle「訓練平行展開」vs「推論遞迴」', question:'為什麼同一個模型能兩種模式跑？'},
-  {id:'gdn', tab:'arch', title:'Gated DeltaNet 系列', show:'狀態矩陣先擦（紅）再寫（綠）', interact:'單步播放；gate 滑桿', question:'delta rule 的擦寫在做什麼？'},
+  {id:'gdn', tab:'arch', title:'Gated DeltaNet 系列', show:'狀態矩陣先擦（紅）再寫（青綠）', interact:'單步播放；gate 滑桿', question:'delta rule 的擦寫在做什麼？'},
   {id:'jev', tab:'arch', title:'Jev-like 系列', show:'左：自迴歸一顆顆冒；右：state + 答案槽位一次亮，槽位內是機率直方圖', interact:'打一段 state 即時看槽位；temperature 滑桿看校準', question:'一次 forward 讀機率 vs 逐 token 生成，差在哪？'},
   {id:'embedding', tab:'arch', title:'Embedding 系列', show:'3D 語義點雲', interact:'選一個詞 → 新點落下 → 最近鄰亮、畫 cosine 弧', question:'「相近」為什麼變成「距離近」？'},
   // ---- Tab 2 Model Block ----

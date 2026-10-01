@@ -15,7 +15,6 @@
     const sl=P.label('狀態 h₁ … h₈（每步一份）',{size:20}); sl.position.set(0,1.6,0); root.add(sl);
     return {row,states,arrows,up,label:sl};
   }
-  const GREY=['inactive'];
 
   /* ---------------- RNN ---------------- */
   App.register({ id:'rnn', tab:'arch', question:'為什麼長距離的依賴會不見？',
@@ -29,7 +28,7 @@
         <p>W 的「有效增益」小於 1 就指數衰減（梯度消失），大於 1 就爆炸。LSTM / GRU 用閘門讓增益能接近 1，但本質上還是同一條單線道——這也是 Transformer 改用「每個位置直接看每個位置」的原因。</p>
         <p>Mamba / RWKV / Gated DeltaNet 則是回頭把這條單線道做好：狀態變大、衰減變成可控、而且能平行訓練。</p>`);
       ctx.legend([['signal','追蹤的 token'],['state','狀態（亮度 = 該 token 殘留的影響）'],['memory','輸入']]);
-      ctx.setCamera({theta:0.1,phi:1.4,dist:12}); redraw(); } });
+      ctx.setCamera({theta:0.1,phi:1.4}); redraw(); } });
 
   /* ---------------- Mamba ---------------- */
   App.register({ id:'mamba', tab:'arch', question:'「選擇性」狀態更新是什麼意思？',
@@ -53,7 +52,7 @@
         <p><b>Mamba-2（SSD）</b>把這件事寫成一個有結構的下三角矩陣（切到「展開成矩陣」）——每格 = 來源 token 的寫入量 × 中間所有步的衰減連乘。它長得像 attention 矩陣，但不用算 Q·K，所以能用矩陣乘法平行訓練、又能用遞迴 O(1) 推論。</p>
         <p><b>Jamba / Nemotron</b> 類混合模型：大部分層用 Mamba，每隔幾層插一層 attention 補精確回看的能力。</p>`);
       ctx.legend([['signal','追蹤的 token'],['flow','選擇閘 Δ（環越大寫入越多）'],['state','狀態']]);
-      ctx.setCamera({theta:0.1,phi:1.4,dist:12}); redraw(); } });
+      ctx.setCamera({theta:0.1,phi:1.4}); redraw(); } });
 
   /* ---------------- RWKV ---------------- */
   App.register({ id:'rwkv', tab:'arch', question:'為什麼同一個模型能「訓練時平行、推論時遞迴」？',
@@ -76,7 +75,7 @@
         <p>不同通道學到不同的 w：有的記很久（慢通道），有的只看最近幾個（快通道）。另一半 <b>channel-mix</b> 就是帶一步時間混合的 FFN。</p>
         <p>版本演進：RWKV-4 固定 w；<b>RWKV-6</b> w 變成輸入相關（像 Mamba 的 Δ）；<b>RWKV-7</b> 加入類似 delta rule 的狀態擦寫（看 Gated DeltaNet）。</p>`);
       ctx.legend([['state','慢衰減通道 / 狀態'],['flow','快衰減通道'],['signal','目前處理的 token']]);
-      ctx.setCamera({theta:0.1,phi:1.4,dist:12}); redraw(); } });
+      ctx.setCamera({theta:0.1,phi:1.4}); redraw(); } });
 
   /* ---------------- Gated DeltaNet ---------------- */
   App.register({ id:'gdn', tab:'arch', question:'delta rule 的「擦掉再寫」在做什麼？',
@@ -104,8 +103,8 @@
       ctrl.slider('α 遺忘閘（整體衰減）',{min:0.5,max:1,step:0.01,value:alpha,fmt:v=>v.toFixed(2),onChange:v=>{alpha=v;}});
       const set=ctrl.readouts([{id:'phase',label:'目前半步'},{id:'energy',label:'‖S‖（狀態總量）'}]);
       ctrl.note(`<p>線性 attention 的狀態是 S = Σ vₛkₛᵀ，只會<b>一直加</b>——同一個 key 被寫兩次，兩個 value 會疊在一起變糊。</p>
-        <p><b>Delta rule</b>（DeltaNet）：寫入前先把 S 在 kₜ 方向上的舊值擦掉（紅），再寫新的 vₜ（綠）。效果是「同一個 key 用新 value 覆蓋舊的」，狀態像一張可以改寫的查表，而不是一堆疊加。</p>
+        <p><b>Delta rule</b>（DeltaNet）：寫入前先把 S 在 kₜ 方向上的舊值擦掉（紅），再寫新的 vₜ（青綠）。效果是「同一個 key 用新 value 覆蓋舊的」，狀態像一張可以改寫的查表，而不是一堆疊加。</p>
         <p><b>Gated</b> DeltaNet 再加一個整體遺忘閘 α（像 Mamba 的衰減），讓不再需要的對應慢慢淡掉。Qwen3-Next / Kimi Linear 等混合模型的線性層用的就是這個家族；RWKV-7 的更新式也屬於它。</p>`);
       ctx.legend([['state','狀態 S（亮度 = 大小）'],['alert','擦除半步'],['flow','寫入半步'],['signal','目前 token']]);
-      ctx.setCamera({theta:0.3,phi:1.35,dist:11}); reset(); } });
+      ctx.setCamera({theta:0.3,phi:1.35}); reset(); } });
 })();

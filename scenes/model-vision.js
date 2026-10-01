@@ -3,7 +3,7 @@
   App.register({ id:'yolo-v10', tab:'model', question:'為什麼 YOLOv10 可以不做 NMS？',
     init(ctx){ const {THREE:T,P,root,ctrl}=ctx; let head='o2o';
       // 影像平面 + 三個「物件」（鏡頭模組上的瑕疵框示意）
-      const img=new T.Mesh(new T.PlaneGeometry(6,4),new T.MeshStandardMaterial({color:new T.Color(P.theme('--bg2')),emissive:P.C('inactive'),emissiveIntensity:0.15})); img.position.set(-4.2,0.6,0); root.add(img);
+      const img=new T.Mesh(new T.PlaneGeometry(6,4),P.mat('inactive',{glow:0.15,extra:{color:new T.Color(P.theme('--bg2'))}})); img.position.set(-4.2,0.6,0); root.add(img);
       const OBJS=[{x:-1.8,y:0.9,w:1.4,h:1.0,label:'刮傷'},{x:0.9,y:-0.6,w:1.8,h:1.2,label:'汙點'},{x:1.6,y:1.2,w:0.9,h:0.7,label:'氣泡'}];
       OBJS.forEach(o=>{ const m=new T.Mesh(new T.CircleGeometry(Math.min(o.w,o.h)*0.35,24),P.mat('structure',{glow:0.3,opacity:0.6})); m.position.set(o.x,o.y,0.02); img.add(m); });
       const il=P.label('輸入影像',{size:20}); il.position.set(0,2.4,0); img.add(il);
@@ -18,7 +18,7 @@
       // predicted boxes on the image
       let boxes=[]; const boxG=new T.Group(); img.add(boxG);
       let seed=4; const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280-0.5;};
-      const draw=()=>{ boxes.forEach(b=>boxG.remove(b)); boxes=[]; seed=4; let n=0;
+      const draw=()=>{ boxes.forEach(b=>P.drop(b)); boxes=[]; seed=4; let n=0;
         OBJS.forEach(o=>{ const k=head==='o2m'?5:1; for(let i=0;i<k;i++){ const jx=i?rnd()*0.4:0, jy=i?rnd()*0.3:0, js=i?1+rnd()*0.3:1; const e=new T.LineSegments(new T.EdgesGeometry(new T.PlaneGeometry(o.w*js,o.h*js)),new T.LineBasicMaterial({color:P.C(head==='o2m'?'alert':'flow'),transparent:true,opacity:i?0.45:1})); e.position.set(o.x+jx,o.y+jy,0.05+i*0.01); boxG.add(e); boxes.push(e); n++; }
           const lb=P.label(`${o.label} ${head==='o2m'?'':'0.9'}`,{size:15,color:head==='o2m'?P.hex('alert'):P.hex('flow')}); lb.position.set(o.x,o.y+o.h/2+0.2,0.1); boxG.add(lb); boxes.push(lb); });
         root.updateMatrixWorld(true); flow.hideAll(); flow.set(0,new T.Vector3(-1.2,0.6,0),new T.Vector3(0.3,0.6,0),0.6,'memory'); flow.set(1,new T.Vector3(2.0,1.2,0),new T.Vector3(3.9,1.8,0),0.6,head==='o2m'?'alert':'inactive'); flow.set(2,new T.Vector3(2.0,0.0,0),new T.Vector3(3.9,0.0,0),0.6,head==='o2o'?'flow':'inactive');
@@ -30,7 +30,7 @@
           <p><b>YOLOv10</b> 訓練時掛兩個 head：一對多 head 照舊提供豐富監督，另加一個<b>一對一 head</b>，用一致的配對規則讓它學會「每個物件只選一個最好的點」。推論時只留一對一 head，直接輸出，<b>不需要 NMS</b>，端到端延遲固定。</p>
           <p>其他改動都是為了效率：rank-guided 的 block 設計、空間-通道解耦的下採樣、大核卷積與 partial self-attention 只放在深層。對產線 AOI 這種要固定延遲的場景，NMS-free 是實際的好處。</p>`);
       ctx.legend([['memory','P3 feature map'],['state','P4'],['signal','P5'],['alert','一對多 head / 重疊框'],['flow','一對一 head / 最終框']]);
-      ctx.setCamera({theta:0.15,phi:1.4,dist:13}); draw(); } });
+      ctx.setCamera({theta:0.15,phi:1.4}); draw(); } });
 
   /* ---------------- DeepSeek-OCR / Unlimited-OCR / 通用 VLM ---------------- */
   App.register({ id:'ocr', tab:'model', question:'一頁文件壓成幾個視覺 token 還讀得出來？幾十頁一次解碼 KV 怎麼不爆？',
@@ -41,7 +41,7 @@
       const dense=new T.Group(); dense.position.set(-5.2,1.6,0); root.add(dense); const G=16; for(let i=0;i<G*G;i++){ const m=new T.Mesh(new T.BoxGeometry(0.15,0.15,0.1),P.mat('memory',{glow:0.25,opacity:0.9})); m.position.set((i%G-(G-1)/2)*0.17,((G-1)/2-Math.floor(i/G))*0.17,0); dense.add(m); }
       const dl=P.label('',{size:15}); dl.position.set(0,1.75,0); dense.add(dl);
       const comp=new T.Group(); comp.position.set(-1.6,1.6,0); root.add(comp); let cCells=[]; const cl=P.label('',{size:15}); cl.position.set(0,1.75,0); comp.add(cl);
-      const conv=new T.Mesh(new T.ConeGeometry(0.9,1.1,4,1,true),new T.MeshStandardMaterial({color:P.C('flow'),emissive:P.C('flow'),emissiveIntensity:0.2,transparent:true,opacity:0.2,side:T.DoubleSide})); conv.rotation.z=Math.PI/2; conv.position.set(-3.4,1.6,0); root.add(conv); const convL=P.label('16× 卷積壓縮',{size:14}); convL.position.set(-3.4,0.5,0); root.add(convL);
+      const conv=new T.Mesh(new T.ConeGeometry(0.9,1.1,4,1,true),P.mat('flow',{glow:0.2,opacity:0.2,extra:{side:T.DoubleSide}})); conv.rotation.z=Math.PI/2; conv.position.set(-3.4,1.6,0); root.add(conv); const convL=P.label('16× 卷積壓縮',{size:14}); convL.position.set(-3.4,0.5,0); root.add(convL);
       const dec=new P.Tower(Array.from({length:10},(_,i)=>({type:i%2?'moe':'attn'})),{w:1.6,d:1.0,h:0.2,label:''}); dec.group.position.set(2.0,0.1,0); root.add(dec.group); const decL=P.label('',{size:15}); decL.position.set(2.0,3.3,0); root.add(decL);
       const out=P.label('',{size:15,color:P.hex('signal')}); out.position.set(4.9,1.6,0); root.add(out); const outL=P.label('輸出 Markdown',{size:15}); outL.position.set(4.9,2.6,0); root.add(outL);
       const flow=new P.BeamSet(3,{maxR:0.05,minR:0.03}); root.add(flow.group);
@@ -52,12 +52,12 @@
       let seed=1; const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280;};
       const garble=(txt,acc)=>{ seed=7; return txt.split('').map(ch=>rnd()<acc||ch===' '||ch==='，'||ch==='。'?ch:'▢').join(''); };
       const draw=()=>{ const m=MODES[mode]; const ds=variant!=='vlm'; const tokPer=ds?m.tok:[256,400,1024,1600][mode]; const ratio=DOC_TOKENS/tokPer; const acc=ratio<=10?0.97:ratio<=12?0.9:ratio<=20?0.6:0.4;
-        cCells.forEach(c=>comp.remove(c)); cCells=[]; const shown=Math.min(tokPer,400); const g=Math.ceil(Math.sqrt(shown)); const cs=Math.min(0.24,2.8/g); for(let i=0;i<shown;i++){ const c=new T.Mesh(new T.BoxGeometry(cs*0.85,cs*0.85,0.15),P.mat('flow',{glow:0.5})); c.position.set((i%g-(g-1)/2)*cs,((g-1)/2-Math.floor(i/g))*cs,0); comp.add(c); cCells.push(c); }
+        cCells.forEach(c=>P.drop(c)); cCells=[]; const shown=Math.min(tokPer,400); const g=Math.ceil(Math.sqrt(shown)); const cs=Math.min(0.24,2.8/g); for(let i=0;i<shown;i++){ const c=new T.Mesh(new T.BoxGeometry(cs*0.85,cs*0.85,0.15),P.mat('flow',{glow:0.5})); c.position.set((i%g-(g-1)/2)*cs,((g-1)/2-Math.floor(i/g))*cs,0); comp.add(c); cCells.push(c); }
         dl.userData.setText(ds?`SAM-base 視窗注意力：${m.res} → ${(parseInt(m.res)/16)**2} patch / 頁`:`ViT：${m.res} 全部 patch / 頁`); cl.userData.setText(ds?`CLIP-large 全域注意力：${tokPer} 視覺 token / 頁`:`${tokPer} 視覺 token / 頁（無壓縮）`); conv.visible=convL.visible=ds;
         decL.userData.setText(variant==='dsocr'?'DeepSeek-3B-MoE（570M active）· 標準 MHA':variant==='uocr'?'同一個 3B-MoE，所有注意力換成 R-SWA':'通用 VLM 的 LLM 解碼器'); out.userData.setText(garble(TEXT,acc).slice(0,26)+'…');
         // KV cache：m = pages × tokPer（參考，固定），輸出 T：MHA 全留，R-SWA 只留最近 WIN
         const mRef=pages*tokPer; const totalOut=pages*DOC_TOKENS; const Tn=Math.min(T_out,totalOut); const kept= variant==='uocr'?Math.min(WIN,Tn):Tn; const kv=mRef+kept;
-        kvCells.forEach(c=>kvG.remove(c)); kvCells=[]; const scale=8.5/Math.max(mRef+totalOut,1); refBox.scale.x=Math.max(0.05,mRef*scale); refBox.position.x=-4.25+refBox.scale.x/2; refL.position.x=refBox.position.x; refL.userData.setText(`參考 KV（視覺 token）m = ${mRef}，固定`);
+        kvCells.forEach(c=>P.drop(c)); kvCells=[]; const scale=8.5/Math.max(mRef+totalOut,1); refBox.scale.x=Math.max(0.05,mRef*scale); refBox.position.x=-4.25+refBox.scale.x/2; refL.position.x=refBox.position.x; refL.userData.setText(`參考 KV（視覺 token）m = ${mRef}，固定`);
         const outStart=-4.25+mRef*scale; const nSeg=24; for(let i=0;i<nSeg;i++){ const t0=i/nSeg*totalOut; if(t0>=Tn) break; const inWin= variant!=='uocr' || t0>=Tn-WIN; const c=new T.Mesh(new T.BoxGeometry(totalOut*scale/nSeg*0.9,0.5,0.5),P.mat(inWin?'signal':'inactive',{glow:inWin?0.5:0.05,opacity:inWin?1:0.25})); c.position.x=outStart+(i+0.5)/nSeg*totalOut*scale; kvG.add(c); kvCells.push(c); }
         winL.position.x=outStart+Math.max(0.6,Tn*scale/2); winL.userData.setText(variant==='uocr'?`輸出 KV：只留最近 n = ${WIN}，更早的逐出（灰）`:`輸出 KV：全部保留，隨 T 線性成長`);
         kvL.userData.setText(`解碼器 KV cache 佇列 · 已生成 ${Tn} / ${totalOut} token（${pages} 頁）`);
@@ -73,5 +73,5 @@
         <p>它和純 SWA 的差別：視覺 token <b>不進滑動窗、不被逐出</b>，所以不會像線性注意力那樣越看越糊。這也是為什麼它只適合「有參考物」的任務：OCR、ASR、翻譯。</p>
         <p><b>通用 VLM 式 OCR</b>：vision encoder 不壓縮，token 數 4～6 倍，精度高但解碼器 context 和延遲都貴。</p>`);
       ctx.legend([['memory','SAM 階段 patch'],['flow','壓縮後視覺 token / 參考 KV（固定）'],['signal','輸出 KV（還在窗內）'],['inactive','被逐出的輸出 KV']]);
-      ctx.setCamera({theta:0.1,phi:1.35,dist:16.5}); draw(); } });
+      ctx.setCamera({theta:0.1,phi:1.35}); draw(); } });
 })();

@@ -43,3 +43,12 @@ App.register({
 });
 ```
 id 必須對應 `_catalog.js` 裡的 id，存檔後 `python build.py` 即可。
+
+寫場景的幾條慣例（測試會檢查）：
+- 顏色只用語意角色名：`signal`（訊號 / token / 算力）、`memory`（記憶體 / KV）、`state`（狀態 / SSM / latent）、`flow`（連線 / 工具 / 共享）、`alert`（爆炸 / 錯誤 / 通訊 / 浪費）、`moe`、`inactive`、`structure`（外殼 / 座標 / 說明）。可加階層：`'flow:dim'`、`'signal:hot'`。DOM 用 `P.css('flow')` → `var(--flow)`；canvas 用 `P.hex('flow')`、`P.rgba('flow', .2)`；要 theme 顏色用 `P.theme('--bg2')`。不要寫 hex。
+- 相機：`ctx.setCamera({theta, phi, zoom})`。距離與目標由 `fit()` 依內容自動算，`zoom` 是倍數（1.3 = 退遠一點）。
+- 重建物件時用 `P.drop(obj)`（移除 + 釋放）或 `P.clear(group)`，不要只 `remove`。被 remove 的 3D 文字標籤會自動註銷。
+- 自己開的 timer / listener 用 `ctx.onDispose(() => ...)` 登記清理。
+- hover 用 `ctx.app.hover(meshes)`，不要碰全域 `App`。
+- 面板樣式用 theme.css 的 class（`.log`、`.ovl-card`、`.bitchip`、`.complist`…），不要 inline style。
+- 圖例顏色不能重複；每個 readout 的 `bad` / `ok` 自帶 ▲ / ✓。

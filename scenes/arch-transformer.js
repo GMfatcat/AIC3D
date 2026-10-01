@@ -7,7 +7,7 @@ App.register({
     const TGT = ['I','want','beef','noodles','today','.'];
     this.mode='dec'; this.focus=0; // 0 = all
     const build = ()=>{
-      while(root.children.length) root.remove(root.children[0]);
+      P.clear(root);
       const qLabels = this.mode==='encdec'?TGT:SRC, kLabels = SRC;
       this.q = new P.TokenRow(qLabels,{color:'signal'}); this.q.group.position.y=1.8; root.add(this.q.group);
       this.k = new P.TokenRow(kLabels,{color:'memory',labelBelow:true}); this.k.group.position.y=-1.8; root.add(this.k.group);
@@ -47,12 +47,12 @@ App.register({
       <p><b>Encoder-Decoder</b>（T5 / 翻譯 / Whisper 類）：decoder 內部仍是因果，但多了一層 cross attention 去看 encoder 的輸出。這裡畫的是 cross 那一層。</p>
       <p class="hint">連線束粗細 = softmax 後的權重，數值是示意，不是真實模型。</p>`);
     ctx.legend([['signal','Query token'],['memory','Key/Value token'],['flow','attention 權重（粗 = 大）'],['state','cross attention']]);
-    ctx.setCamera({theta:0.15,phi:1.35,dist:12.5});
+    ctx.setCamera({theta:0.15,phi:1.35});
     build();
-    this._hoverTargets = ()=> this.q.cubes;
+    this._hoverTargets = ()=> this.q.cubes; this._app = ctx.app;
   },
   update(){
-    const h = App.hover(this._hoverTargets());
+    const h = this._app.hover(this._hoverTargets());
     if(h){ const i=this.q.cubes.indexOf(h); if(i>=0 && this.focus!==i+1){ this.focus=i+1; this.draw(); this._hovering=true; } }
     else if(this._hovering){ this._hovering=false; this.focus=this.slider.value; this.draw(); }
   },

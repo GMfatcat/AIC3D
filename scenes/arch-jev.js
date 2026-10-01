@@ -12,7 +12,7 @@ App.register({
     const L=new T.Group(); L.position.x=-4.6; root.add(L); const R=new T.Group(); R.position.x=3.4; root.add(R);
     const lt=P.label('左：自迴歸 LLM（一次一顆）',{size:20}); lt.position.set(0,3.2,0); L.add(lt); const rt=P.label('右：Jev / Jev-like（一次 forward，全部槽位同時有答案）',{size:20}); rt.position.set(0,3.2,0); R.add(rt);
     let stateRowL, genRow, stateRowR, slotObjs=[], beams;
-    const build=()=>{ while(L.children.length>1) L.remove(L.children[1]); while(R.children.length>1) R.remove(R.children[1]); const c=CASES[ci];
+    const build=()=>{ while(L.children.length>1) P.drop(L.children[1]); while(R.children.length>1) P.drop(R.children[1]); const c=CASES[ci];
       stateRowL=new P.TokenRow(c.state,{color:'memory',gap:0.7,size:0.38,labelBelow:true}); stateRowL.group.position.y=1.6; L.add(stateRowL.group);
       genRow=new P.TokenRow(c.gen,{color:'signal',gap:0.62,size:0.34,labelBelow:true}); genRow.group.position.y=-0.6; L.add(genRow.group);
       stateRowR=new P.TokenRow(c.state,{color:'memory',gap:0.7,size:0.38,labelBelow:true}); stateRowR.group.position.y=1.6; R.add(stateRowR.group);
@@ -22,7 +22,7 @@ App.register({
     const soft=(p)=>{ const l=p.map(v=>Math.log(Math.max(v,1e-6))/temp); const m=Math.max(...l); const e=l.map(v=>Math.exp(v-m)); const Z=e.reduce((a,b)=>a+b,0); return e.map(v=>v/Z); };
     const redraw=()=>{ const c=CASES[ci];
       for(let i=0;i<c.gen.length;i++) genRow.style(i,{opacity:i<t?1:0.12,glow:i===t-1?0.9:0.3});
-      R.updateMatrixWorld(true); slotObjs.forEach((so,i)=>{ const p=soft(so.s.p); so.bars.forEach((m,j)=>{ m.scale.y=Math.max(0.03,p[j]*1.6); m.position.y=m.scale.y/2+0.05; m.material.emissiveIntensity=0.2+p[j]*1.2; }); const mi=p.indexOf(Math.max(...p)); const a=new T.Vector3(0,1.35,0), b=so.g.position.clone(); b.y+=1.2; beams.set(i,a,b,0.5,'state'); });
+      R.updateMatrixWorld(true); slotObjs.forEach((so,i)=>{ const p=soft(so.s.p); so.bars.forEach((m,j)=>{ m.scale.y=Math.max(0.03,p[j]*1.6); m.position.y=m.scale.y/2+0.05; m.material.emissiveIntensity=0.2+p[j]*1.2; }); const a=new T.Vector3(0,1.35,0), b=so.g.position.clone(); b.y+=1.2; beams.set(i,a,b,0.5,'state'); });
       const ent=slotObjs.map(so=>{ const p=soft(so.s.p); return -p.reduce((s,v)=>s+(v>0?v*Math.log2(v):0),0); });
       set('left',`${t} / ${c.gen.length} 個 token，${t} 次 forward`); set('right','1 次 forward（唯讀），4 個答案 + 機率'); set('ent',ent.map(e=>e.toFixed(2)).join(' / ')+' bit'); set('answers',slotObjs.map(so=>{ const p=soft(so.s.p); return so.s.opts[p.indexOf(Math.max(...p))]+` ${(Math.max(...p)*100).toFixed(0)}%`; }).join('，')); };
     ctrl.heading('同一個 state，兩種問法'); ctrl.segmented(null,CASES.map((c,i)=>({id:String(i),label:c.label})),'0',id=>{ci=+id;build();});
@@ -33,6 +33,6 @@ App.register({
         <p><b>Jev-like 開源實作</b>大致三種路線：OpenJev 類——凍結一個開源 LLM，把答案槽位 mask 起來，只讀那些位置的 logits；jevlike 類——從零訓練小模型，byte embedding + option attention，state 和每個選項直接做相似度；Verdict 類——在這之上加校準層。</p>
         <p>適合的場景：分類、路由、風險判斷、規則引擎裡原本要人工寫 if-else 的地方。不適合：需要生成內容的任務。右邊的熵就是「模型多確定」，可以直接拿來決定要不要轉人工。</p>`);
     ctx.legend([['memory','輸入 state'],['signal','逐顆生成的 token'],['state','答案槽位的機率分佈']]);
-    ctx.setCamera({theta:0.05,phi:1.4,dist:14}); build();
+    ctx.setCamera({theta:0.05,phi:1.4}); build();
   },
 });

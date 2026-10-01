@@ -1,7 +1,8 @@
 /* 量化家族：都用「數軸上有哪些點可以用」這一個視角 */
 (function(){
   // ---- 浮點格式枚舉 ----
-  function fpValues(E,M,bias,maxExpCode){ // 回傳正值（含 subnormal），不含 inf/nan
+  const fpMemo={}; const fpValues=(E,M,bias,maxExpCode)=>{ const k=[E,M,bias,maxExpCode].join('/'); return fpMemo[k]||(fpMemo[k]=fpValuesRaw(E,M,bias,maxExpCode)); }; // 枚舉 2.5 萬個 BF16 值只做一次
+  function fpValuesRaw(E,M,bias,maxExpCode){ // 回傳正值（含 subnormal），不含 inf/nan
     const out=[]; for(let e=0;e<=maxExpCode;e++) for(let m=0;m<(1<<M);m++){ const v=e===0? Math.pow(2,1-bias)*(m/(1<<M)) : Math.pow(2,e-bias)*(1+m/(1<<M)); out.push(v); } return out.filter(v=>v>0); }
   const FORMATS={
     bf16:{name:'BF16',E:8,M:7,bias:127,maxCode:200,color:'memory',   bits:'1 + 8 + 7'},
@@ -28,18 +29,18 @@
           else vals=fpValues(f.E,f.M,f.bias,f.maxCode);
           vals=vals.filter(v=>v<=RANGE); const pos=new Float32Array(vals.length*3); vals.forEach((v,i)=>{pos[i*3]=X(v);}); o.pts.geometry.setAttribute('position',new T.BufferAttribute(pos,3)); o.pts.geometry.computeBoundingSphere();
           const q=snap(vals,x); o.marker.position.x=X(q); o.tgt.position.x=X(x); const rel=Math.abs(q-x)/Math.max(x,1e-9); o.err.userData.setText(`→ ${q.toPrecision(4)}  誤差 ${(rel*100).toFixed(2)}%`); o.err.position.x=X(q);
-          const n1=vals.filter(v=>v>=1&&v<2).length; html.push(`<div style="margin-bottom:8px"><b>${f.name}</b> <span class="hint">${f.bits}</span><div style="font-family:var(--mono);font-size:12px;margin-top:2px">${bits(f, id==='fp4'? q/scale : q).split(' ').map((s,i)=>`<span style="padding:1px 4px;border-radius:3px;background:${['var(--inactive)','var(--flow)','var(--state)'][i]}">${s}</span>`).join(' ')}${id==='fp4'?` <span class="hint">× scale ${scale.toPrecision(3)}</span>`:''}</div><div class="hint">[1, 2) 之間有 ${n1} 個點${id==='fp4'?'（隨 scale 伸縮）':''}</div></div>`); });
+          const n1=vals.filter(v=>v>=1&&v<2).length; html.push(`<div class="bitrow"><b>${f.name}</b> <span class="hint">${f.bits}</span><div class="bits">${bits(f, id==='fp4'? q/scale : q).split(' ').map((s,i)=>`<span class="bitchip ${['sign','exp','man'][i]}">${s}</span>`).join(' ')}${id==='fp4'?` <span class="hint">× scale ${scale.toPrecision(3)}</span>`:''}</div><div class="hint">[1, 2) 之間有 ${n1} 個點${id==='fp4'?'（隨 scale 伸縮）':''}</div></div>`); });
         bitsEl.innerHTML=html.join(''); };
       ctrl.heading('一個數字、三種格式'); ctrl.slider('要表示的值 x',{min:0.01,max:4,step:0.01,value:x,fmt:v=>v.toFixed(2),onChange:v=>{x=v;redraw();}});
       ctrl.slider('NVFP4：這一組 16 個值的最大絕對值',{min:0.25,max:4,step:0.05,value:blockMax,fmt:v=>v.toFixed(2),onChange:v=>{blockMax=v;redraw();}});
-      ctrl.html('<span class="hint">位元佈局：<span style="background:var(--inactive);padding:0 4px;border-radius:3px">sign</span> <span style="background:var(--flow);padding:0 4px;border-radius:3px">exponent</span> <span style="background:var(--state);padding:0 4px;border-radius:3px">mantissa</span></span>');
+      ctrl.html('<span class="hint">位元佈局：<span class="bitchip sign">sign</span> <span class="bitchip exp">exponent</span> <span class="bitchip man">mantissa</span></span>');
       const bitsEl=ctrl.html('');
       ctrl.note(`<p>浮點數的點<b>不是均勻的</b>：每跨一個 2 的冪，點的密度就減半。exponent 位元決定「能表示多大的範圍」，mantissa 位元決定「每個範圍裡有幾個點」。</p>
         <p><b>BF16</b>：8 個 exponent 跟 FP32 一樣，所以範圍一樣大、不會 overflow，但 mantissa 只有 7 位——每個 2 的冪之間 128 個點。訓練用它就是圖「範圍安全」。</p>
         <p><b>FP8 E4M3</b>：範圍 ±448，每個區間 8 個點。要搭配 per-tensor 或 per-block 的 scale 把數值移到好用的區間。</p>
         <p><b>NVFP4</b>：每個區間只有 2 個點（0.5 的倍數 ×2ⁿ），自己幾乎沒精度；靠 <b>16 個值共用一個 FP8 scale</b>，讓格點貼著這一小塊的實際範圍伸縮。拉第二支滑桿看格點跟著動。</p>`);
       ctx.legend([['memory','BF16 可表示的值'],['flow','FP8 可表示的值'],['signal','NVFP4 可表示的值（已乘 scale）'],['alert','x 被 snap 到的點']]);
-      ctx.setCamera({theta:0.0,phi:1.5,dist:13}); redraw(); } });
+      ctx.setCamera({theta:0.0,phi:1.5}); redraw(); } });
 
   /* ---------------- GPTQ ---------------- */
   App.register({ id:'gptq', tab:'optimize', question:'逐欄量化時的「誤差補償」在做什麼？',
@@ -67,13 +68,12 @@
         <p>所以 GPTQ 最小化的是<b>輸出誤差</b>，不是權重誤差——這就是它比直接四捨五入好、而且 4-bit 還能用的原因。代價是需要一批校準資料、以及逐欄的序列計算（實務上分 block 做）。</p>
         <p class="hint">這裡用 4 階均勻格點、相鄰欄相關 0.35 做示意。Imatrix（下一個場景）是把同樣的「哪些權重對輸出重要」用在 GGUF 的分級精度上。</p>`);
       ctx.legend([['memory','浮點權重'],['signal','已量化'],['alert','誤差分攤到右側的欄']]);
-      ctx.setCamera({theta:0.15,phi:1.4,dist:11}); reset();
+      ctx.setCamera({theta:0.15,phi:1.4}); reset();
       this.update=(dt)=>{ if(waveT>0){ waveT=Math.max(0,waveT-dt*1.5); wave.material.opacity=0.35*waveT; wave.position.x+=dt*2.5; } }; } });
 
   /* ---------------- EXL3 ---------------- */
   App.register({ id:'exl3', tab:'optimize', question:'任意小數位元率（3.25 bpw）是怎麼來的？',
     init(ctx){ const {THREE:T,P,root,ctrl}=ctx; const G=8; let bpw=3.0, rotate=true;
-      let seed=9; const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280*2-1;};
       const raw=[1.6,-0.2,0.1,0.05,-1.4,0.3,0.0,-0.15]; // 幾個大值 + 很多小值（典型 outlier 分佈）
       const Hd=[[1,1,1,1,1,1,1,1],[1,-1,1,-1,1,-1,1,-1],[1,1,-1,-1,1,1,-1,-1],[1,-1,-1,1,1,-1,-1,1],[1,1,1,1,-1,-1,-1,-1],[1,-1,1,-1,-1,1,-1,1],[1,1,-1,-1,-1,-1,1,1],[1,-1,-1,1,-1,1,1,-1]].map(r=>r.map(v=>v/Math.sqrt(8)));
       const had=v=>Hd.map(r=>r.reduce((s,a,j)=>s+a*v[j],0));
@@ -114,5 +114,5 @@
         <p>因為存的是路徑而不是每個值的索引，每個權重平均用幾個 bit 可以是任意數——3.25 bpw 就是這樣來的。推論時用 hash 即時重建候選值，不用查大 codebook。</p>
         <p class="hint">候選值生成規則是示意用的簡化版，真實 EXL3 用更精細的 hash 與 2–3 層結構。</p>`);
       ctx.legend([['memory','原始權重'],['signal','EXL3 選到的值與路徑'],['structure','該欄的候選點'],['flow','均勻格點版本']]);
-      ctx.setCamera({theta:0.3,phi:1.35,dist:12}); redraw(); } });
+      ctx.setCamera({theta:0.3,phi:1.35}); redraw(); } });
 })();

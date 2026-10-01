@@ -42,7 +42,7 @@ const App = {
     const loop = ()=>{
       const dt=Math.min(0.05,this.clock.getDelta());
       if(this.current?.update) this.current.update(dt);
-      if(this.autoSpin && !this.dragging && !this.reduceMotion){ this.cam.theta += 0.0012; this._placeCamera(); }
+      if(this.autoSpin && !this.dragging && !this.reduceMotion){ this.cam.theta += 0.072*dt; this._placeCamera(); } // 以時間計，120Hz 和 60Hz 轉一樣快
       this._shadows(); this.renderer.render(this.scene,this.camera); this._projectLabels();
       requestAnimationFrame(loop);
     };
@@ -58,7 +58,7 @@ const App = {
     for(const l of this.labels){
       // 掛在場景裡才顯示；被 remove 的（不在 scene 樹下）隱藏
       let p=l, attached=false, vis=true; while(p){ if(p===this.scene){attached=true;break;} if(!p.visible) vis=false; p=p.parent; }
-      if(!attached){ l.el.style.display='none'; continue; }
+      if(!attached){ l.el.remove(); this.labels.delete(l); continue; } // 被 remove 的標籤就此註銷；要再掛回來得 App.labels.add(l)
       if(!l.el.parentNode) this.labelLayer.appendChild(l.el);
       if(!vis){ l.el.style.display='none'; continue; }
       l.getWorldPosition(v); const d=this.camera.position.distanceTo(v); v.project(this.camera);
@@ -70,7 +70,7 @@ const App = {
 
   /* ---------- camera / orbit / pan / fit ---------- */
   _orbit(){
-    this.cam = {theta:0.5, phi:1.2, dist:18, target:new T.Vector3()}; this.camHome = null; this.bounds=null;
+    this.cam = {theta:0.5, phi:1.2, dist:18, zoom:1, target:new T.Vector3()}; this.camHome = null; this.bounds=null; this._disposers=[];
     const c=this.canvas; let drag=null, mode=null; const touches=new Map();
     c.addEventListener('contextmenu',e=>e.preventDefault());
     c.addEventListener('pointerdown',e=>{ touches.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(touches.size===2){ mode='pinch'; return; } drag={x:e.clientX,y:e.clientY}; mode=(e.button===2||e.button===1||e.shiftKey)?'pan':'rotate'; this.dragging=true; this.autoSpin=false; c.setPointerCapture(e.pointerId); });
@@ -95,14 +95,15 @@ const App = {
     this.autoSpin=false;
   },
   _clampDist(d){ return Math.max(this.minDist||3, Math.min(this.maxDist||120, d)); },
-  setCamera({theta,phi,dist,target},isHome){ Object.assign(this.cam,{theta,phi}); if(dist) this.cam.dist=dist; if(target) this.cam.target.copy(target); if(!isHome) this._userCam={theta,phi,dist,target}; this._placeCamera(); },
-  /* 以 root 的 bounding box 自動定距離與目標；保留場景給的 theta/phi */
+  /* 場景能決定的是視角（theta / phi）與 zoom（相對自動取景距離的倍數）；距離與目標由 fit() 依內容算 */
+  setCamera({theta,phi,zoom,dist,target},isHome){ Object.assign(this.cam,{theta,phi}); if(zoom) this.cam.zoom=zoom; if(isHome){ if(dist) this.cam.dist=dist; if(target) this.cam.target.copy(target); } this._placeCamera(); },
+  /* 以 root 的 bounding box 自動定距離與目標；保留場景給的 theta/phi，乘上 zoom */
   fit(){
     const box=new T.Box3().setFromObject(this.root); if(box.isEmpty()){ this.camHome={...this.cam,target:this.cam.target.clone()}; return; }
     const size=box.getSize(new T.Vector3()), center=box.getCenter(new T.Vector3());
     const aspect=this.camera.aspect||1.6; const fovV=this.camera.fov*Math.PI/180; const fovH=2*Math.atan(Math.tan(fovV/2)*aspect);
     const dV=(size.y/2)/Math.tan(fovV/2), dH=(size.x/2)/Math.tan(fovH/2), dD=size.z/2;
-    const dist=Math.max(dV,dH)*1.12+dD+1.2;
+    const dist=(Math.max(dV,dH)*1.12+dD+1.2)*(this.cam.zoom||1);
     this.cam.target.copy(center); this.cam.dist=dist; this.minDist=Math.max(2,dist*0.25); this.maxDist=dist*4;
     const pad=size.clone().multiplyScalar(0.5).addScalar(1); this.bounds=new T.Box3(center.clone().sub(pad),center.clone().add(pad));
     this.ground.position.y=box.min.y-0.35; this.grid.position.y=box.min.y-0.34;
@@ -116,8 +117,11 @@ const App = {
 
   /* ---------- navigation ---------- */
   _nav(){
-    const tabs=document.getElementById('tabs');
-    TABS.forEach(t=>{ const b=document.createElement('button'); b.textContent=t.label; b.setAttribute('role','tab'); b.dataset.tab=t.id; b.addEventListener('click',()=>{ const first=catalog.find(i=>i.tab===t.id); location.hash=first?first.id:t.id; }); tabs.appendChild(b); });
+    const tabs=document.getElementById('tabs'); tabs.setAttribute('role','tablist'); tabs.setAttribute('aria-label','主題');
+    const goTab=t=>{ const first=catalog.find(i=>i.tab===t.id); location.hash=first?first.id:t.id; };
+    TABS.forEach(t=>{ const b=document.createElement('button'); b.textContent=t.label; b.setAttribute('role','tab'); b.dataset.tab=t.id; b.addEventListener('click',()=>goTab(t)); tabs.appendChild(b); });
+    // 鍵盤：左右鍵在分頁間移動（WAI-ARIA tabs pattern）
+    tabs.addEventListener('keydown',e=>{ if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft') return; const i=TABS.findIndex(t=>t.id===e.target.dataset.tab); if(i<0) return; const n=(i+(e.key==='ArrowRight'?1:-1)+TABS.length)%TABS.length; goTab(TABS[n]); tabs.children[n].focus(); e.preventDefault(); });
     const done=catalog.filter(i=>scenes[i.id]).length; document.getElementById('progress').textContent=`${done} / ${catalog.length} 場景`;
   },
   _route(){
@@ -126,7 +130,7 @@ const App = {
     if(tm && this.renderTour){ const sid=this.renderTour(tm[1],+tm[2]); if(sid){ id=sid; this._inTour=true; } else { this._inTour=false; } }
     else { this._inTour=false; this.hideTour && this.hideTour(); }
     let item=catalog.find(i=>i.id===id); if(!item){ item=catalog.find(i=>i.tab===id)||catalog[0]; }
-    document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===item.tab)));
+    document.querySelectorAll('#tabs button').forEach(b=>{ const on=b.dataset.tab===item.tab; b.setAttribute('aria-selected',String(on)); b.tabIndex=on?0:-1; });
     const list=document.getElementById('items'); list.innerHTML='';
     catalog.filter(i=>i.tab===item.tab).forEach(i=>{ const b=document.createElement('button'); b.textContent=i.title; if(!scenes[i.id]){ b.classList.add('todo'); b.innerHTML=`${i.title}<i>規劃中</i>`; } b.setAttribute('aria-current',String(i.id===item.id)); b.addEventListener('click',()=>location.hash=i.id); list.appendChild(b); });
     this.show(item);
@@ -135,15 +139,19 @@ const App = {
   /* ---------- scene lifecycle ---------- */
   show(item){
     if(this.current){ this.current.dispose && this.current.dispose(); this.ctrl && this.ctrl.dispose(); }
-    while(this.root.children.length) this.root.remove(this.root.children[0]);
+    (this._disposers||[]).forEach(fn=>{ try{ fn(); }catch(e){ console.error(e); } }); this._disposers=[];
+    P.clear(this.root); // 移除並釋放 geometry / material，不然 GPU 記憶體只增不減
     this.labels.forEach(l=>l.el.remove()); this.labels.clear(); this.labelLayer.innerHTML='';
     document.getElementById('overlay').innerHTML='';
     this.ctrl = new Controls(document.getElementById('ctrl'));
     document.getElementById('i-title').textContent=item.title; document.getElementById('i-q').textContent=item.question||'';
-    this.autoSpin = true; this._userCam=null;
+    this.canvas.setAttribute('aria-label',`3D 場景：${item.title}。${item.question||''} 文字說明在右側面板。`);
+    this.autoSpin = true; this.cam.zoom = 1;
     const def = scenes[item.id];
     if(!def){ this.current = this._placeholder(item); this.fit(); return; }
-    const ctx = { app:this, THREE:T, P, scene:this.scene, root:this.root, ctrl:this.ctrl, overlay:document.getElementById('overlay'), legend:(items)=>this.legend(items), setCamera:(c)=>this.setCamera(c), reduceMotion:this.reduceMotion };
+    const ctx = { app:this, THREE:T, P, scene:this.scene, root:this.root, ctrl:this.ctrl, overlay:document.getElementById('overlay'), legend:(items)=>this.legend(items), setCamera:(c)=>this.setCamera(c), reduceMotion:this.reduceMotion,
+      onDispose:(fn)=>this._disposers.push(fn) }; // 場景用這個登記 timer / listener 的清理
+    this.ctx = ctx;
     const inst = Object.create(def); inst.init(ctx); this.current = inst;
     document.getElementById('i-q').textContent = def.question || item.question || '';
     this.root.updateMatrixWorld(true); this.fit();

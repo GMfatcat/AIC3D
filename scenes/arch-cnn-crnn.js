@@ -7,10 +7,10 @@
       for(let i=0;i<IN;i++) for(let j=0;j<IN;j++){ const v=(i+j>7)?0.9:0.15; const m=new T.Mesh(new T.BoxGeometry(cell*0.92,cell*0.92,0.25),P.mat('memory',{glow:0.1+v*0.5,opacity:0.95})); m.position.set((j-(IN-1)/2)*cell,((IN-1)/2-i)*cell,0); inG.add(m); inCells.push({m,i,j,v}); }
       const il=P.label('輸入 8×8',{size:20}); il.position.set(0,2.5,0); inG.add(il);
       const kern=new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(1,1,0.4)),new T.LineBasicMaterial({color:P.C('signal')})); inG.add(kern);
-      const outG=new T.Group(); outG.position.set(3.2,0,0); root.add(outG); let outCells=[]; const ol=P.label('',{size:20}); ol.position.set(0,2.5,0); outG.add(ol);
+      const outG=new T.Group(); outG.position.set(3.2,0,0); root.add(outG); let outCells=[], outMeshes=[]; const ol=P.label('',{size:20}); ol.position.set(0,2.5,0); outG.add(ol);
       const beams=new P.BeamSet(1,{maxR:0.06,minR:0.04}); root.add(beams.group);
       const outSize=()=>Math.floor((IN-k)/stride)+1;
-      const rebuild=()=>{ outCells.forEach(c=>outG.remove(c.m)); outCells=[]; const O=outSize(); for(let i=0;i<O;i++) for(let j=0;j<O;j++){ const m=new T.Mesh(new T.BoxGeometry(cell*0.92,cell*0.92,0.25),P.mat('flow',{glow:0.15,opacity:0.95})); m.position.set((j-(O-1)/2)*cell,((O-1)/2-i)*cell,0); outG.add(m); outCells.push({m,i,j}); } ol.userData.setText(`輸出 feature map ${O}×${O}`); pos=0; paint(); };
+      const rebuild=()=>{ outCells.forEach(c=>P.drop(c.m)); outCells=[]; const O=outSize(); for(let i=0;i<O;i++) for(let j=0;j<O;j++){ const m=new T.Mesh(new T.BoxGeometry(cell*0.92,cell*0.92,0.25),P.mat('flow',{glow:0.15,opacity:0.95})); m.position.set((j-(O-1)/2)*cell,((O-1)/2-i)*cell,0); outG.add(m); outCells.push({m,i,j}); } outMeshes=outCells.map(c=>c.m); ol.userData.setText(`輸出 feature map ${O}×${O}`); pos=0; paint(); };
       const paint=()=>{ const O=outSize(); const idx=hoverIdx>=0?hoverIdx:Math.min(pos,O*O-1); const oi=Math.floor(idx/O), oj=idx%O; const r0=oi*stride, c0=oj*stride;
         inCells.forEach(c=>{ const inK=c.i>=r0&&c.i<r0+k&&c.j>=c0&&c.j<c0+k; c.m.material.color.copy(P.C(inK?'signal':'memory')); c.m.material.emissive.copy(c.m.material.color); c.m.material.emissiveIntensity=(inK?0.6:0.1)+c.v*0.5; c.m.position.z=inK?0.2:0; });
         kern.scale.set(k*cell,k*cell,1); kern.position.set((c0+(k-1)/2-(IN-1)/2)*cell,((IN-1)/2-(r0+(k-1)/2))*cell,0.3);
@@ -25,8 +25,8 @@
         <p>單層只看局部，但<b>堆層會讓感受野線性長大</b>：stride 1 時 L 層 k×k 的感受野是 1 + L(k−1)；stride s 時每往上一層，一步就對應原圖更多像素，變成 1 + (k−1)(1 + s + s² + …)。深層的一個輸出像素其實「看到」了原圖一大塊，這就是「低層抓邊緣、高層抓物件」的來源。</p>
         <p class="hint">滑鼠移到右邊任一輸出格，會反亮它在輸入上的感受野。AOI 常用的 SegFormer / UNet 前段都是這個操作的堆疊。</p>`);
       ctx.legend([['signal','目前 kernel 位置 / 對應輸出'],['memory','輸入像素'],['flow','已算完的輸出']]);
-      ctx.setCamera({theta:0.05,phi:1.45,dist:11}); rebuild();
-      this.update=()=>{ const hv=App.hover(outCells.map(c=>c.m)); const ni=hv?outCells.findIndex(c=>c.m===hv):-1; if(ni!==hoverIdx){ hoverIdx=ni; paint(); } }; } });
+      ctx.setCamera({theta:0.05,phi:1.45}); rebuild();
+      this.update=()=>{ const hv=ctx.app.hover(outMeshes); const ni=hv?outCells.findIndex(c=>c.m===hv):-1; if(ni!==hoverIdx){ hoverIdx=ni; paint(); } }; } });
 
   /* ---------------- CRNN ---------------- */
   App.register({ id:'crnn', tab:'arch', question:'一張影像怎麼變成一串序列，再變成文字？',
@@ -37,7 +37,7 @@
       const tw=new P.Tower([{type:'other'},{type:'other'},{type:'other'}],{w:8,d:0.6,h:0.22,label:'CNN（高度壓到 1，寬度降採樣）'}); tw.group.position.set(0,0.9,0); root.add(tw.group);
       let colG=null, rnnG=null, outG=null, beams=null;
       // 每欄的「預測」：由字元位置決定（示意 CTC 輸出）
-      const predFor=(cols)=>{ const out=[]; const charW=512/ (TEXT.length+1); for(let c=0;c<cols;c++){ const x=(c+0.5)/cols*512; const ci=Math.floor((x-28)/ (64*0.6)); const ch=TEXT[ci]; const frac=((x-28)%(64*0.6))/(64*0.6); out.push(ch&&frac>0.2&&frac<0.8?ch:'–'); } return out; };
+      const predFor=(cols)=>{ const out=[]; for(let c=0;c<cols;c++){ const x=(c+0.5)/cols*512; const ci=Math.floor((x-28)/ (64*0.6)); const ch=TEXT[ci]; const frac=((x-28)%(64*0.6))/(64*0.6); out.push(ch&&frac>0.2&&frac<0.8?ch:'–'); } return out; };
       const collapse=(p)=>{ let s='',prev=null; for(const c of p){ if(c!==prev&&c!=='–') s+=c; prev=c; } return s; };
       const rebuild=()=>{ [colG,rnnG,outG].forEach(x=>x&&root.remove(x)); if(beams) root.remove(beams.group); const cols=Math.floor(512/down/4); const pred=predFor(cols); const w=8/cols;
         colG=new T.Group(); colG.position.y=-0.5; root.add(colG); rnnG=new T.Group(); rnnG.position.y=-1.7; root.add(rnnG); outG=new T.Group(); outG.position.y=-2.9; root.add(outG);
@@ -58,5 +58,5 @@
         <p><b>CTC</b> 解決「欄數比字元多、而且不知道哪欄對哪個字」的問題：每欄輸出一個字元或 blank，解碼時合併連續重複、刪掉 blank。所以訓練不需要逐字元標框，只要整串文字。</p>
         <p>降採樣拉太大（×8）時欄數不夠，相鄰字會擠在同一欄、重複字（兩個 3）會被合併——這是 CRNN 的經典失敗模式。</p>`);
       ctx.legend([['memory','feature 欄'],['state','BiLSTM 狀態'],['signal','CTC 輸出字元'],['inactive','blank']]);
-      ctx.setCamera({theta:0.0,phi:1.4,dist:12}); rebuild(); } });
+      ctx.setCamera({theta:0.0,phi:1.4}); rebuild(); } });
 })();

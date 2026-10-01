@@ -29,7 +29,7 @@ App.register({
       set('gram',grams.map(g=>`${g.n}-gram「${g.s}」`).join(' / ')||'（第一個 token 沒有前文）'); set('lookup',`${grams.length*HEADS} 次雜湊查表，O(1)`); set('gate',relevant?'開：注入殘差流':'關：丟棄（情境不符）');
       const moe=1-budget, eng=budget; const loss=lossOf(eng); set('mix',`MoE ${Math.round(moe*100)}% / Engram ${Math.round(eng*100)}%`); set('loss',loss.toFixed(3)+'（示意）'); drawU(); };
     // U curve overlay
-    const wrap=h('div'); wrap.style.cssText='position:absolute;right:14px;top:14px;width:240px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px'; wrap.innerHTML='<div class="hint" style="margin-bottom:4px">固定總參數：MoE 專家 ↔ Engram 記憶的分配</div><canvas width="216" height="100" style="display:block;width:100%"></canvas>'; overlay.appendChild(wrap); const cv=wrap.querySelector('canvas'), cg2=cv.getContext('2d');
+    const wrap=h('div','ovl-card'); wrap.innerHTML='<div class="hint">固定總參數：MoE 專家 ↔ Engram 記憶的分配</div><canvas width="236" height="100" role="img" aria-label="U 形曲線：參數全給 MoE 或全給 Engram 時 loss 都高，最低點在 Engram 約 45%；目前分配的 loss 見右側讀數"></canvas>'; overlay.appendChild(wrap); const cv=wrap.querySelector('canvas'), cg2=cv.getContext('2d');
     const lossOf=e=>1.0+0.35*Math.pow(e-0.45,2)*4; // 最低點在 e=0.45，最高約 1.42
     const drawU=()=>{ const W=cv.width,H=cv.height; cg2.clearRect(0,0,W,H); const css=getComputedStyle(document.documentElement); const yOf=loss=>6+(H-24)*(1-(loss-1.0)/0.45); // loss 越低畫越下面
       cg2.strokeStyle=css.getPropertyValue('--line').trim(); cg2.strokeRect(10,6,W-20,H-24); cg2.beginPath(); for(let i=0;i<=40;i++){ const e=i/40; const x=10+e*(W-20), y=yOf(lossOf(e)); i?cg2.lineTo(x,y):cg2.moveTo(x,y);} cg2.strokeStyle=P.hex('flow'); cg2.lineWidth=2; cg2.stroke(); const lx=10+budget*(W-20), ly=yOf(lossOf(budget)); cg2.fillStyle=P.hex('signal'); cg2.beginPath(); cg2.arc(lx,ly,4,0,7); cg2.fill(); cg2.fillStyle=css.getPropertyValue('--fg3').trim(); cg2.font='10px IBM Plex Mono'; cg2.textAlign='left'; cg2.fillText('全 MoE',10,H-6); cg2.textAlign='right'; cg2.fillText('全 Engram',W-10,H-6); cg2.textAlign='center'; cg2.fillText('loss ↓',W/2,H-6); };
@@ -41,6 +41,6 @@ App.register({
         <p>重點是這張表<b>不用算、只要查</b>，所以可以大到 100B 參數放在 CPU 記憶體裡，GPU 幾乎不付代價。它把「這個片語通常接什麼」這種靠背的知識從 FFN 裡搬出來，讓 Transformer 層專心做推理。</p>
         <p>右上角的 U 形：總參數固定時，全給 MoE 或全給 Engram 都不是最好，最佳點在中間。</p>`);
     ctx.legend([['signal','n-gram 來源 token / 閘門開'],['flow','2-gram 雜湊命中'],['state','3-gram 雜湊命中'],['alert','閘門關閉']]);
-    ctx.setCamera({theta:0.25,phi:1.35,dist:13}); redraw();
+    ctx.setCamera({theta:0.25,phi:1.35}); redraw();
   },
 });

@@ -54,6 +54,6 @@ App.register({
       <p><b>word2vec</b>：一個詞一個固定點。<b>sentence embedding</b>（如 all-MiniLM）：整句話壓成一個點。<b>late interaction</b>（如 ColBERT）：每個 token 各留一個點，查詢時逐 token 比對再加總。</p>
       <p class="hint">座標是手排的示意，不是真實向量。</p>`);
     ctx.legend([['signal','動物'],['flow','食物'],['memory','技術'],['state','新詞與最近鄰']]);
-    ctx.setCamera({theta:0.7,phi:1.15,dist:12});
+    ctx.setCamera({theta:0.7,phi:1.15});
   },
 });
