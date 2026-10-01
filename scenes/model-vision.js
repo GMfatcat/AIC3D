@@ -1,7 +1,7 @@
 (function(){
   /* ---------------- YOLO-V10 ---------------- */
   App.register({ id:'yolo-v10', tab:'model', question:'為什麼 YOLOv10 可以不做 NMS？',
-    init(ctx){ const {THREE:T,P,root,ctrl}=ctx; let head='o2o';
+    init(ctx){ const {THREE:T,P,root,ctrl}=ctx; let head='o2o', stage=3; // stage 0 空、1 候選點、2 打分、3 出框
       // 影像平面 + 三個「物件」（鏡頭模組上的瑕疵框示意）
       const img=new T.Mesh(new T.PlaneGeometry(6,4),P.mat('inactive',{glow:0.15,extra:{color:new T.Color(P.theme('--bg2'))}})); img.position.set(-4.2,0.6,0); root.add(img);
       const OBJS=[{x:-1.8,y:0.9,w:1.4,h:1.0,label:'刮傷'},{x:0.9,y:-0.6,w:1.8,h:1.2,label:'汙點'},{x:1.6,y:1.2,w:0.9,h:0.7,label:'氣泡'}];
@@ -18,19 +18,27 @@
       // predicted boxes on the image
       let boxes=[]; const boxG=new T.Group(); img.add(boxG);
       let seed=4; const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280-0.5;};
+      // 每個物件周圍 12 個候選點（grid cell / anchor 示意），分數由離物件中心多近決定
+      const cands=[]; OBJS.forEach((o,oi)=>{ for(let i=0;i<12;i++){ const dx=rnd()*o.w*1.1, dy=rnd()*o.h*1.1; const d=new T.Mesh(new T.CircleGeometry(0.07,12),P.mat('structure',{glow:0.3})); d.position.set(o.x+dx,o.y+dy,0.04); d.userData={cand:true,oi,score:Math.max(0,1-Math.hypot(dx/o.w,dy/o.h)*1.6)}; d.visible=false; img.add(d); cands.push(d); } });
+      const STEP_TXT=['0 / 3：還沒開始（按單步）','1 / 3：每個 grid 點都是候選','2 / 3：每個候選點打分（亮 = 分數高）',''];
       const draw=()=>{ boxes.forEach(b=>P.drop(b)); boxes=[]; seed=4; let n=0;
+        cands.forEach(d=>{ d.visible=stage>=1; const s=d.userData.score; const best=cands.filter(c=>c.userData.oi===d.userData.oi).every(c=>c.userData.score<=s);
+          if(stage===1){ d.material.emissiveIntensity=0.3; d.scale.setScalar(1); } else if(stage===2){ d.material.emissiveIntensity=0.1+s*1.1; d.scale.setScalar(0.7+s*0.8); } else { const keep=head==='o2m'?s>0.45:best; d.material.emissiveIntensity=keep?0.9:0.05; d.scale.setScalar(keep?1.2:0.5); } });
+        set('step',stage<3?STEP_TXT[stage]:(head==='o2m'?'3 / 3：分數過門檻的都出框 → 重疊 → 要 NMS':'3 / 3：每個物件只配一個最高分的點 → 一框'));
+        if(stage<3){ set('boxes','—'); set('nms','—'); set('lat','—'); root.updateMatrixWorld(true); flow.hideAll(); flow.set(0,new T.Vector3(-1.2,0.6,0),new T.Vector3(0.3,0.6,0),0.6,'memory'); return; }
         OBJS.forEach(o=>{ const k=head==='o2m'?5:1; for(let i=0;i<k;i++){ const jx=i?rnd()*0.4:0, jy=i?rnd()*0.3:0, js=i?1+rnd()*0.3:1; const e=new T.LineSegments(new T.EdgesGeometry(new T.PlaneGeometry(o.w*js,o.h*js)),new T.LineBasicMaterial({color:P.C(head==='o2m'?'alert':'flow'),transparent:true,opacity:i?0.45:1})); e.position.set(o.x+jx,o.y+jy,0.05+i*0.01); boxG.add(e); boxes.push(e); n++; }
           const lb=P.label(`${o.label} ${head==='o2m'?'':'0.9'}`,{size:15,color:head==='o2m'?P.hex('alert'):P.hex('flow')}); lb.position.set(o.x,o.y+o.h/2+0.2,0.1); boxG.add(lb); boxes.push(lb); });
         root.updateMatrixWorld(true); flow.hideAll(); flow.set(0,new T.Vector3(-1.2,0.6,0),new T.Vector3(0.3,0.6,0),0.6,'memory'); flow.set(1,new T.Vector3(2.0,1.2,0),new T.Vector3(3.9,1.8,0),0.6,head==='o2m'?'alert':'inactive'); flow.set(2,new T.Vector3(2.0,0.0,0),new T.Vector3(3.9,0.0,0),0.6,head==='o2o'?'flow':'inactive');
         o2m.material.emissiveIntensity=head==='o2m'?0.9:0.15; o2o.material.emissiveIntensity=head==='o2o'?0.9:0.15;
         set('boxes',`${n} 個（${OBJS.length} 個物件）`); set('nms',head==='o2m'?'需要：同一物件有多個重疊框要合併':'不需要：每個物件剛好一個框'); set('lat',head==='o2m'?'推論時間 + NMS（視框數而定，不可預測）':'純網路 forward，端到端、延遲固定'); };
       ctrl.heading('切換用哪個 head 出框'); ctrl.segmented(null,[{id:'o2m',label:'一對多（傳統 YOLO）'},{id:'o2o',label:'一對一（v10 推論）'}],'o2o',id=>{head=id;draw();});
-      const set=ctrl.readouts([{id:'boxes',label:'輸出框數'},{id:'nms',label:'NMS'},{id:'lat',label:'延遲'}]);
+      ctrl.stepper({onStep:()=>{ if(stage>=3) return false; stage++; draw(); return stage<3; },onReset:()=>{stage=0;draw();},interval:800});
+      const set=ctrl.readouts([{id:'step',label:'配對步驟'},{id:'boxes',label:'輸出框數'},{id:'nms',label:'NMS'},{id:'lat',label:'延遲'}]);
       ctrl.note(`<p>傳統 YOLO 訓練時讓<b>多個 anchor / grid 點</b>同時負責同一個物件（一對多），召回好、收斂快，但推論時同一物件會冒出一堆重疊框，要用 <b>NMS</b> 事後刪——NMS 跑在 CPU、時間隨框數變、而且是個不可微的後處理。</p>
           <p><b>YOLOv10</b> 訓練時掛兩個 head：一對多 head 照舊提供豐富監督，另加一個<b>一對一 head</b>，用一致的配對規則讓它學會「每個物件只選一個最好的點」。推論時只留一對一 head，直接輸出，<b>不需要 NMS</b>，端到端延遲固定。</p>
           <p>其他改動都是為了效率：rank-guided 的 block 設計、空間-通道解耦的下採樣、大核卷積與 partial self-attention 只放在深層。對產線 AOI 這種要固定延遲的場景，NMS-free 是實際的好處。</p>`);
-      ctx.legend([['memory','P3 feature map'],['state','P4'],['signal','P5'],['alert','一對多 head / 重疊框'],['flow','一對一 head / 最終框']]);
-      ctx.setCamera({theta:0.15,phi:1.4}); draw(); } });
+      ctx.legend([['memory','P3 feature map'],['state','P4'],['signal','P5'],['alert','一對多 head / 重疊框'],['flow','一對一 head / 最終框'],['structure','候選點（亮 = 分數高）']]);
+      ctx.setCamera({theta:0.15,phi:1.4}); stage=0; draw(); } });
 
   /* ---------------- DeepSeek-OCR / Unlimited-OCR / 通用 VLM ---------------- */
   App.register({ id:'ocr', tab:'model', question:'一頁文件壓成幾個視覺 token 還讀得出來？幾十頁一次解碼 KV 怎麼不爆？',

@@ -45,7 +45,7 @@ const App = {
       const dt=Math.min(0.05,this.clock.getDelta());
       if(this.current?.update) this.current.update(dt);
       for(const w of this._hoverWatch){ const h=this.hover(w.objects); if(h!==w.last){ w.last=h; w.cb(h, h?w.objects.indexOf(h):-1); } } // 場景登記的 hover 觀察者
-      if(this._dragTargets.length && !this._drag3d){ const over=this._pickDrag(); this.canvas.style.cursor=over?'grab':''; } // 可拖的物件：游標變手
+      if((this._dragTargets.length||this._clickTargets.length) && !this._drag3d){ const over=this._dragTargets.length&&this._pickDrag(); const click=!over&&this._clickTargets.length&&this._pickClick(); this.canvas.style.cursor=over?'grab':click?'pointer':''; } // 可拖 / 可點的物件：游標變手
       Motion.tick(dt);
       if(this.autoSpin && !this.dragging && !this.reduceMotion){ this.cam.theta += 0.072*dt; this._placeCamera(); } // 以時間計，120Hz 和 60Hz 轉一樣快
       this._shadows(); this.renderer.render(this.scene,this.camera); this._projectLabels();
@@ -88,11 +88,12 @@ const App = {
 
   /* ---------- camera / orbit / pan / fit ---------- */
   _orbit(){
-    this.cam = {theta:0.5, phi:1.2, dist:18, zoom:1, target:new T.Vector3()}; this.camHome = null; this.bounds=null; this._disposers=[]; this._hoverWatch=[]; this._dragTargets=[]; this._drag3d=null;
+    this.cam = {theta:0.5, phi:1.2, dist:18, zoom:1, target:new T.Vector3()}; this.camHome = null; this.bounds=null; this._disposers=[]; this._hoverWatch=[]; this._dragTargets=[]; this._clickTargets=[]; this._drag3d=null; this._press=null;
     try{ this.visited=new Set(JSON.parse(localStorage.getItem('visited')||'[]')); }catch(e){ this.visited=new Set(); } // 看過的場景（側欄打勾）
     const c=this.canvas; let drag=null, mode=null; const touches=new Map();
     c.addEventListener('contextmenu',e=>e.preventDefault());
     c.addEventListener('pointerdown',e=>{ document.getElementById('camhint').classList.add('seen'); this._camTween&&this._camTween.cancel(); this._setPointer(e); touches.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(touches.size===2){ mode='pinch'; return; }
+      this._press=(touches.size===1&&e.button===0)?{x:e.clientX,y:e.clientY,pick:this._clickTargets.length?this._pickClick():null}:null;
       if(touches.size===1 && e.button===0){ const pick=this._pickDrag(); if(pick){ const n=this.camera.getWorldDirection(new T.Vector3()); const plane=new T.Plane().setFromNormalAndCoplanarPoint(n, pick.obj.getWorldPosition(new T.Vector3())); this._drag3d={...pick, plane}; mode='drag3d'; this.autoSpin=false; c.setPointerCapture(e.pointerId); c.style.cursor='grabbing'; return; } } drag={x:e.clientX,y:e.clientY}; mode=(e.button===2||e.button===1||e.shiftKey)?'pan':'rotate'; this.dragging=true; this.autoSpin=false; c.setPointerCapture(e.pointerId); });
     c.addEventListener('pointermove',e=>{
       if(mode==='drag3d' && this._drag3d){ this._setPointer(e); this.raycaster.setFromCamera(this.pointer,this.camera); const pt=new T.Vector3(); if(this.raycaster.ray.intersectPlane(this._drag3d.plane, pt)) this._drag3d.d.cb(pt, this._drag3d.obj); return; }
@@ -100,7 +101,7 @@ const App = {
       if(!drag) return; const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag={x:e.clientX,y:e.clientY};
       if(mode==='pan') this._pan(dx,dy); else { this.cam.theta-=dx*0.006; this.cam.phi=Math.max(0.15,Math.min(2.95,this.cam.phi-dy*0.006)); }
       this._placeCamera(); });
-    const up=e=>{ touches.delete(e.pointerId); if(this._drag3d){ this._drag3d=null; c.style.cursor=''; } if(touches.size<2){ mode=null; drag=null; this.dragging=false; } }; c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up);
+    const up=e=>{ touches.delete(e.pointerId); if(this._press){ const p=this._press; this._press=null; if(p.pick && Math.hypot(e.clientX-p.x,e.clientY-p.y)<5) p.pick.d.cb(p.pick.obj); } if(this._drag3d){ this._drag3d=null; c.style.cursor=''; } if(touches.size<2){ mode=null; drag=null; this.dragging=false; } }; c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up);
     c.addEventListener('wheel',e=>{ e.preventDefault(); this._camTween&&this._camTween.cancel(); this.cam.dist=this._clampDist(this.cam.dist*(1+Math.sign(e.deltaY)*0.08)); this._placeCamera(); },{passive:false});
     c.addEventListener('dblclick',()=>{ if(this.camHome) this.flyTo(this.camHome,500); });
     addEventListener('keydown',e=>{ if(e.target.closest('input,select,textarea,button')) return; const k=e.key;
@@ -151,12 +152,16 @@ const App = {
   hover(objects){ if(this.keyFocus && objects.includes(this.keyFocus)) return this.keyFocus; this.raycaster.setFromCamera(this.pointer,this.camera); const hits=this.raycaster.intersectObjects(objects,false); return hits.length?hits[0].object:null; },
   /* 場景把可 hover 的物件登記進來，就會得到一排視覺上隱藏、但可 Tab 到的按鈕（鍵盤與螢幕閱讀器的路徑） */
   focusTargets(objects, describe){ let list=this._focusList; if(!list){ list=document.createElement('div'); list.className='focuslist'; list.setAttribute('aria-label','可用鍵盤聚焦的 3D 物件'); document.getElementById('stage').appendChild(list); this._focusList=list; }
-    list.innerHTML=''; this.keyFocus=null; objects.forEach((o,i)=>{ const b=document.createElement('button'); b.type='button'; b.textContent=describe?describe(o,i):`物件 ${i+1}`; b.addEventListener('focus',()=>{ this.keyFocus=o; }); b.addEventListener('blur',()=>{ if(this.keyFocus===o) this.keyFocus=null; }); list.appendChild(b); }); },
+    list.innerHTML=''; this.keyFocus=null; objects.forEach((o,i)=>{ const b=document.createElement('button'); b.type='button'; b.textContent=describe?describe(o,i):`物件 ${i+1}`; b.addEventListener('focus',()=>{ this.keyFocus=o; }); b.addEventListener('blur',()=>{ if(this.keyFocus===o) this.keyFocus=null; }); b.addEventListener('click',()=>this._activate(o)); list.appendChild(b); }); },
   /* 場景不用自己寫 update 也能 hover：每幀檢查一次，物件變了才回呼 cb(obj, index)；同時登記鍵盤聚焦清單 */
   watchHover(objects, cb, describe){ const w={objects, cb, describe, last:null}; this._hoverWatch.push(w); if(describe) this.focusTargets(objects, describe);
     return { set:(objs)=>{ w.objects=objs; w.last=null; if(describe) this.focusTargets(objs, describe); } }; }, // 物件重建後用 set() 換掉
   /* 可拖曳的 3D 物件：拖它時不轉鏡頭，cb(worldPoint, mesh) 給的是滑鼠在「過物件、面向相機的平面」上的世界座標 */
   dragTarget(meshes, cb){ const d={meshes, cb}; this._dragTargets.push(d); return { set:(m)=>{ d.meshes=m; } }; },
+  /* 可點的 3D 物件：按下放開沒移動就算點；聚焦清單的按鈕按 Enter 也會觸發 */
+  clickTarget(meshes, cb){ const d={meshes, cb}; this._clickTargets.push(d); return { set:(m)=>{ d.meshes=m; } }; },
+  _pickClick(){ this.raycaster.setFromCamera(this.pointer,this.camera); for(const d of this._clickTargets){ const hits=this.raycaster.intersectObjects(d.meshes,false); if(hits.length) return {d, obj:hits[0].object}; } return null; },
+  _activate(obj){ for(const d of this._clickTargets) if(d.meshes.includes(obj)) d.cb(obj); },
   _pickDrag(){ this.raycaster.setFromCamera(this.pointer,this.camera); for(const d of this._dragTargets){ const hits=this.raycaster.intersectObjects(d.meshes,false); if(hits.length) return {d, obj:hits[0].object, point:hits[0].point}; } return null; },
   /* 鏡頭補間到指定視角（雙擊重置、導覽切換用） */
   flyTo({theta,phi,dist,target},ms=500){ this.autoSpin=false; const cur=this.cam; const d=((theta-cur.theta+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI; this._camTween&&this._camTween.cancel();
@@ -200,7 +205,7 @@ const App = {
     document.getElementById('i-title').textContent=item.title; document.getElementById('i-q').textContent=item.question||'';
     this.canvas.setAttribute('aria-label',`3D 場景：${item.title}。${item.question||''} 文字說明在右側面板。`);
     this.autoSpin = true; this.cam.zoom = 1; this.currentItem=item; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML='';
-    document.body.classList.remove('home'); this.home=false; this._hoverWatch=[]; this._dragTargets=[]; this._drag3d=null; this.canvas.style.cursor='';
+    document.body.classList.remove('home'); this.home=false; this._hoverWatch=[]; this._dragTargets=[]; this._clickTargets=[]; this._drag3d=null; this.canvas.style.cursor='';
     if(!this.visited.has(item.id)){ this.visited.add(item.id); try{ localStorage.setItem('visited',JSON.stringify([...this.visited])); }catch(e){} document.querySelectorAll('#items a').forEach(a=>{ if(a.getAttribute('href')==='#'+item.id) a.parentElement.classList.add('visited'); }); }
     const def = scenes[item.id];
     if(!def){ this.current = this._placeholder(item); this.fit(); return; }
@@ -228,7 +233,7 @@ const App = {
     (this._disposers||[]).forEach(fn=>{ try{ fn(); }catch(e){ console.error(e); } }); this._disposers=[];
     P.clear(this.root); this.labels.forEach(l=>l.el.remove()); this.labels.clear(); this.labelLayer.innerHTML=''; document.getElementById('overlay').innerHTML=''; document.getElementById('ctrl').innerHTML=''; this.legend([]);
     document.getElementById('i-title').textContent=''; document.getElementById('i-q').textContent=''; this.canvas.setAttribute('aria-label','開場：漂浮的語意色原件');
-    this.currentItem=null; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML=''; this.home=true; document.body.classList.add('home'); this._hoverWatch=[]; this._dragTargets=[];
+    this.currentItem=null; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML=''; this.home=true; document.body.classList.add('home'); this._hoverWatch=[]; this._dragTargets=[]; this._clickTargets=[];
     this._buildLanding();
     // 背景：八種語意色的原件在一個球殼上慢慢漂浮
     const roles=Object.keys(P.ROLE); const items=[]; let seed=3; const rnd=()=>{ seed=(seed*9301+49297)%233280; return seed/233280; };
