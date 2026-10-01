@@ -33,7 +33,7 @@
       const target=X.map(x=>x.reduce((s,xi,i)=>s+xi*W0[i],0)); // 原任務：用浮點權重算出來的輸出
       const err=w=>Math.sqrt(X.reduce((s,x,n)=>{ const y=x.reduce((a,xi,i)=>a+xi*w[i],0); return s+(y-target[n])**2; },0)/X.length);
       // 3D: histogram bars + grid lines + weight dots
-      const g=new T.Group(); root.add(g); const bars=[]; for(let b=0;b<BINS;b++){ const m=new T.Mesh(new T.BoxGeometry(0.2,1,0.4),P.mat('blue',{glow:0.3})); m.position.x=(b/(BINS-1)-0.5)*9; g.add(m); bars.push(m); }
+      const g=new T.Group(); root.add(g); const bars=[]; for(let b=0;b<BINS;b++){ const m=new T.Mesh(new T.BoxGeometry(0.2,1,0.4),P.mat('blue',{glow:0.3})); m.position.x=((b+0.5)/BINS-0.5)*9; g.add(m); bars.push(m); } // 柱子放在 bin 中心，和格點線對齊
       grid.forEach(gv=>{ const l=new T.Mesh(new T.BoxGeometry(0.04,3.2,0.6),P.mat('amber',{glow:0.6,opacity:0.6})); l.position.set(gv*4.5,1.3,0); g.add(l); const t=P.label(gv.toFixed(1),{size:16}); t.position.set(gv*4.5,-0.4,0); g.add(t); });
       const title=P.label('權重分佈直方圖（橘線 = 量化格點）',{size:20}); title.position.set(0,3.4,0); g.add(title);
       const paint=()=>{ const counts=Array(BINS).fill(0); W.forEach(w=>{ counts[Math.min(BINS-1,Math.floor((w+1)/2*BINS))]++; }); const mx=Math.max(...counts,1); bars.forEach((m,b)=>{ const h=0.05+2.6*counts[b]/mx; m.scale.y=h; m.position.y=h/2; });
@@ -65,14 +65,14 @@
       const tokens=new P.TokenRow(['','','','','',''],{color:'teal',gap:0.5,size:0.3}); tokens.group.position.set(-7.2,0.6,0); root.add(tokens.group); const tl=P.label('校準資料',{size:18}); tl.position.set(-7.2,2.0,0); root.add(tl);
       const flow=new P.BeamSet(1,{maxR:0.06,minR:0.04}); root.add(flow.group);
       const quant=(v,levels)=>{ const step=2/(levels-1); return Math.round(v/step)*step; };
-      const paint=()=>{ const imp=ACT[ds]; const sorted=imp.map((v,j)=>[v,j]).sort((a,b)=>b[0]-a[0]); const levels=Array(C).fill(0); // 預算：平均 4 bit；重要的欄給 6 bit，不重要的給 3 bit
-        sorted.forEach(([v,j],rank)=>{ levels[j]= ds==='none'?16 : rank<3?64 : rank<7?16 : 8; });
+      const paint=()=>{ const imp=ACT[ds]; const sorted=imp.map((v,j)=>[v,j]).sort((a,b)=>b[0]-a[0]); const levels=Array(C).fill(0); // 預算：平均剛好 4 bit（3 欄 6 bit + 4 欄 4 bit + 3 欄 2 bit = 40 bit / 10 欄），才能和均勻 4 bit 公平比
+        sorted.forEach(([v,j],rank)=>{ levels[j]= ds==='none'?16 : rank<3?64 : rank<7?16 : 4; });
         cells.forEach(c=>{ const lv=levels[c.j]; const bits=Math.log2(lv); const col=bits>=6?'violet':bits>=4?'blue':'grey'; c.m.material.color.copy(P.C(col)); c.m.material.emissive.copy(c.m.material.color); c.m.material.emissiveIntensity=0.15+Math.abs(W[c.i][c.j])*0.6; });
         colBars.forEach((m,j)=>{ m.scale.y=0.1+imp[j]*2; m.position.y=-3.5+m.scale.y/2; m.material.emissiveIntensity=0.2+imp[j]; });
         // 誤差：Σ_j imp_j · Σ_i (w−q(w))²  vs 均勻 4bit
         let eImp=0,eUni=0; for(let i=0;i<R;i++) for(let j=0;j<C;j++){ eImp+=imp[j]*(W[i][j]-quant(W[i][j],levels[j]))**2; eUni+=imp[j]*(W[i][j]-quant(W[i][j],16))**2; }
         const avgBits=levels.reduce((s,l)=>s+Math.log2(l),0)/C;
-        set('ds',LABEL[ds]); set('bits',avgBits.toFixed(2)+' bpw（平均）'); set('alloc',ds==='none'?'全部 4 bit':'前 3 欄 6 bit、中間 4 bit、後 3 欄 3 bit'); set('eimp',Math.sqrt(eImp).toFixed(3)); set('euni',Math.sqrt(eUni).toFixed(3)); bar([{frac:Math.min(1,Math.sqrt(eImp)/1.2),color:'amber'}]); bar2([{frac:Math.min(1,Math.sqrt(eUni)/1.2),color:'red'}]);
+        set('ds',LABEL[ds]); set('bits',avgBits.toFixed(2)+' bpw（平均）'); set('alloc',ds==='none'?'全部 4 bit':'前 3 欄 6 bit、中間 4 bit、後 3 欄 2 bit'); set('eimp',Math.sqrt(eImp).toFixed(3)); set('euni',Math.sqrt(eUni).toFixed(3)); bar([{frac:Math.min(1,Math.sqrt(eImp)/1.2),color:'amber'}]); bar2([{frac:Math.min(1,Math.sqrt(eUni)/1.2),color:'red'}]);
         root.updateMatrixWorld(true); flow.set(0,new T.Vector3(-5.6,0.6,0),new T.Vector3(-4.6,0.6,0),0.7,'teal'); tokens.styleAll({color:ds==='code'?'teal':ds==='chat'?'amber':ds==='math'?'violet':'grey',glow:0.5,opacity:ds==='none'?0.2:1}); };
       ctrl.heading('換一組校準資料'); ctrl.segmented(null,Object.keys(ACT).map(id=>({id,label:LABEL[id]})),ds,id=>{ds=id;paint();});
       const set=ctrl.readouts([{id:'ds',label:'校準資料'},{id:'alloc',label:'精度分配'},{id:'bits',label:'位元預算'},{id:'eimp',label:'重要度加權誤差（有 imatrix）'},{id:'euni',label:'同樣誤差（均勻 4 bit）'}]);
@@ -80,6 +80,6 @@
       ctrl.note(`<p>權重誤差不是都一樣重要：如果某個輸入通道的 activation 平時都很大，它對應那一列權重的誤差就會被放大。<b>Importance matrix</b>（llama.cpp 的 imatrix）就是讓一批校準資料流過模型，統計每個通道的平均 x²，當成權重。</p>
         <p>量化時用它做兩件事：<b>①</b> 選 block 的 scale / min 時最小化「加權」誤差而不是普通誤差；<b>②</b>（_M / IQ 系列）把預算往重要通道傾斜。這跟 GPTQ 用 Hessian 的精神一樣，只是更輕量、不需要逐欄序列計算。</p>
         <p>所以校準資料的<b>分佈要像實際用途</b>：用英文維基校準再拿去跑中文對話或程式碼，重要度就估錯了——切換上面的資料集看分配怎麼變。</p>`);
-      ctx.legend([['violet','6 bit（重要通道）'],['blue','4 bit'],['grey','3 bit（不重要通道）'],['amber','通道重要度']]);
+      ctx.legend([['violet','6 bit（重要通道）'],['blue','4 bit'],['grey','2 bit（不重要通道）'],['amber','通道重要度']]);
       ctx.setCamera({theta:0.1,phi:1.4,dist:14}); paint(); } });
 })();

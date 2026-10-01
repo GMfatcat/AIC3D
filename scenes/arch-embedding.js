@@ -6,10 +6,10 @@ window.EmbedCloud = (function(){
     tech:{color:'blue', center:[0.2,0.3,-3.4], words:['GPU','編譯器','資料庫','Transformer','光學鏡頭','感測器','韌體','演算法']},
   };
   const QUERIES = [
-    {label:'「柴犬」', pos:[-2.6,0.9,0.5], near:['狗','貓','狼'], c:'animal'},
-    {label:'「拉麵」', pos:[2.4,-0.1,0.9], near:['牛肉麵','水餃','壽司'], c:'food'},
-    {label:'「CUDA kernel」', pos:[0.5,0.6,-2.9], near:['GPU','編譯器','演算法'], c:'tech'},
-    {label:'「貓罐頭」（兩群之間）', pos:[0.1,0.1,0.4], near:['貓','壽司','狗'], c:null},
+    {label:'「柴犬」', pos:[-2.6,0.9,0.5], c:'animal'},
+    {label:'「拉麵」', pos:[2.4,-0.1,0.9], c:'food'},
+    {label:'「CUDA kernel」', pos:[0.5,0.6,-2.9], c:'tech'},
+    {label:'「貓罐頭」（兩群之間）', pos:[0.1,0.1,0.4], c:null},
   ];
   function build(ctx, root){
     const {THREE:T, P} = ctx; const g=new T.Group(); root.add(g); const pts=[];
@@ -41,12 +41,11 @@ App.register({
   init(ctx){
     const {THREE:T, P, root, ctrl} = ctx;
     const cloud = EmbedCloud.build(ctx, root);
-    const cos = (a,b)=>a.dot(b)/(a.length()*b.length()||1);
     const set = ctrl.readouts([{id:'n1',label:'最近鄰 1'},{id:'n2',label:'最近鄰 2'},{id:'n3',label:'最近鄰 3'}]);
     ctrl.heading('丟一個新詞進去');
     ctrl.segmented(null, EmbedCloud.QUERIES.map((q,i)=>({id:String(i),label:q.label.replace(/（.*）/,'')})), null, (id)=>{
       const q=EmbedCloud.QUERIES[+id]; const pos=new T.Vector3(...q.pos); const nn=cloud.highlight(pos,q.label);
-      nn.forEach((x,i)=>set('n'+(i+1), `${x.p.word}  cos ${cos(pos,x.p.pos).toFixed(2)}`));
+      nn.forEach((x,i)=>set('n'+(i+1), `${x.p.word}  距離 ${x.d.toFixed(2)}`)); // 最近鄰就是用這個歐氏距離排的，讀數和畫面一致
       note.innerHTML = q.c ? `<p><b>${q.label}</b> 落在「${{animal:'動物',food:'食物',tech:'技術'}[q.c]}」那一群旁邊。模型從沒看過這個詞也沒關係，只要它出現的語境相似，向量就會被訓練到相近的位置。</p>`
         : `<p><b>${q.label}</b> 同時跟動物和食物有關，所以落在兩群中間。這是 embedding 比關鍵字比對強的地方：關係是連續的，不是非此即彼。</p>`;
     });

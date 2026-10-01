@@ -26,7 +26,7 @@ App.register({
       for(let i=0;i<WORDS.length;i++){ row.pos(qi,a); a.y+=0.3; row.pos(i,b); b.y+=1.7; beams.set(i,a,b,w[i]*2.2,'amber'); wLabels[i].userData.setText(w[i].toFixed(2)); karrows[i].children.forEach(c=>c.material.emissiveIntensity=0.2+w[i]*1.5); vbars[i].material.emissiveIntensity=0.15+w[i]*1.6; row.style(i,{glow:i===qi?0.8:0.2,color:i===qi?'amber':'blue'}); }
       const o=w.reduce((s,wi,i)=>s+wi*VALS[i],0); out.scale.y=o; out.position.y=-1.4-o/2;
       const top=w.map((v,i)=>[v,i]).sort((x,y)=>y[0]-x[0]);
-      set('logit',`${logits[top[0][1]].toFixed(1)}（最大）… ${logits[top[5][1]].toFixed(1)}（最小）`); set('top',`${WORDS[top[0][1]]} ${(top[0][0]*100).toFixed(0)}%`); set('ent',(-w.reduce((s,v)=>s+(v>0?v*Math.log2(v):0),0)).toFixed(2)+' bit');
+      set('logit',`${logits[top[0][1]].toFixed(1)}（最大）… ${logits[top[top.length-1][1]].toFixed(1)}（最小）`); set('top',`${WORDS[top[0][1]]} ${(top[0][0]*100).toFixed(0)}%`); set('ent',(-w.reduce((s,v)=>s+(v>0?v*Math.log2(v):0),0)).toFixed(2)+' bit');
     };
     ctrl.heading('調 Query 看權重怎麼變');
     ctrl.slider('哪個 token 當 Query',{min:0,max:WORDS.length-1,value:qi,fmt:v=>WORDS[v],onChange:v=>{qi=v;redraw();}});

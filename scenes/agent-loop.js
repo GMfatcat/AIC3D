@@ -34,9 +34,10 @@ App.register({
     const total=()=>chunks.reduce((n,c)=>n+c.size,0);
     const render=()=>{ ctxBar.innerHTML=''; const tot=total(); chunks.forEach(c=>{ const el=h('i'); el.style.width=(100*c.size/CAP)+'%'; el.style.background=c.summary?'var(--grey)':`var(--${COLORS[c.node]})`; el.title=c.text; ctxBar.appendChild(el); });
       set('ctx',`${tot} / ${CAP}`,tot>CAP*0.85?'bad':'ok'); set('turns',String(i)); set('comp',String(compactions)); };
-    const step=()=>{ if(i>=SCRIPT.length){ log.textContent+='\n（腳本結束，按重置）'; return false; }
+    const END='（腳本結束，按重置）';
+    const step=()=>{ if(i>=SCRIPT.length){ if(!log.textContent.endsWith(END)) log.textContent+='\n'+END; return false; }
       const s=SCRIPT[i]; chunks.push({node:s.node,size:s.size,text:s.text}); animFrom=loop.t; animTo=loop.t+((s.node-Math.round(loop.t)%4+4)%4||4); animT=0; i++;
-      log.textContent=(log.textContent+'\n'+s.text).split('\n').slice(-6).join('\n'); log.scrollTop=1e6;
+      const lines=log.textContent?log.textContent.split('\n'):[]; lines.push(s.text); log.textContent=lines.slice(-6).join('\n'); log.scrollTop=1e6;
       if(total()>CAP*0.85){ // compact: everything except the last 3 chunks -> one summary chunk
         const keep=chunks.slice(-3), old=chunks.slice(0,-3); if(old.length>2){ const sz=Math.max(2,Math.round(old.reduce((n,c)=>n+c.size,0)*0.15)); chunks=[{node:0,size:sz,summary:true,text:`摘要（${old.length} 段壓成 ${sz}）`},...keep]; compactions++; log.textContent+=`\n[compact] ${old.length} 段舊訊息 → ${sz} 單位摘要`; } }
       render(); return true; };

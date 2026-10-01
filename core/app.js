@@ -35,7 +35,8 @@ const App = {
     this.reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.clock = new T.Clock();
     this._orbit(); this._nav();
-    addEventListener('resize', ()=>this._resize()); this._resize();
+    // 舞台大小會在沒有 window resize 的情況下變（字型載入、手機版面板高度），所以直接觀察舞台元素
+    new ResizeObserver(()=>this._resize()).observe(this.canvas.parentElement); this._resize();
     addEventListener('hashchange', ()=>this._route());
     this._route();
     const loop = ()=>{

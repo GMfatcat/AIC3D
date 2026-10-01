@@ -24,38 +24,40 @@
 
 ### 功能性 bug（已逐一在程式碼確認）
 
-- [ ] **MoE 專家格永遠不亮**（DeepSeek-V4、GLM-5.3-Flash）
+- [x] **MoE 專家格永遠不亮**（DeepSeek-V4、GLM-5.3-Flash）→ spec 可給 `isMoe(i)`（2026-10-01）
   `scenes/model-towers.js:32` 的 `isMoe` 只認 `'moe'`/`'hash'`，但這兩個模型的 `layers` 只有 `swa`/`sparse`/`attn`/`gdn`。說明寫「token 經過只亮 top-8」實際看不到，圖例也沒列專家格的紫色。
-- [ ] **mHC 矩陣拖曳只動一下就斷**
+- [x] **mHC 矩陣拖曳只動一下就斷** → 拖曳中只改該格與加總，不重建 grid（2026-10-01）
   `scenes/block-mhc.js:61-63`：`setCell` → `renderEdit()` → `innerHTML=''` 把正在拖的格子刪掉，pointer capture 失效，`pointerup` 不觸發，mHC 模式不會 `commit()`（Sinkhorn 不跑）。改法：拖曳中只更新該格文字與背景，不重建 grid。
-- [ ] **Engram 的 U 形曲線畫成 ∩**
+- [x] **Engram 的 U 形曲線畫成 ∩** → y 軸反轉並用滿高度（2026-10-01）
   `scenes/block-engram.js:33`：`y=6+(loss-1)/0.9*(H-24)`，loss 越小 y 越小（越上面）。曲線也只用到約 47% 高度。
-- [ ] **TP/DP 圖例與實際顏色不符**
+- [x] **TP/DP 圖例與實際顏色不符** → HBM 填充改 blue（2026-10-01）
   `scenes/infra-parallel.js:16,20` 用 `setFill(...,'violet')`，`:46` 圖例寫「blue = HBM 佔用」。
-- [ ] **DP「放不下」情境永遠不會出現**
+- [x] **DP「放不下」情境永遠不會出現** → TP/DP 加「模型（bf16）27B / 70B / 405B」切換（2026-10-01）
   `scenes/infra-parallel.js:2,34-36`：模型固定 27B bf16 = 54 GB，`perGpuGB>80` 永遠不成立。
-- [ ] **CNN 感受野公式在 stride > 1 時錯**
+- [x] **CNN 感受野公式在 stride > 1 時錯** → `1+(k−1)·Σ sⁱ`，說明同步改（2026-10-01）
   `scenes/arch-cnn-crnn.js:19`：`1+(k-1)*layers*stride` 應為 `1+(k-1)·Σ sⁱ`。
-- [ ] **/goal 的 marker 停在節點之間**
+- [x] **/goal 的 marker 停在節點之間** → 檢查步不移動 marker（2026-10-01）
   `scenes/agent-goal.js:13`：檢查步用 `loop.t+0.5`，之後每步都偏半格。
-- [ ] **Embedding 的 cos 與最近鄰標準不一致**
+- [x] **Embedding 的 cos 與最近鄰標準不一致** → readout 改顯示歐氏距離、移除未用的 `near`（2026-10-01）
   `scenes/arch-embedding.js:44,49`：cos 用群組原點的位置向量夾角，最近鄰用歐氏距離；`QUERIES[0].near` 含點雲中不存在的「狼」且 `near` 欄位未被使用（`:9-12`）。
-- [ ] **Attention `top[5]` 寫死**（`scenes/block-attention.js:29`）→ `top[top.length-1]`。
-- [ ] **imatrix 比較不公平**（`scenes/optimize-gguf-qat-imatrix.js:69`）：6/4/3 bit 分配平均 4.3 bpw，卻和均勻 4 bit 比。
-- [ ] **QAT 直方圖柱與格點對不齊**（`optimize-gguf-qat-imatrix.js:36-37`）：柱 x 用 `b/(BINS-1)`，bin 中心是 `(2b+1)/40`。
-- [ ] **Agent loop log 小問題**（`scenes/agent-loop.js:37,39`）：腳本結束後每按單步再附加一行；第一行是空行。
-- [ ] **模型塔切 Flash/Pro 直接呼叫 `App.show()`**（`model-towers.js:42`）：不經路由，相機/autoSpin 重設、tour 狀態不同步。
+- [x] **Attention `top[5]` 寫死** → `top[top.length-1]`（2026-10-01，無行為差異所以沒有測試）
+- [x] **imatrix 比較不公平** → 低階改 2 bit，平均剛好 4.00 bpw（2026-10-01）
+- [x] **QAT 直方圖柱與格點對不齊** → 柱放 bin 中心（2026-10-01）
+- [x] **Agent loop log 小問題** → 結束訊息只加一次、無空首行（2026-10-01）
+- [x] **模型塔切 Flash/Pro 直接呼叫 `App.show()`** → blueprint 回傳 `dispose()`，原地重建（2026-10-01）
 
 ### 版面壞掉
 
-- [ ] **手機版橫向溢出**：390px 寬時頁面比視窗寬，頂欄、segmented、readout 全部超出。3D 構圖也沒為直式重新取景（物件偏右、被切）。標題、場景標籤與 3D 文字重疊。
-- [ ] **淺色模式二選一**：系統偏好淺色時頂欄/側欄變白但舞台仍深色；霧色（`core/app.js` 的 `BG`）、`#info`、`#legend`、`#tourbar`、`.l3d` 全寫死深色值。要嘛做完整淺色舞台，要嘛整站鎖深色。
+- [x] **手機版橫向溢出** → 原因是 `#top` 是 grid item 且沒 `min-width:0`，整排 nowrap 分頁的 min-content（約 809px）把欄撐開；另外舞台大小改變（字型載入、面板高度）不會觸發 window resize，相機 aspect 會過期，改用 ResizeObserver（2026-10-01）
+  - [ ] 殘留（歸 P3）：手機直式下 mHC / Engram 的浮動圖表卡片（260px 寬）蓋住塔頂；標題與 3D 文字重疊。
+- [x] **淺色模式二選一** → 整站鎖深色：移除 light media query 與 `data-theme=light`，加 `color-scheme:dark`（2026-10-01）
 
 ### 工具鏈
 
-- [ ] `git init` 並 commit 基準版本。
-- [ ] `smoke.py`：Chromium 路徑寫死 `/opt/pw-browsers/...`（Linux），Windows 跑不了；`IDS` 只測 2 個 id，應跑全部 38 個場景並抓 console error。
-- [ ] README 的 `python3` 在 Windows 是 Store 捷徑，註明用 `python`。
+- [x] `git init` 並 commit 基準版本（2026-10-01）
+- [x] 測試基座：`tests/conftest.py` 用 Playwright 驅動系統 Chrome（不下載瀏覽器），`tests/test_smoke.py` 跑全部 38 個場景抓 console error，每個修過的 bug 都有回歸測試（2026-10-01）
+- [x] `smoke.py` 重寫：用系統 Chrome、跑全部場景、支援 `--mobile`，只負責截圖（2026-10-01）
+- [x] README 註明 Windows 用 `python`、加測試章節（2026-10-01）
 
 ---
 
@@ -84,6 +86,7 @@
 
 - [ ] `core/app.js:105-110` 的 `fit()` 在 init 後一律覆寫 `cam.dist` 與 `cam.target`，所有場景的 `setCamera({dist,target})` 都是死碼（`vllm:49`、`minilm:42` 的 target 也無效）。`_userCam` 寫了沒人讀。決定一個語意：場景可覆寫 fit 結果，或場景只給 theta/phi 並把 dist 參數移除。
 - [ ] 自動旋轉改成以 `dt` 為基礎（`app.js` loop 內 `theta += 0.0012` 是每幀固定值，120Hz 轉速是 60Hz 兩倍）。
+- [ ] 手機直式：浮動圖表卡片（mHC 能量圖、Engram U 曲線）要縮小或移到面板裡，目前蓋住塔頂；`fit()` 可考慮扣掉 overlay 佔的區域。
 
 ### 資源管理
 
@@ -94,7 +97,7 @@
 - [ ] 每幀成本：`optimize-kvcache.js:41` flash 期間每幀完整 `redraw()`（24 個 token 樣式 + 5 個 readout DOM 寫入）；`model-towers.js:30-33` 每幀設 emissive、raycast、`Math.random` 選專家（不可重現）；`arch-cnn-crnn.js:29`、`optimize-gguf-qat-imatrix.js:25` 每幀配陣列。
 - [ ] `optimize-quant.js:27-28` 的 fp 每次 redraw 重新枚舉 25.7k 個 BF16 值，應快取。
 - [ ] `infra-vllm.js:39` 的 `setTimeout` 沒清。
-- [ ] 全站只有 mHC 有 `dispose()`；補上 dispose 慣例（至少清自己的 timer / listener）。
+- [ ] 全站只有 mHC 有 `dispose()`；補上 dispose 慣例（至少清自己的 timer / listener）。模型塔的 blueprint 已回傳 `dispose()`，可當範本。
 - [ ] `App.hover` 用全域 `App` 而非 `ctx.app`（cnn:29、transformer:55、gguf:25、towers:33）。
 - [ ] 未使用變數：`arch-recurrent.js:18` GREY、`arch-cnn-crnn.js:40` charW、`arch-jev.js:25` mi、`agent-compact-subagent.js:48` t、`optimize-quant.js:76` seed/rnd。
 

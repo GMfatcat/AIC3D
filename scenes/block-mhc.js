@@ -55,12 +55,16 @@ App.register({
 
     const cellColor=v=>{const a=Math.min(1,Math.abs(v)/(mode==='mhc'?1:1.5));return v>=0?`rgba(73,182,163,${0.12+0.7*a})`:`rgba(226,85,79,${0.12+0.7*a})`;};
     const fmt=v=>(Math.abs(v)<0.005?0:v).toFixed(2);
-    const renderGrid=(el,M,editable,sums)=>{const k=M.length;el.innerHTML='';el.style.gridTemplateColumns=`repeat(${k+(sums?1:0)},36px)`;const rs=sums?rowSums(M):null,cs=sums?colSums(M):null;
-      for(let i=0;i<k;i++){for(let j=0;j<k;j++){const d=h('div','cell',fmt(M[i][j]));d.style.background=cellColor(M[i][j]);d.title=`第 ${j+1} 流 → 第 ${i+1} 流`;if(editable)bind(d,i,j);el.appendChild(d);}if(sums){el.appendChild(h('div','cell sum',rs[i].toFixed(2)));}}
-      if(sums){for(let j=0;j<k;j++)el.appendChild(h('div','cell sum',cs[j].toFixed(2)));const c=h('div','cell corner','Σ');c.style.color='var(--fg3)';el.appendChild(c);}};
+    // 回傳格子元素的引用，讓拖曳時只改值、不重建 DOM（重建會把正在拖的格子刪掉，pointer capture 跟著失效）
+    const renderGrid=(el,M,editable,sums)=>{const k=M.length;el.innerHTML='';el.style.gridTemplateColumns=`repeat(${k+(sums?1:0)},36px)`;const rs=sums?rowSums(M):null,cs=sums?colSums(M):null;const refs={cells:[],rowSum:[],colSum:[]};
+      for(let i=0;i<k;i++){refs.cells.push([]);for(let j=0;j<k;j++){const d=h('div','cell',fmt(M[i][j]));d.style.background=cellColor(M[i][j]);d.title=`第 ${j+1} 流 → 第 ${i+1} 流`;if(editable)bind(d,i,j);el.appendChild(d);refs.cells[i].push(d);}if(sums){const s=h('div','cell sum',rs[i].toFixed(2));el.appendChild(s);refs.rowSum.push(s);}}
+      if(sums){for(let j=0;j<k;j++){const s=h('div','cell sum',cs[j].toFixed(2));el.appendChild(s);refs.colSum.push(s);}const c=h('div','cell corner','Σ');c.style.color='var(--fg3)';el.appendChild(c);}return refs;};
     const bind=(d,i,j)=>{let st=null;d.addEventListener('pointerdown',e=>{st={y:e.clientY,v:Ht[i][j]};d.setPointerCapture(e.pointerId);});d.addEventListener('pointermove',e=>{if(st)setCell(i,j,st.v-(e.clientY-st.y)*0.01);});d.addEventListener('pointerup',()=>{if(st){st=null;commit();}});d.addEventListener('wheel',e=>{e.preventDefault();setCell(i,j,Ht[i][j]-Math.sign(e.deltaY)*0.1);commit();},{passive:false});};
-    const setCell=(i,j,v)=>{const lim=mode==='mhc'?3:1.5;Ht[i][j]=Math.max(-lim,Math.min(lim,Math.round(v*100)/100));renderEdit();if(mode==='hc')applyEff(clone(Ht));};
-    const renderEdit=()=>renderGrid(mEdit,Ht,mode!=='residual',mode==='hc');
+    let editRefs=null;
+    const setCell=(i,j,v)=>{const lim=mode==='mhc'?3:1.5;Ht[i][j]=Math.max(-lim,Math.min(lim,Math.round(v*100)/100));
+      const d=editRefs&&editRefs.cells[i]&&editRefs.cells[i][j]; if(d){d.textContent=fmt(Ht[i][j]);d.style.background=cellColor(Ht[i][j]);}
+      if(mode==='hc'){const rs=rowSums(Ht),cs=colSums(Ht);editRefs.rowSum.forEach((s,r)=>s.textContent=rs[r].toFixed(2));editRefs.colSum.forEach((s,c)=>s.textContent=cs[c].toFixed(2));applyEff(clone(Ht));}};
+    const renderEdit=()=>{editRefs=renderGrid(mEdit,Ht,mode!=='residual',mode==='hc');};
 
     const applyEff=M=>{H=M;const xs=propagate(H);applyScene(H,xs);if(mode==='mhc')renderGrid(mProj,H,false,true);stats(H,xs);drawChart(xs);};
     const stats=(M,xs)=>{const nm=specNorm(M);set('norm',nm.toFixed(3),nm>1.05?'bad':'ok');const rs=rowSums(M),cs=colSums(M);const rng=a=>`${Math.min(...a).toFixed(2)} – ${Math.max(...a).toFixed(2)}`;set('row',rng(rs));set('col',rng(cs));const last=xs[L];const mn=Math.min(...last.map(Math.abs)),mx=Math.max(...last.map(Math.abs));set('out',`${short(mn)} – ${short(mx)}`,(mx>3||mn<1/3)?'bad':'ok');
