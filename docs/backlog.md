@@ -49,7 +49,7 @@
 ### 版面壞掉
 
 - [x] **手機版橫向溢出** → 原因是 `#top` 是 grid item 且沒 `min-width:0`，整排 nowrap 分頁的 min-content（約 809px）把欄撐開；另外舞台大小改變（字型載入、面板高度）不會觸發 window resize，相機 aspect 會過期，改用 ResizeObserver（2026-10-01）
-  - [ ] 殘留（歸 P3）：手機直式下 mHC / Engram 的浮動圖表卡片（260px 寬）蓋住塔頂；標題與 3D 文字重疊。
+  - [x] 手機直式的浮動圖卡已改放面板（P3）；標題與 3D 文字由 fit() 的保留帶解決（2026-10-02）
 - [x] **淺色模式二選一** → 整站鎖深色：移除 light media query 與 `data-theme=light`，加 `color-scheme:dark`（2026-10-01）
 
 ### 工具鏈
@@ -106,7 +106,7 @@
 
 - [x] slider 的 label 以 `for/id` 綁定；segmented 有 `role="group"` + `aria-label`（2026-10-01）
 - [x] 分頁是 `tablist`，左右鍵切換、roving tabindex（2026-10-01）
-  - [ ] 側欄項目沒有語意角色（歸 P3 側欄重做時一起）
+  - [x] 側欄改成 `<ul><li><a>`（P3，2026-10-02）
 - [x] `#gl` 有描述場景的 `aria-label`；兩個圖表 canvas 有 `role="img"` + `aria-label`（2026-10-01）
 - [x] readout 的 bad / ok 加 ▲ / ✓ 前綴（2026-10-01）
 - [x] `--fg3` 改 `#7F8BA0`，在 bg2 上 4.9:1（2026-10-01）
@@ -124,7 +124,7 @@
 - [x] **場景交叉淡入**：舞台與面板 220ms 淡出 → 換場景 → 淡入；期間 `App.routing` 為 true；新場景從 1.12 倍距離 settle-in 700ms（2026-10-02）
 - [x] **鏡頭 ease**：`App.flyTo(spec, ms)`；雙擊重置用它；使用者拖曳 / 滾輪 / `fit()` 會取消進行中的補間（2026-10-02）
 - [x] **數值補間**：`core/motion.js` 的 `Motion.tween` 與 `Motion.text`；readout 的數字會滾動（`data-final` 存目標值）；Loop marker 用 `go()` 滑過去（2026-10-02）
-  - [ ] 3D 屬性（scale / emissive / position）在 slider 改動時的 ease，留到各場景逐一打磨（P3 視覺升級時一起）
+  - [x] `TokenRow.style` 的亮度 / 大小 / 透明度補間（P3，2026-10-02）；其他原件視需要再加
 - [x] **統一「聚焦」機制**：`App.hover()` 優先回傳鍵盤聚焦物件；`App.focusTargets(objects, describe)` 在舞台放一排視覺隱藏、可 Tab 的按鈕；觸控點一下的位置會留著。已登記：cnn 輸出格、transformer query、gguf 張量磚、四座模型塔的層（2026-10-02）
 - [x] **減少動態偏好**：交叉淡入與所有補間瞬間完成；模型塔 token 停在第一個 MoE 層、專家格固定亮；kvcache 重算連線留著不淡出；GPTQ 波不移動（2026-10-02）
 - [x] 迴圈 marker 動畫一致：agent-loop / goal / subagent 都用 `Loop.go()`（2026-10-02）
@@ -192,7 +192,7 @@
 
 - [x] agent-loop 的「規劃中」改成兩個可點連結（2026-10-02）
 - [x] CRNN 範例改 `LENS-0733`，合併重複字看得到（2026-10-02）
-  - [ ] `-` 與 blank 符號 `–` 肉眼分不出（P5 逐場景）
+  - [x] blank 改畫成中點 ·（P5，2026-10-02）
 - [x] Attention「V（高度 = 內容量）」（2026-10-02）
 - [x] GDN / Mamba 的顏色字已在 P1 改成「青綠」
 - [x] kvheads 說明補「另有 64 維解耦 RoPE 位置鍵，每 token 存 576 維」（2026-10-02）
@@ -230,7 +230,7 @@
 
 - [x] 偏薄要加料（2026-10-02）：yolo（三步配對）、glm（硬體 → tok/s）、nemotron（點層跳場景）、residual（hover 各層）、rnn（LSTM 對照 + hover）、qat（hover 直方圖）、embedding（落下動畫）。
 - [ ] 偏密要拆或收：stages（3 segmented + stepper + 2 slider + 9 readout + 2 bar + 3 段說明）、ocr（3 控制 + stepper + 6 readout + 4 段說明）、mhc、engram。
-- [ ] 沒有 hover 的 slider 場景補聚焦回饋：~~rnn、mamba、rwkv、gdn~~（2026-10-02，用 `App.watchHover`）、~~attention、engram、kvheads（滑到 Q 頭亮它的 K/V 組）、residual（滑到 block 看進出幅度）、mhc（滑到流看幅度）~~（2026-10-02）、~~fp（密度梳）、exl3（選到的點）、imatrix（格子）、qat（直方圖）、gptq（格子）、kvcache（K/V 片）~~（2026-10-02）、~~stages（token）、tp/dp（權重磚）、tiling（C 格亮出 A 列 B 欄）、vllm（page）、sglang（樹節點）~~（2026-10-02）、ocr。
+- [x] 沒有 hover 的 slider 場景補聚焦回饋：全部用 `App.watchHover` 補上（2026-10-02）；只剩 ocr 沒有 hover（它的控制已經夠密，留著）
 - [ ] hover 回饋位置統一：cnn/transformer 改 3D，gguf/towers 改面板 `info`。
 
 ---

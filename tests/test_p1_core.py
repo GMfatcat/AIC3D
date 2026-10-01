@@ -112,3 +112,20 @@ def test_scene_has_no_inline_style_blocks(path):
     src = path.read_text(encoding="utf-8")
     hits = re.findall(r"style\.cssText\s*=|style=\"|onclick=", src)
     assert not hits, f"{path.name} uses inline styles / handlers: {hits}; add a class to theme.css"
+
+
+CORE_AND_SCENES = SCENE_FILES + sorted((ROOT / "core").glob("*.js"))
+
+
+@pytest.mark.parametrize("path", CORE_AND_SCENES, ids=lambda p: p.name)
+def test_no_statement_hidden_inside_a_line_comment(path):
+    """A `//` comment in the middle of a dense one-liner swallows the rest of the line (it happened three times)."""
+    pat = re.compile(r"//[^
+]*;\s*(this\.|[A-Za-z_$][\w$]*\.(add|push|set|dispose|drop|clear)\()")
+    bad = []
+    for n, line in enumerate(path.read_text(encoding="utf-8").split("
+"), 1):
+        m = pat.search(line)
+        if m:
+            bad.append(f"{n}: ...{line[m.start():m.start() + 80]}")
+    assert not bad, f"{path.name} has code after a // comment: {bad}"
