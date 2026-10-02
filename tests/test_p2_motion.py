@@ -144,10 +144,11 @@ def test_reduced_motion_disables_gptq_wave_travel(calm_site):
 
 def test_bracket_keys_step_through_scenes_and_digits_switch_tabs(site):
     site.goto("cnn")
+    enter = "App.intro.isOpen() && App.intro.enter('free')"  # the first-visit card is modal: shortcuts resume once it is closed
     site.page.keyboard.press("]")
-    site.page.wait_for_function("!App.routing && App.currentItem.id === 'rnn'")
+    site.page.wait_for_function("!App.routing && App.currentItem.id === 'rnn'"); site.ev(enter)
     site.page.keyboard.press("[")
-    site.page.wait_for_function("!App.routing && App.currentItem.id === 'cnn'")
+    site.page.wait_for_function("!App.routing && App.currentItem.id === 'cnn'"); site.ev(enter)
     site.page.keyboard.press("3")
     site.page.wait_for_function("!App.routing && App.currentItem.id === 'deepseek-v4'")
 

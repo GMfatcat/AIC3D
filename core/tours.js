@@ -80,5 +80,5 @@
     return sid;
   };
   App.hideTour = ()=>bar.classList.remove('on');
-  addEventListener('keydown',e=>{ if(!bar.classList.contains('on') || e.target.closest('input,select,textarea')) return; const m=location.hash.match(/tour=([\w-]+)&step=(\d+)/); if(!m) return; if(e.key===']'||e.key==='.') location.hash=`tour=${m[1]}&step=${+m[2]+1}`; if(e.key==='['||e.key===',') location.hash=`tour=${m[1]}&step=${Math.max(1,+m[2]-1)}`; });
+  addEventListener('keydown',e=>{ if(!bar.classList.contains('on') || document.body.classList.contains('guiding') || e.target.closest('input,select,textarea')) return; /* 導讀中 [ ] 歸導讀 */ const m=location.hash.match(/tour=([\w-]+)&step=(\d+)/); if(!m) return; if(e.key===']'||e.key==='.') location.hash=`tour=${m[1]}&step=${+m[2]+1}`; if(e.key==='['||e.key===',') location.hash=`tour=${m[1]}&step=${Math.max(1,+m[2]-1)}`; });
 })();

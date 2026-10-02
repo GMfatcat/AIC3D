@@ -5,6 +5,7 @@ Uses the installed Chrome through Playwright, so no browser download is needed:
     python build.py && python smoke.py            # desktop 1400×860
     python smoke.py --mobile                      # phone 390×844
     python smoke.py mhc engram tour=kv&step=3     # only these
+    python smoke.py --intro cnn residual          # keep the first-visit intro card in the shot
 
 The functional checks live in tests/ (python -m pytest); this script is for looking at the pictures.
 """
@@ -26,8 +27,9 @@ def catalog_ids():
 
 def main(argv):
     mobile = "--mobile" in argv
+    keep_intro = "--intro" in argv
     ids = [a for a in argv if not a.startswith("--")] or catalog_ids()
-    out = ROOT / ("shots-mobile" if mobile else "shots")
+    out = ROOT / ("shots-intro" if keep_intro else "shots-mobile" if mobile else "shots")
     out.mkdir(exist_ok=True)
     errors = []
     with sync_playwright() as p:
@@ -44,7 +46,10 @@ def main(argv):
         page.wait_for_function("window.App && App.current")
         for sid in ids:
             page.evaluate("h => { location.hash = h; }", sid)
-            page.wait_for_timeout(1200)
+            page.wait_for_timeout(300)
+            if not keep_intro:
+                page.evaluate("App.intro && App.intro.isOpen() && App.intro.enter('free')")
+            page.wait_for_timeout(900)
             page.screenshot(path=str(out / (re.sub(r"[^\w-]+", "_", sid) + ".png")))
             print("shot", sid)
         browser.close()

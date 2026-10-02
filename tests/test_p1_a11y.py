@@ -23,7 +23,9 @@ def test_tabs_are_a_keyboard_tablist(site):
     site.page.keyboard.press("ArrowRight")
     site.page.wait_for_timeout(300)
     assert site.ev("document.querySelector('#tabs button[aria-selected=\"true\"]').dataset.tab") == "block"
-    assert site.ev("document.activeElement.dataset.tab") == "block"
+    assert site.ev("document.activeElement.closest('#intro') !== null"), "first visit: focus goes into the intro card"
+    site.ev("App.intro.enter('free')")
+    assert site.ev("document.activeElement.dataset.tab") == "block", "closing the card gives focus back to the tab"
 
 
 def test_canvas_and_charts_have_text_alternatives(site):

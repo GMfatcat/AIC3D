@@ -48,6 +48,7 @@ class Site:
             return self
         # hashchange is async: wait until the scene for THIS hash is mounted and the crossfade is over
         self.page.wait_for_function("h => window.App && App.currentItem && !App.routing && (h.startsWith('tour=') || App.currentItem.id === h)", arg=hash_)
+        self.page.evaluate("App.intro && App.intro.isOpen() && App.intro.enter('free')")  # the first-visit card would block the panel
         self.page.wait_for_timeout(settle)
         return self
 

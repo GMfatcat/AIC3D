@@ -48,13 +48,18 @@ App.register({
       render(); return true; };
     const reset=()=>{ i=0; chunks.forEach(c=>c.mesh&&P.drop(c.mesh)); chunks=[]; compactions=0; if(disc){ P.drop(disc); disc=null; loop.group.children.filter(o=>o.isLabel&&o.el.textContent==='compact 後的摘要').forEach(o=>P.drop(o)); } loop.setT(0); log.textContent=''; render(); };
     ctrl.heading('Pi 修一個 CI 失敗');
-    ctrl.stepper({onStep:step,onReset:reset,interval:900});
+    const stepper=ctrl.stepper({onStep:step,onReset:reset,interval:900});
     ctrl.html('<span class="hint">Context window（每格 = 一段訊息，灰色 = compact 後的摘要）</span>');
     ctrl.c.appendChild(ctxBar); ctrl.c.appendChild(log);
     const set=ctrl.readouts([{id:'turns',label:'已走的步'},{id:'ctx',label:'context 用量'},{id:'comp',label:'compact 次數'}]);
-    ctrl.note(`<p>Agent 不是一次問答，是一個<b>迴圈</b>：LLM 看完整個 context 決定下一步——回話，或呼叫工具；工具結果再被塞回 context，LLM 再看一次。</p>
-      <p>注意吃 context 的不是 LLM 自己的話，而是<b>工具結果</b>（藍色）：一個 log 檔就能吃掉幾千 token。所以 Pi 這類 harness 一定要有 <b>compact</b>（舊訊息壓成摘要）和 <b>subagent</b>（把吃 context 的工作丟到另一個 context）。</p>
-      <p class="hint">螺旋往上 = 時間；每段訊息是一顆方塊，大小 = 它佔的 context。compact 時舊的圈塌成底座的灰色圓盤。<a href="#compact">Compact</a> 與 <a href="#subagent">Subagent</a> 各有自己的場景。</p>`);
+    ctrl.howto(['單步或播放，走完 Pi 修 CI 的 21 步','盯著 context 條：最肥的是工具結果（藍色）','超過 85% 自動 compact，看舊的圈塌成底座。<a href="#compact">Compact</a> 與 <a href="#subagent">Subagent</a> 各有自己的場景']);
+    const walk=n=>{ stepper.stop(); if(i>n) reset(); while(i<n) step(); }; /* 導讀步驟用：走到第 n 步 */
+    ctx.guide([
+      {say:'Agent 不是一次問答，是一個<b>迴圈</b>：LLM 看完整個 context 決定下一步，回話或呼叫工具；工具結果再被塞回 context，LLM 再看一次。螺旋往上 = 時間。', cam:{theta:0.4,phi:1.15}, run:()=>walk(0)},
+      {say:'走四步：使用者說 CI 紅了，LLM 決定讀 log，工具回來 3,800 行。注意吃 context 的不是 LLM 自己的話，而是<b>工具結果</b>（藍色）：一個 log 檔就能吃掉幾千 token。', spot:'Context window', run:()=>walk(4)},
+      {say:'再走到第 16 步：context 超過 85%，舊訊息被壓成一段摘要，舊的圈塌成底座的灰色圓盤。這就是 <b>compact</b>。', spot:'compact 次數', run:()=>walk(16)},
+      {say:'所以 Pi 這類 harness 一定要有 compact（舊訊息壓成摘要）和 subagent（把吃 context 的工作丟到另一個 context）。<a href="#compact">Compact</a> 與 <a href="#subagent">Subagent</a> 各有自己的場景。', run:()=>walk(21)},
+    ]);
     ctx.legend([['signal','使用者訊息'],['state','LLM 推理'],['flow','工具呼叫'],['memory','工具結果'],['structure','compact 後的摘要']]);
     ctx.setCamera({theta:0.4,phi:1.15});
     render();

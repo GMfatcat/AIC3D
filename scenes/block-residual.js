@@ -31,16 +31,20 @@ App.register({
       g.children.forEach(c=>{ if(c.material && c.material.color && c.geometry===tubeGeo && c.rotation.z!==0) c.visible=skip; });
       set('fwd', xs[L].toFixed(3), xs[L]<0.3||xs[L]>3?'bad':'ok'); set('grad', gs[0]<=0?'—':(gs[L]).toExponential(2), gs[L]<0.1?'bad':'ok');
       set('jac', skip?`1 + ∂F/∂x（≈ ${(1+0.1*gain).toFixed(2)}）`:`∂F/∂x（= ${gain.toFixed(2)}）`);
-      note.innerHTML = skip
-        ? `<p><b>有旁路</b>：每層輸出 = x + F(x)。對 x 的導數是 <b>1 + ∂F/∂x</b>，那個「1」讓梯度不管多深都有一條直通路徑，不會被連乘到消失。block 只需要學「殘差」（該改多少），學不到也至少是 identity。</p>`
-        : `<p><b>沒有旁路</b>：每層輸出 = F(x)。導數是 ∂F/∂x，${L} 層連乘後變成 ${gain.toFixed(2)}<sup>${L}</sup> ≈ ${Math.pow(gain,L).toExponential(1)}。增益 < 1 梯度消失、> 1 梯度爆炸，剛好 = 1 幾乎不可能。這就是 2015 年以前網路做不深的原因。</p>`;
     };
+    const setSkip=v=>{ skip=v; seg.set(v?'on':'off'); redraw(); }; const setGain=v=>{ gain=v; gainCtl.set(v); redraw(); };
     ctrl.heading('旁路');
-    ctrl.segmented(null,[{id:'on',label:'有 skip connection'},{id:'off',label:'沒有（純堆疊）'}],'on',id=>{skip=id==='on';redraw();});
-    ctrl.slider('每層 block 的增益 ∂F/∂x',{min:0.5,max:1.3,step:0.05,value:0.8,fmt:v=>v.toFixed(2),onChange:v=>{gain=v;redraw();}});
+    const seg=ctrl.segmented(null,[{id:'on',label:'有 skip connection'},{id:'off',label:'沒有（純堆疊）'}],'on',id=>{skip=id==='on';redraw();});
+    const gainCtl=ctrl.slider('每層 block 的增益 ∂F/∂x',{min:0.5,max:1.3,step:0.05,value:0.8,fmt:v=>v.toFixed(2),onChange:v=>{gain=v;redraw();}});
     const set=ctrl.readouts([{id:'jac',label:'每層導數'},{id:'fwd',label:`${L} 層後訊號幅度`},{id:'grad',label:`回傳到第 1 層的梯度`},{id:'hov',label:'滑到的層'}]);
     ctx.app.watchHover(blocks,(h,l)=>{ hovL=l; redraw(); },(m,l)=>`第 ${l+1} 層的 F(x) block`);
-    const note=ctrl.note('');
+    ctrl.howto(['切到「沒有（純堆疊）」，看訊號一路變灰','把增益拉過 1，看它變紅爆炸','滑到任一層，讀它進出的幅度']);
+    ctx.guide([
+      {say:'每一層的輸出 = <b>x + F(x)</b>。藍色方塊是 F(x)（attention 或 FFN），右邊那根直管是 x 本人，直接通到下一層。', cam:{theta:0.45,phi:1.3}, spot:'旁路', run:()=>{ setSkip(true); setGain(0.8); }},
+      {say:`把旁路關掉：每層輸出只剩 F(x)。${L} 層連乘 0.8 之後訊號剩不到 7%，回傳的梯度也一樣。這就是 2015 年以前網路做不深的原因。`, spot:'有 skip connection', run:()=>setSkip(false)},
+      {say:'增益調到 1.3 也沒救：連乘變成<b>爆炸</b>。沒有旁路時增益得剛好是 1，幾乎不可能。', spot:'每層 block 的增益', run:()=>setGain(1.3)},
+      {say:'旁路開回來：導數變成 <b>1 + ∂F/∂x</b>，那個「1」讓梯度不管多深都有一條直通路徑。block 只需要學「該改多少」，學不到也至少是 identity。', spot:'每層導數', run:()=>{ setSkip(true); setGain(0.8); }},
+    ]);
     ctx.legend([['signal','訊號（粗 = 大）'],['flow','F(x) block'],['alert','爆炸'],['inactive','消失']]);
     ctx.setCamera({theta:0.45,phi:1.3});
     redraw();

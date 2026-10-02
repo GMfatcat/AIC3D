@@ -1,7 +1,7 @@
 /* Every planned item, in display order. Scenes that exist override question text; others render as placeholders. */
 App.catalogAdd([
   // ---- Tab 1 基礎架構 ----
-  {id:'cnn', tab:'arch', title:'CNN', show:'影像當 3D 體積，kernel 方塊滑過，輸出堆成 feature map 塔', interact:'kernel/stride 滑桿；hover 輸出 voxel 反亮感受野', question:'局部感受野如何逐層擴大？'},
+  {id:'cnn', tab:'arch', title:'CNN', show:'左邊一張 8×8 的輸入影像，一個 kernel 滑過去，右邊長出 feature map。', interact:'調 kernel 大小與 stride、堆幾層看感受野怎麼長大；滑到右邊任一輸出格，看它看到輸入的哪一塊。', question:'局部感受野如何逐層擴大？', spin:false},
   {id:'rnn', tab:'arch', title:'RNN', show:'Token 一顆顆進入單一狀態球，顏色隨時間變', interact:'點早期 token，看它對後面輸出的影響淡掉', question:'為什麼長距離依賴會丟？'},
   {id:'crnn', tab:'arch', title:'CRNN', show:'CNN 塔 → 切成一欄欄 → 餵進 RNN → CTC 輸出字元', interact:'切片寬度滑桿；可接 OCR 範例圖', question:'影像如何變成序列？'},
   {id:'transformer', tab:'arch', title:'Transformer 系列', show:'Token 列 + 全對全連線束', interact:'toggle mask：雙向 / 因果 / cross', question:'Encoder、Decoder、Enc-Dec 三種 mask 差在哪？'},
@@ -12,7 +12,7 @@ App.catalogAdd([
   {id:'embedding', tab:'arch', title:'Embedding 系列', show:'3D 語義點雲', interact:'選一個詞 → 新點落下 → 最近鄰亮、畫 cosine 弧', question:'「相近」為什麼變成「距離近」？'},
   // ---- Tab 2 Model Block ----
   {id:'attention', tab:'block', title:'Attention', show:'每 token 長出 Q/K/V 三色片，Q·K 的連線束粗細經 softmax', interact:'拖 token 向量方向看連線束變化', question:'attention 權重怎麼來的？'},
-  {id:'residual', tab:'block', title:'Residual Block', show:'主路徑 + 旁路管子', interact:'toggle 關旁路看深層訊號變灰', question:'旁路為什麼救得了深層訓練？'},
+  {id:'residual', tab:'block', title:'Residual Block', show:'12 層的主路徑旁邊多一條旁路管。訊號的粗細隨每層增益變，顏色告訴你它在消失（灰）還是爆炸（紅）。', interact:'關掉旁路看訊號一路變灰，把增益拉過 1 看它爆炸；滑到任一層讀它進出的幅度。', question:'旁路為什麼救得了深層訓練？'},
   {id:'mhc', tab:'block', title:'mHC', show:'Residual → HC → mHC 三段演進', interact:'塗格子：HC 爆掉、mHC 自動歸一化', question:'加寬殘差流為什麼會不穩？怎麼修？'},
   {id:'engram', tab:'block', title:'Engram', show:'模型塔旁一面記憶牆；n-gram 雜湊線打到牆 → embedding 飛回 → 閘門', interact:'hover token；toggle 情境相符；MoE↔Engram 預算滑桿畫 U 形', question:'條件記憶和條件計算差在哪？'},
   {id:'kvheads', tab:'block', title:'MHA → GQA → MQA → MLA', show:'8 個 Q 頭；下排 KV 頭從 8 → 分組 → 1 → 收進 latent 圓柱；右側 cache 體積條', interact:'一支滑桿連續拉', question:'MLA 不是少幾個頭，那是換了什麼？'},
@@ -40,7 +40,7 @@ App.catalogAdd([
   {id:'tp', tab:'infra', title:'Tensor Parallel', show:'權重磚切片到多顆 GPU，算完 all-reduce 匯合', interact:'GPU 數滑桿', question:'切權重要付出什麼通訊？'},
   {id:'dp', tab:'infra', title:'Data Parallel', show:'完整模型複製多份，各吃不同 batch', interact:'與 TP 並排', question:'切資料和切權重差在哪？'},
   // ---- Tab 6 Agent（Pi） ----
-  {id:'agent-loop', tab:'agent', title:'Agent loop', show:'環：user → LLM → tool call → tool result → LLM…；context 條慢慢填', interact:'單步播放', question:'一圈裡發生什麼？'},
+  {id:'agent-loop', tab:'agent', title:'Agent loop', show:'一個 Agent 迴圈：使用者、LLM、工具呼叫、工具結果四個節點，走一圈就往上一層。每段訊息是一顆方塊，堆在 context 裡。', interact:'單步或播放，看 Pi 修一個 CI 失敗的 21 步；盯著 context 條什麼時候滿、compact 怎麼把舊的圈壓成底座。', question:'一圈裡發生什麼？'},
   {id:'compact', tab:'agent', title:'Compact', show:'context 條快溢出 → 舊訊息壓成一個摘要塊', interact:'前後體積對照', question:'什麼被丟、什麼被留？'},
   {id:'goal', tab:'agent', title:'/goal', show:'環上方釘一個目標節點，每圈回來比對', interact:'改目標看路徑變', question:'目標如何約束迴圈？'},
   {id:'subagent', tab:'agent', title:'Subagent', show:'主環旁長出小環（獨立 context），結束只回一個摘要塊', interact:'看主 context 沒被撐大', question:'為什麼要隔離 context？'},

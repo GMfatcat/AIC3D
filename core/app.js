@@ -105,7 +105,7 @@ const App = {
     c.addEventListener('wheel',e=>{ e.preventDefault(); this._camTween&&this._camTween.cancel(); this.cam.dist=this._clampDist(this.cam.dist*(1+Math.sign(e.deltaY)*0.08)); this._placeCamera(); },{passive:false});
     c.addEventListener('dblclick',()=>{ if(this.camHome) this.flyTo(this.camHome,500); });
     addEventListener('keydown',e=>{ if(e.target.closest('input,select,textarea,button')) return; const k=e.key;
-      if(!this._inTour && this.currentItem){ // [ ] 上下一個場景、1–6 切分頁（導覽模式的 [ ] 由 tours.js 接手）
+      if(!this._inTour && !this.guide?.active && this.currentItem){ // [ ] 上下一個場景、1–6 切分頁（導覽模式的 [ ] 由 tours.js 接手）
         if(k===']'||k==='['){ const i=catalog.indexOf(this.currentItem); location.hash=catalog[(i+(k===']'?1:-1)+catalog.length)%catalog.length].id; e.preventDefault(); return; }
         if(/^[1-6]$/.test(k)){ const first=catalog.find(x=>x.tab===TABS[+k-1].id); if(first){ location.hash=first.id; e.preventDefault(); } return; } }
       const step=0.08*this.cam.dist; if(k==='ArrowLeft') this._pan(-step*12,0); else if(k==='ArrowRight') this._pan(step*12,0); else if(k==='ArrowUp') this._pan(0,-step*12); else if(k==='ArrowDown') this._pan(0,step*12); else if(k==='f'||k==='F'){ this.fit(); return; } else return; e.preventDefault(); this._placeCamera(); });
@@ -132,7 +132,7 @@ const App = {
     const aspect=this.camera.aspect||1.6; const fovV=this.camera.fov*Math.PI/180; const fovH=2*Math.atan(Math.tan(fovV/2)*aspect);
     // 左上標題與左下圖例佔掉的高度不給內容用：內容縮進中間那一帶，並往帶的中心平移
     const H=this.canvas.clientHeight||600; const infoH=document.getElementById('info').offsetHeight||0; const legEl=document.getElementById('legend'); const legH=(legEl&&legEl.offsetParent)?legEl.offsetHeight:0;
-    const tb=document.getElementById('tourbar'); const tbH=(tb&&tb.classList.contains('on'))?tb.offsetHeight+20:0;
+    const barH=id=>{ const b=document.getElementById(id); return (b&&b.classList.contains('on')&&b.offsetParent)?b.offsetHeight+20:0; }; const tbH=Math.max(barH('tourbar'),barH('guidebar'));
     const top=H>420?infoH+24:0, bottom=H>420?Math.max(legH+24,tbH):0; const band=Math.max(0.45,(H-top-bottom)/H);
     const dV=(size.y/2)/Math.tan(fovV/2)/band, dH=(size.x/2)/Math.tan(fovH/2), dD=size.z/2;
     const dist=(Math.max(dV,dH)*1.12+dD+1.2)*(this.cam.zoom||1);
@@ -175,7 +175,7 @@ const App = {
     // 鍵盤：左右鍵在分頁間移動（WAI-ARIA tabs pattern）
     tabs.addEventListener('keydown',e=>{ if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft') return; const i=TABS.findIndex(t=>t.id===e.target.dataset.tab); if(i<0) return; const n=(i+(e.key==='ArrowRight'?1:-1)+TABS.length)%TABS.length; goTab(TABS[n]); tabs.children[n].focus(); e.preventDefault(); });
   },
-  _route(){
+  _route(){ this._navCount=(this._navCount||0)+1; // 站內走過幾頁：進場卡的「回上一頁」用
     let id=location.hash.replace('#','') || 'home';
     if(id==='home'){ this._inTour=false; this.hideTour && this.hideTour(); this._goHome(); return; }
     const tm=id.match(/^tour=([\w-]+)&step=(\d+)$/);
@@ -205,19 +205,25 @@ const App = {
     document.getElementById('i-title').textContent=item.title; document.getElementById('i-q').textContent=item.question||'';
     this.canvas.setAttribute('aria-label',`3D 場景：${item.title}。${item.question||''} 文字說明在右側面板。`);
     this.autoSpin = true; this.cam.zoom = 1; this.currentItem=item; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML='';
+    const first=!this.visited.has(item.id); this.entered=false; this.enterMode=null; this._enterQ=[]; this.guide && this.guide.clear(); // 進場卡 / 導讀的狀態每頁重來
     document.body.classList.remove('home'); this.home=false; this._hoverWatch=[]; this._dragTargets=[]; this._clickTargets=[]; this._drag3d=null; this.canvas.style.cursor='';
     if(!this.visited.has(item.id)){ this.visited.add(item.id); try{ localStorage.setItem('visited',JSON.stringify([...this.visited])); }catch(e){} document.querySelectorAll('#items a').forEach(a=>{ if(a.getAttribute('href')==='#'+item.id) a.parentElement.classList.add('visited'); }); }
     const def = scenes[item.id];
-    if(!def){ this.current = this._placeholder(item); this.fit(); return; }
+    this._resize(); this._sideScroll(); // 從開場頁進來時 side / ctrl 欄剛出現：舞台寬度變了，取景前先同步相機 aspect，側欄也才量得到寬度
+    if(!def){ this.current = this._placeholder(item); this.fit(); this.intro && this.intro.arrive(item, first); return; }
     const ctx = { app:this, THREE:T, P, scene:this.scene, root:this.root, ctrl:this.ctrl, overlay:overlayHost, legend:(items)=>this.legend(items), setCamera:(c)=>this.setCamera(c), reduceMotion:this.reduceMotion,
-      onDispose:(fn)=>this._disposers.push(fn) }; // 場景用這個登記 timer / listener 的清理
+      onDispose:(fn)=>this._disposers.push(fn), // 場景用這個登記 timer / listener 的清理
+      guide:(steps)=>this.guide && this.guide.set(steps, item) }; // 頁內導讀的步驟
     this.ctx = ctx;
     const inst = Object.create(def); inst.init(ctx); this.current = inst;
     document.getElementById('i-q').textContent = def.question || item.question || '';
-    this.sceneNav();
+    this.sceneNav(); this.intro && this.intro.actions(item); // 標題下的「說明 / 導讀」鈕要在取景前放好，info 區高度才算對
     this.root.updateMatrixWorld(true); this.fit();
     if(!this.reduceMotion){ const home=this.cam.dist; this.cam.dist=home*1.12; this._placeCamera(); this._camTween=Motion.tween(this.cam,{dist:home},{ms:700,ease:'out',onUpdate:()=>this._placeCamera()}); } // 從稍遠處緩緩靠近（settle-in）
+    this.intro && this.intro.arrive(item, first);
   },
+  /* 手機的橫向側欄列：目前項目捲到中間 */
+  _sideScroll(){ const list=document.getElementById('items'); const a=list.querySelector('a[aria-current=page]'); if(a && matchMedia('(max-width:900px)').matches) list.scrollLeft=a.offsetLeft-list.offsetLeft-(list.clientWidth-a.offsetWidth)/2; },
   /* 面板最底下：上一個 / 下一個場景（跨分頁連續、頭尾相接） */
   sceneNav(){ const item=this.currentItem; if(!item||!this.ctrl) return; const i=catalog.indexOf(item); const prev=catalog[(i-1+catalog.length)%catalog.length], next=catalog[(i+1)%catalog.length];
     const old=this.ctrl.c.querySelector('.scenenav'); if(old) old.remove();
@@ -233,6 +239,7 @@ const App = {
     (this._disposers||[]).forEach(fn=>{ try{ fn(); }catch(e){ console.error(e); } }); this._disposers=[];
     P.clear(this.root); this.labels.forEach(l=>l.el.remove()); this.labels.clear(); this.labelLayer.innerHTML=''; document.getElementById('overlay').innerHTML=''; document.getElementById('ctrl').innerHTML=''; this.legend([]);
     document.getElementById('i-title').textContent=''; document.getElementById('i-q').textContent=''; this.canvas.setAttribute('aria-label','開場：漂浮的語意色原件');
+    if(this.intro){ if(this.intro.isOpen()) this.intro.close(); this.intro._clearBanner(); document.getElementById('i-actions').innerHTML=''; } this.guide && this.guide.clear();
     this.currentItem=null; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML=''; this.home=true; document.body.classList.add('home'); this._hoverWatch=[]; this._dragTargets=[]; this._clickTargets=[];
     this._buildLanding();
     // 背景：八種語意色的原件在一個球殼上慢慢漂浮
@@ -240,7 +247,7 @@ const App = {
     for(let i=0;i<22;i++){ const role=roles[i%roles.length]; const kind=i%3; const geo=kind===0?new T.BoxGeometry(0.7,0.7,0.7):kind===1?new T.SphereGeometry(0.42,24,16):new T.CylinderGeometry(0.22,0.22,1.1,16);
       const m=new T.Mesh(geo,P.mat(role,{glow:0.35})); const th=rnd()*Math.PI*2, ph=Math.acos(2*rnd()-1), r=3.6+rnd()*2.2; m.position.set(r*Math.sin(ph)*Math.cos(th), (r*Math.cos(ph))*0.6, r*Math.sin(ph)*Math.sin(th)); m.rotation.set(rnd()*3,rnd()*3,rnd()*3);
       m.userData.bob={y:m.position.y, p:rnd()*6.28, s:0.4+rnd()*0.6}; this.root.add(m); items.push(m); }
-    this.setCamera({theta:0.6,phi:1.25,zoom:1.15}); this.ctx=null;
+    this.setCamera({theta:0.6,phi:1.25,zoom:1.15}); this.ctx=null; this._resize(); // 舞台變滿版
     let t=0; this.current={ update:(dt)=>{ if(this.reduceMotion) return; t+=dt; this.root.rotation.y+=dt*0.05; items.forEach(m=>{ const b=m.userData.bob; m.position.y=b.y+Math.sin(t*b.s+b.p)*0.25; m.rotation.x+=dt*0.15; }); }, dispose:()=>{ this.root.rotation.y=0; } };
     this.root.updateMatrixWorld(true); this.fit();
   },

@@ -44,7 +44,9 @@ class Controls {
     list.forEach(b=>{ const e=el('button','btn'+(b.primary?' primary':''),(b.icon?icon(b.icon):'')+b.label); e.addEventListener('click',b.onClick); row.appendChild(e); out.push(e); });
     this.c.appendChild(row); return out;
   }
-  /* 進場 600ms 後自動播放一輪（先看現象再給控制）；使用者碰任何控制就停。減少動態偏好時不自動播。 */
+  /* 面板上的「怎麼玩」三行（長說明拆進導讀步驟之後，面板只留這個） */
+  howto(items){ const d=el('div','howto','<h3>怎麼玩</h3><ul>'+items.map(i=>`<li>${i}</li>`).join('')+'</ul>'); this.c.appendChild(d); return d; }
+  /* 進入（按掉進場卡）600ms 後自動播放一輪（先看現象再給控制）；「立即播放」偏好關掉、或走導讀就不播；使用者碰任何控制就停。減少動態偏好時不自動播。 */
   stepper({onStep,onReset,onPlay,interval=700,autoplay=true}){
     let playing=false, timer=null, auto=null, autoplaying=false;
     const row = el('div','btnrow');
@@ -53,7 +55,9 @@ class Controls {
     const start=(isAuto)=>{ playing=true; autoplaying=!!isAuto; bPlay.innerHTML=icon('pause')+'暫停'; timer=setInterval(()=>{ const more=onStep(); if(more===false) stop(); }, interval); this.timers.push(timer); onPlay&&onPlay(); };
     bStep.addEventListener('click',()=>{ stop(); onStep(); });
     bPlay.addEventListener('click',()=>{ if(playing){stop();return;} start(false); });
-    if(autoplay && !Motion.reduce){ auto=setTimeout(()=>{ auto=null; if(!playing) start(true); },600); this.timers.push(auto); }
+    this.hasStepper=true;
+    if(autoplay && !Motion.reduce){ const arm=()=>{ if(this.disposed) return; auto=setTimeout(()=>{ auto=null; if(!playing) start(true); },600); this.timers.push(auto); };
+      if(window.App && App.afterEnter) App.afterEnter(mode=>{ if(mode==='free' && (!App.enterPrefs || App.enterPrefs.play!==false)) arm(); }); else arm(); }
     const cancelAuto=e=>{ if(auto){ clearTimeout(auto); auto=null; } if(autoplaying && !row.contains(e.target)) stop(); };
     ['pointerdown','keydown','input'].forEach(t=>this.c.addEventListener(t,cancelAuto,true));
     bReset.addEventListener('click',()=>{ stop(); onReset(); });
@@ -82,7 +86,7 @@ class Controls {
   }
   html(html, cls){ const d=el('div',cls||'ctl',html); this.c.appendChild(d); return d; }
   note(html){ return this.html(html,'note'); }
-  dispose(){ this.timers.forEach(t=>clearInterval(t)); this.timers=[]; this.c=this.root; this.root.innerHTML=''; }
+  dispose(){ this.disposed=true; this.timers.forEach(t=>clearInterval(t)); this.timers=[]; this.c=this.root; this.root.innerHTML=''; }
 }
 Controls.icon = icon;
 window.Controls = Controls;

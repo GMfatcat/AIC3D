@@ -23,8 +23,8 @@ App.register({
       stateRowL=new P.TokenRow(c.state,{color:'memory',gap:0.7,size:0.38,labelBelow:true}); stateRowL.group.position.y=1.6; L.add(stateRowL.group);
       genRow=new P.TokenRow(c.gen,{color:'signal',gap:0.62,size:0.34,labelBelow:true}); genRow.group.position.y=-0.6; L.add(genRow.group);
       stateRowR=new P.TokenRow(c.state,{color:'memory',gap:0.7,size:0.38,labelBelow:true}); stateRowR.group.position.y=1.6; R.add(stateRowR.group);
-      slotObjs=[]; c.slots.forEach((s,i)=>{ const g=new T.Group(); g.position.set((i-(c.slots.length-1)/2)*1.6,-0.9,0); R.add(g); const base=new T.Mesh(new T.BoxGeometry(1.2,0.08,0.6),P.mat('inactive',{glow:0.1})); g.add(base); const ql=P.label(s.q,{size:18}); ql.position.set(0,-0.5,0); g.add(ql);
-        const bars=s.opts.map((o,j)=>{ const m=new T.Mesh(new T.BoxGeometry(0.28,1,0.3),P.mat('state',{glow:0.5})); m.position.x=(j-(s.opts.length-1)/2)*0.36; g.add(m); const ol=P.label(o,{size:14}); ol.position.set(m.position.x,-0.25,0.35); g.add(ol); return m; }); slotObjs.push({g,bars,s}); });
+      slotObjs=[]; c.slots.forEach((s,i)=>{ const g=new T.Group(); g.position.set((i-(c.slots.length-1)/2)*1.75,-0.9,0); R.add(g); const base=new T.Mesh(new T.BoxGeometry(1.4,0.08,0.6),P.mat('inactive',{glow:0.1})); g.add(base); const ql=P.label(s.q,{size:18}); ql.position.set(0,-0.95,0); g.add(ql);
+        const bars=s.opts.map((o,j)=>{ const m=new T.Mesh(new T.BoxGeometry(0.28,1,0.3),P.mat('state',{glow:0.5})); m.position.x=(j-(s.opts.length-1)/2)*0.42; g.add(m); const ol=P.label(o,{size:14}); ol.position.set(m.position.x, j%2?-0.62:-0.2, 0.35); g.add(ol); return m; }); /* 選項字分兩排交錯，三個字才不會疊在一起 */ slotObjs.push({g,bars,s}); });
       beams=new P.BeamSet(c.slots.length,{maxR:0.03,minR:0.02}); R.add(beams.group); t=0; redraw(); };
     const soft=(p)=>{ const l=p.map(v=>Math.log(Math.max(v,1e-6))/temp); const m=Math.max(...l); const e=l.map(v=>Math.exp(v-m)); const Z=e.reduce((a,b)=>a+b,0); return e.map(v=>v/Z); };
     const redraw=()=>{ const c=cur();
