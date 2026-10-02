@@ -241,7 +241,7 @@ const App = {
     document.getElementById('i-title').textContent=''; document.getElementById('i-q').textContent=''; this.canvas.setAttribute('aria-label','開場：漂浮的語意色原件');
     if(this.intro){ if(this.intro.isOpen()) this.intro.close(); this.intro._clearBanner(); document.getElementById('i-actions').innerHTML=''; } this.guide && this.guide.clear();
     this.currentItem=null; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML=''; this.home=true; document.body.classList.add('home'); this._hoverWatch=[]; this._dragTargets=[]; this._clickTargets=[];
-    this._buildLanding();
+    this._buildLanding(); this._landingFoot();
     // 背景：八種語意色的原件在一個球殼上慢慢漂浮
     const roles=Object.keys(P.ROLE); const items=[]; let seed=3; const rnd=()=>{ seed=(seed*9301+49297)%233280; return seed/233280; };
     for(let i=0;i<22;i++){ const role=roles[i%roles.length]; const kind=i%3; const geo=kind===0?new T.BoxGeometry(0.7,0.7,0.7):kind===1?new T.SphereGeometry(0.42,24,16):new T.CylinderGeometry(0.22,0.22,1.1,16);
@@ -257,7 +257,11 @@ const App = {
     el.innerHTML=`<div class="land-in"><h1>AI 概念 3D 教學</h1><p class="lead">${catalog.length} 個互動 3D 場景，每個只回答一個問題：從 CNN 到 Agent，看懂概念，不追數值。</p>
       <p class="roles-cap">整站只用八種顏色，每種代表一個角色：</p><div class="roles">${roles}</div>
       <h2>挑一條路線，按順序看</h2><div class="tours">${tours}</div>
-      <a class="btn browse" href="#${catalog[0].id}">或直接瀏覽 ${catalog.length} 個場景 →</a></div>`; },
+      <a class="btn browse" href="#${catalog[0].id}">或直接瀏覽 ${catalog.length} 個場景 →</a>
+      <p class="land-foot"><span class="seen"></span><button type="button" class="btn ghost">重設看過的紀錄</button></p></div>`;
+    el.querySelector('.land-foot button').addEventListener('click',()=>{ this.visited=new Set(); try{ localStorage.removeItem('visited'); localStorage.removeItem('prefs'); }catch(e){} this._landingFoot(); }); },
+  /* 開場頁最底下：看過幾個、重設（看過與否只存在這個瀏覽器的 localStorage） */
+  _landingFoot(){ const f=document.querySelector('#landing .land-foot'); if(!f) return; const n=[...this.visited].filter(id=>catalog.some(i=>i.id===id)).length; f.querySelector('.seen').textContent=n?`已看過 ${n} / ${catalog.length} 個場景（記在這個瀏覽器裡）`:'還沒看過任何場景'; f.querySelector('button').style.display=n?'':'none'; },
   legend(items){ const l=document.getElementById('legend'); l.innerHTML=''; items.forEach(([color,text])=>{ const s=document.createElement('span'); const hx=P.hex(color); s.innerHTML=`<i style="background:${hx}"></i>${text}`; l.appendChild(s); }); },
   _placeholder(item){
     this.legend([]);

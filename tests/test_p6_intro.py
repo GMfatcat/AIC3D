@@ -268,3 +268,21 @@ def test_phone_sidebar_items_stay_on_one_line_and_show_the_current_one(phone_sit
     assert max(heights) <= 36, f"an item wrapped onto two lines: {heights}"
     assert phone_site.ev("(() => { const l = document.getElementById('items'); const a = l.querySelector('a[aria-current=page]'); const r = a.getBoundingClientRect(), p = l.getBoundingClientRect(); return r.left >= p.left - 1 && r.right <= p.right + 1; })()"), "the current item must be scrolled into view"
     assert phone_site.ev("getComputedStyle(document.getElementById('side')).maskImage || getComputedStyle(document.getElementById('side')).webkitMaskImage") not in ("none", ""), "a fade on the right edge hints that the list scrolls"
+
+
+# ---------- reset ----------
+
+def test_landing_can_reset_the_visited_record(raw):
+    _raw_goto(raw, "residual"); raw.ev("App.intro.enter('free')")
+    raw.ev("document.querySelector('#intro') && App.savePref('residual', 'spin', false)")
+    raw.page.locator("#top .brand").click()
+    raw.page.wait_for_function("!App.routing && App.home")
+    assert "1" in raw.ev("document.querySelector('#landing .land-foot').textContent"), "the landing page says how many scenes were seen"
+    raw.page.locator("#landing button", has_text="重設看過的紀錄").click()
+    raw.page.wait_for_timeout(100)
+    assert raw.ev("localStorage.getItem('visited')") is None and raw.ev("localStorage.getItem('prefs')") is None
+    assert raw.ev("App.visited.size") == 0
+    assert not raw.ev("!!document.querySelector('#landing button')") or raw.ev("getComputedStyle(document.querySelector('#landing .land-foot button')).display") == "none"
+    _raw_goto(raw, "residual")
+    assert raw.ev(INTRO_OPEN), "after the reset the first-visit card shows again"
+    assert raw.ev("[...document.querySelectorAll('#items li.visited')].length") == 1, "only the scene just entered is marked again"
