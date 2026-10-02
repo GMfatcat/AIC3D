@@ -39,7 +39,7 @@ const intro = {
     el.innerHTML=`<div class="intro-card" role="dialog" aria-modal="true" aria-labelledby="intro-title">
       <small class="crumb">${tabLabel(item.tab)} · ${n} / ${sib.length}</small>
       <h2 id="intro-title">${item.title}</h2><p class="iq">${item.question||''}</p>
-      <dl class="intro-dl"><dt>這頁在看什麼</dt><dd>${item.show||'—'}</dd><dt>你會動到什麼</dt><dd>${item.interact||'—'}</dd></dl>
+      <dl class="intro-dl"><dt>這頁在看什麼</dt><dd>${App.termify(item.show||'—')}</dd><dt>你會動到什麼</dt><dd>${App.termify(item.interact||'—')}</dd></dl>
       <div class="intro-toggles">${hasStepper?tog('play','進入後立即播放動畫'):''}${tog('spin','進入後旋轉展示')}</div>
       <div class="intro-actions">${btns}</div></div>`;
     el.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click',()=>this._act(b.dataset.act)));
@@ -95,7 +95,7 @@ const guide = {
     if(hit){ hit.classList.add('spot'); hit.scrollIntoView({block:'nearest',behavior:Motion.reduce?'auto':'smooth'}); } },
   render(){ const N=this.steps.length, n=this.n, s=this.steps[n];
     this.bar.innerHTML=`<div class="tb-head"><span class="tb-title">導讀</span><span class="tb-step">${n+1} / ${N}</span><button type="button" class="tb-exit" data-go="skip">跳過 ✕</button></div>
-      <div class="gb-say">${s.say}</div>
+      <div class="gb-say">${App.termify(s.say)}</div>
       <div class="tb-dots">${this.steps.map((_,i)=>`<i class="${i===n?'cur':i<n?'done':''}"></i>`).join('')}</div>
       <div class="tb-nav"><button type="button" class="btn" data-go="prev"${n===0?' disabled':''}>← 上一步</button>${s.hand?'<button type="button" class="btn primary" data-go="done">開始操作</button>':'<button type="button" class="btn primary" data-go="next">下一步 →</button>'}</div>`;
     this.bar.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{ const g=b.dataset.go; if(g==='prev') this.go(n-1); else if(g==='next') this.go(n+1); else this.stop(); }));

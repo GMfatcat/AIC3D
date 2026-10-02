@@ -177,7 +177,8 @@ const App = {
   },
   _route(){ this._navCount=(this._navCount||0)+1; // 站內走過幾頁：進場卡的「回上一頁」用
     let id=location.hash.replace('#','') || 'home';
-    if(id==='home'){ this._inTour=false; this.hideTour && this.hideTour(); this._goHome(); return; }
+    if(id==='home'){ this._inTour=false; this.hideTour && this.hideTour(); this._goFull('home'); return; }
+    { const gm=id.match(/^(glossary|term=([\w-]+))$/); if(gm){ this._inTour=false; this.hideTour && this.hideTour(); this._goFull('glossary', gm[2]||null); return; } } // 詞彙頁
     const tm=id.match(/^tour=([\w-]+)&step=(\d+)$/);
     if(tm && this.renderTour){ const sid=this.renderTour(tm[1],+tm[2]); if(sid){ id=sid; this._inTour=true; } else { this._inTour=false; } }
     else { this._inTour=false; this.hideTour && this.hideTour(); }
@@ -206,7 +207,7 @@ const App = {
     this.canvas.setAttribute('aria-label',`3D 場景：${item.title}。${item.question||''} 文字說明在右側面板。`);
     this.autoSpin = true; this.cam.zoom = 1; this.currentItem=item; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML='';
     const first=!this.visited.has(item.id); this.entered=false; this.enterMode=null; this._enterQ=[]; this.guide && this.guide.clear(); // 進場卡 / 導讀的狀態每頁重來
-    document.body.classList.remove('home'); this.home=false; this._hoverWatch=[]; this._dragTargets=[]; this._clickTargets=[]; this._drag3d=null; this.canvas.style.cursor='';
+    document.body.classList.remove('home','glossary'); this.home=false; this.page='scene'; this._hoverWatch=[]; this._dragTargets=[]; this._clickTargets=[]; this._drag3d=null; this.canvas.style.cursor='';
     if(!this.visited.has(item.id)){ this.visited.add(item.id); try{ localStorage.setItem('visited',JSON.stringify([...this.visited])); }catch(e){} document.querySelectorAll('#items a').forEach(a=>{ if(a.getAttribute('href')==='#'+item.id) a.parentElement.classList.add('visited'); }); }
     const def = scenes[item.id];
     this._resize(); this._sideScroll(); // 從開場頁進來時 side / ctrl 欄剛出現：舞台寬度變了，取景前先同步相機 aspect，側欄也才量得到寬度
@@ -220,7 +221,7 @@ const App = {
     this.sceneNav(); this.intro && this.intro.actions(item); // 標題下的「說明 / 導讀」鈕要在取景前放好，info 區高度才算對
     this.root.updateMatrixWorld(true); this.fit();
     if(!this.reduceMotion){ const home=this.cam.dist; this.cam.dist=home*1.12; this._placeCamera(); this._camTween=Motion.tween(this.cam,{dist:home},{ms:700,ease:'out',onUpdate:()=>this._placeCamera()}); } // 從稍遠處緩緩靠近（settle-in）
-    this.intro && this.intro.arrive(item, first);
+    const hook=this._afterShow; this._afterShow=null; if(hook) hook(item); else this.intro && this.intro.arrive(item, first); // 從詞彙頁回來時由 glossary.back() 決定要還原什麼
   },
   /* 手機的橫向側欄列：目前項目捲到中間 */
   _sideScroll(){ const list=document.getElementById('items'); const a=list.querySelector('a[aria-current=page]'); if(a && matchMedia('(max-width:900px)').matches) list.scrollLeft=a.offsetLeft-list.offsetLeft-(list.clientWidth-a.offsetWidth)/2; },
@@ -229,19 +230,19 @@ const App = {
     const old=this.ctrl.c.querySelector('.scenenav'); if(old) old.remove();
     const nav=document.createElement('nav'); nav.className='scenenav'; nav.setAttribute('aria-label','上一個 / 下一個場景');
     nav.innerHTML=`<a href="#${prev.id}" class="prev"><small>← 上一個</small>${prev.title}</a><a href="#${next.id}" class="next"><small>下一個 →</small>${next.title}</a>`; this.ctrl.c.appendChild(nav); },
-  /* 開場頁：沒有 hash 或 #home */
-  _goHome(){ document.querySelectorAll('#tabs button').forEach(b=>{ b.setAttribute('aria-selected','false'); b.tabIndex=-1; }); document.getElementById('items').innerHTML=''; document.getElementById('progress').textContent='';
-    if(this.home) return; if(this.routing){ this._pendingItem=null; } // 用 show() 同一套交叉淡入
-    const go=()=>this._showHome(); if(!this.current || this.reduceMotion){ go(); return; }
+  /* 滿版頁：開場頁（沒有 hash 或 #home）與詞彙頁（#glossary、#term=id）。舞台滿版放漂浮的語意色原件當背景 */
+  _goFull(kind, arg){ document.querySelectorAll('#tabs button').forEach(b=>{ b.setAttribute('aria-selected','false'); b.tabIndex=-1; }); document.getElementById('items').innerHTML=''; document.getElementById('progress').textContent='';
+    if(this.page===kind){ if(kind==='glossary') this.glossary.render(arg); return; } if(this.routing){ this._pendingItem=null; } // 用 show() 同一套交叉淡入
+    const go=()=>this._showFull(kind, arg); if(!this.current || this.reduceMotion){ go(); return; }
     this.routing=true; document.body.classList.add('is-switching'); setTimeout(()=>{ go(); requestAnimationFrame(()=>{ document.body.classList.remove('is-switching'); this.routing=false; }); },220); },
-  _showHome(){
+  _showFull(kind, arg){
     if(this.current){ this.current.dispose && this.current.dispose(); this.ctrl && this.ctrl.dispose(); }
     (this._disposers||[]).forEach(fn=>{ try{ fn(); }catch(e){ console.error(e); } }); this._disposers=[];
     P.clear(this.root); this.labels.forEach(l=>l.el.remove()); this.labels.clear(); this.labelLayer.innerHTML=''; document.getElementById('overlay').innerHTML=''; document.getElementById('ctrl').innerHTML=''; this.legend([]);
     document.getElementById('i-title').textContent=''; document.getElementById('i-q').textContent=''; this.canvas.setAttribute('aria-label','開場：漂浮的語意色原件');
     if(this.intro){ if(this.intro.isOpen()) this.intro.close(); this.intro._clearBanner(); document.getElementById('i-actions').innerHTML=''; } this.guide && this.guide.clear();
-    this.currentItem=null; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML=''; this.home=true; document.body.classList.add('home'); this._hoverWatch=[]; this._dragTargets=[]; this._clickTargets=[];
-    this._buildLanding(); this._landingFoot();
+    this.currentItem=null; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML=''; this.page=kind; this.home=kind==='home'; document.body.classList.remove('home','glossary'); document.body.classList.add(kind); this._hoverWatch=[]; this._dragTargets=[]; this._clickTargets=[];
+    if(kind==='home'){ this._buildLanding(); this._landingFoot(); } else { this.glossary.render(arg); }
     // 背景：八種語意色的原件在一個球殼上慢慢漂浮
     const roles=Object.keys(P.ROLE); const items=[]; let seed=3; const rnd=()=>{ seed=(seed*9301+49297)%233280; return seed/233280; };
     for(let i=0;i<22;i++){ const role=roles[i%roles.length]; const kind=i%3; const geo=kind===0?new T.BoxGeometry(0.7,0.7,0.7):kind===1?new T.SphereGeometry(0.42,24,16):new T.CylinderGeometry(0.22,0.22,1.1,16);
@@ -257,7 +258,7 @@ const App = {
     el.innerHTML=`<div class="land-in"><h1>AI 概念 3D 教學</h1><p class="lead">${catalog.length} 個互動 3D 場景，每個只回答一個問題：從 CNN 到 Agent，看懂概念，不追數值。</p>
       <p class="roles-cap">整站只用八種顏色，每種代表一個角色：</p><div class="roles">${roles}</div>
       <h2>挑一條路線，按順序看</h2><div class="tours">${tours}</div>
-      <a class="btn browse" href="#${catalog[0].id}">或直接瀏覽 ${catalog.length} 個場景 →</a>
+      <a class="btn browse" href="#${catalog[0].id}">或直接瀏覽 ${catalog.length} 個場景 →</a> <a class="btn ghost" href="#glossary">詞彙表</a>
       <p class="land-foot"><span class="seen"></span><button type="button" class="btn ghost">重設看過的紀錄</button></p></div>`;
     el.querySelector('.land-foot button').addEventListener('click',()=>{ this.visited=new Set(); try{ localStorage.removeItem('visited'); localStorage.removeItem('prefs'); }catch(e){} this._landingFoot(); }); },
   /* 開場頁最底下：看過幾個、重設（看過與否只存在這個瀏覽器的 localStorage） */

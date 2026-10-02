@@ -45,7 +45,7 @@ class Controls {
     this.c.appendChild(row); return out;
   }
   /* 面板上的「怎麼玩」三行（長說明拆進導讀步驟之後，面板只留這個） */
-  howto(items){ const d=el('div','howto','<h3>怎麼玩</h3><ul>'+items.map(i=>`<li>${i}</li>`).join('')+'</ul>'); this.c.appendChild(d); return d; }
+  howto(items){ const tf=window.App&&App.termify?App.termify:x=>x; const d=el('div','howto','<h3>怎麼玩</h3><ul>'+items.map(i=>`<li>${tf(i)}</li>`).join('')+'</ul>'); this.c.appendChild(d); return d; }
   /* 進入（按掉進場卡）600ms 後自動播放一輪（先看現象再給控制）；「立即播放」偏好關掉、或走導讀就不播；使用者碰任何控制就停。減少動態偏好時不自動播。 */
   stepper({onStep,onReset,onPlay,interval=700,autoplay=true}){
     let playing=false, timer=null, auto=null, autoplaying=false;

@@ -11,6 +11,7 @@ Windows 上請用 `python`（`python3` 會被導到 Microsoft Store 捷徑）。
 - `core/app.js` 殼：renderer、orbit、Tab 與項目導覽、場景生命週期、hash 路由（`#mhc`）
 - `core/tours.js` 六條跨 Tab 導覽路線（`#tour=kv&step=3`）
 - `core/guide.js` 每一頁的流程：第一次進頁的進場卡、之後的小橫幅、進場偏好（立即播放 / 旋轉展示）、頁內導讀（`App.intro`、`App.guide`）
+- `core/glossary.js` 專有名詞：詞彙資料、說明文字的自動連結（`App.termify`）、詞彙頁（`#glossary`、`#term=<id>`）、回上一步
 - `scenes/_catalog.js` 全部 38 個項目與規格
 - `scenes/<tab>-<id>.js` 一個檔案一個場景，用 `App.register({...})` 註冊
 - `tests/` 瀏覽器層級測試（見下）
@@ -63,6 +64,7 @@ id 必須對應 `_catalog.js` 裡的 id，存檔後 `python build.py` 即可。
 - 說明裡提到別的場景要用 `<a href="#id">標題</a>`，不要寫「Tab 2」「下一個場景」（靜態測試會擋）。面板最底下的「上一個 / 下一個」由 App 自動加。
 - 沒有 hash 或 `#home` 是開場頁（`App._showHome`）；導覽路線定義在 `core/tours.js`，開場頁的卡片直接讀它。
 - 進場卡的文字來自型錄：`show`（這頁在看什麼）、`interact`（你會動到什麼）要寫成給使用者看的句子；`spin:false` 給有閱讀方向的場景（token 列、左到右的流程），`play:false` 可關掉預設的自動播放。
+- 專有名詞：資料在 `core/glossary.js`，每個詞有 id、標題、別名、主要分頁、一句話、兩三句、在哪幾頁看得到。進場卡、導讀步驟、怎麼玩卡的文字會自動把詞包成連結（每段只連第一次；英文別名要整個字）；讀數與 3D 標籤不連。新詞加在資料裡就生效。詞彙頁的「回上一步」會回到點詞的地方，連導讀步驟與進場卡一起還原。
 - 頁內導讀：`ctx.guide([{say, cam:{theta,phi,zoom}, spot:'控制的標籤文字', run:()=>{...}}, ...])` 三到五步，`say` 一到兩句（可含 `<b>` 與 `<a href="#id">`），`run` 用閉包改場景狀態（要能從任何一步跳進來，所以自己把前提設好）。框架會自動補最後一步「換你試試」（型錄的 `interact`）。長說明拆進步驟，面板只留 `ctrl.howto(['…','…','…'])` 三行，不再寫 `ctrl.note` 長文。
 - 面板樣式用 theme.css 的 class（`.log`、`.ovl-card`、`.bitchip`、`.complist`…），不要 inline style。
 - 圖例顏色不能重複；每個 readout 的 `bad` / `ok` 自帶 ▲ / ✓。
