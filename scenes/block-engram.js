@@ -35,12 +35,17 @@ App.register({
       cg2.strokeStyle=css.getPropertyValue('--line').trim(); cg2.strokeRect(10,6,W-20,H-24); cg2.beginPath(); for(let i=0;i<=40;i++){ const e=i/40; const x=10+e*(W-20), y=yOf(lossOf(e)); i?cg2.lineTo(x,y):cg2.moveTo(x,y);} cg2.strokeStyle=P.hex('flow'); cg2.lineWidth=2; cg2.stroke(); const lx=10+budget*(W-20), ly=yOf(lossOf(budget)); cg2.fillStyle=P.hex('signal'); cg2.beginPath(); cg2.arc(lx,ly,4,0,7); cg2.fill(); cg2.fillStyle=css.getPropertyValue('--fg3').trim(); cg2.font='10px IBM Plex Mono'; cg2.textAlign='left'; cg2.fillText('全 MoE',10,H-6); cg2.textAlign='right'; cg2.fillText('全 Engram',W-10,H-6); cg2.textAlign='center'; cg2.fillText('loss ↓',W/2,H-6); };
     ctrl.heading('看一個 token 怎麼查表'); const selSl=ctrl.slider('目前 token',{min:0,max:N-1,value:sel,fmt:v=>WORDS[v],onChange:v=>{sel=v;redraw();}});
     ctx.app.watchHover(row.cubes,(h,i)=>{ if(i>=0){ sel=i; selSl.set(i); redraw(); } },(c,i)=>`token「${WORDS[i]}」`);
-    ctrl.segmented('查到的記憶跟目前情境',[{id:'y',label:'相符'},{id:'n',label:'不符'}],'y',id=>{relevant=id==='y';redraw();});
-    ctrl.slider('參數預算分給 Engram 的比例',{min:0,max:1,step:0.05,value:budget,fmt:v=>Math.round(v*100)+'%',onChange:v=>{budget=v;redraw();}});
+    const relSeg=ctrl.segmented('查到的記憶跟目前情境',[{id:'y',label:'相符'},{id:'n',label:'不符'}],'y',id=>{relevant=id==='y';redraw();});
+    const budSl=ctrl.slider('參數預算分給 Engram 的比例',{min:0,max:1,step:0.05,value:budget,fmt:v=>Math.round(v*100)+'%',onChange:v=>{budget=v;redraw();}});
     const set=ctrl.readouts([{id:'gram',label:'這個 token 的 n-gram'},{id:'lookup',label:'查表成本'},{id:'gate',label:'閘門'},{id:'mix',label:'目前分配'},{id:'loss',label:'對應的 loss'}]);
-    ctrl.note(`<p><b>MoE</b> 是條件<b>計算</b>：每個 token 只跑少數專家。<b>Engram</b>（DeepSeek, 2026）是條件<b>記憶</b>：把最近 2～3 個 token 組成 n-gram，用多個雜湊函數直接查一張<b>巨大的靜態 embedding 表</b>，查到的向量經過一個情境閘門後加進殘差流（這裡畫在第 3、9 層）。</p>
-        <p>重點是這張表<b>不用算、只要查</b>，所以可以大到 100B 參數放在 CPU 記憶體裡，GPU 幾乎不付代價。它把「這個片語通常接什麼」這種靠背的知識從 FFN 裡搬出來，讓 Transformer 層專心做推理。</p>
-        <p>右上角的 U 形：總參數固定時，全給 MoE 或全給 Engram 都不是最好，最佳點在中間。</p>`);
+    ctrl.howto(['滑到任一 token 看它的 n-gram 打到哪幾格','切「不符」看閘門關掉','拉預算比例看 U 形上的點']);
+    const setup=(s,r,b)=>{ sel=s; relevant=r; budget=b; selSl.set(s); relSeg.set(r?'y':'n'); budSl.set(b); redraw(); };
+    ctx.guide([
+      {say:'<b>MoE</b> 是條件<b>計算</b>：每個 token 只跑少數專家。<b>Engram</b>（DeepSeek, 2026）是條件<b>記憶</b>：把最近 2～3 個 token 組成 n-gram，雜湊後直接查右邊這張巨大的靜態表。', cam:{theta:0.25,phi:1.35}, spot:'看一個 token 怎麼查表', run:()=>setup(4,true,0.5)},
+      {say:'現在的 token 是「超出」：2-gram「對焦超出」、3-gram「站對焦超出」各打 3 個雜湊頭，共 6 次 O(1) 查表。查到的向量經過情境閘門（第 3、9 層）加進殘差流。', spot:'這個 token 的 n-gram', run:()=>setup(4,true,0.5)},
+      {say:'情境不符時閘門關閉（紅），查到的東西直接丟掉。重點是這張表<b>不用算、只要查</b>，所以可以大到 100B 參數放在 CPU 記憶體，GPU 幾乎不付代價。', spot:'查到的記憶跟目前情境', run:()=>setup(4,false,0.5)},
+      {say:'右上角的 U 形：總參數固定時，全給 MoE 或全給 Engram 都不是最好，最佳點在中間。把「這個片語通常接什麼」這種靠背的知識搬出 FFN，Transformer 層專心做推理。', spot:'參數預算', run:()=>setup(4,true,0.45)},
+    ]);
     ctx.legend([['signal','n-gram 來源 token / 閘門開'],['flow','2-gram 雜湊命中'],['state','3-gram 雜湊命中'],['alert','閘門關閉']]);
     ctx.setCamera({theta:0.25,phi:1.35}); redraw();
   },

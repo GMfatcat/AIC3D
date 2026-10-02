@@ -40,13 +40,17 @@ App.register({
       set('hov', this.focus>0 ? `第 ${this.focus} 個「${this.qLabels[this.focus-1]}」：看得到 ${this.weights[this.focus-1].filter(w=>w>0).length} 個 key` : '—');
     };
     ctrl.heading('Mask 類型');
-    ctrl.segmented(null,[{id:'enc',label:'Encoder-only'},{id:'dec',label:'Decoder-only'},{id:'encdec',label:'Enc-Dec'}],this.mode,(m)=>{ this.mode=m; this.focus=0; slider.set(0); build(); });
+    const seg=ctrl.segmented(null,[{id:'enc',label:'Encoder-only'},{id:'dec',label:'Decoder-only'},{id:'encdec',label:'Enc-Dec'}],this.mode,(m)=>{ this.mode=m; this.focus=0; slider.set(0); build(); });
     const slider = this.slider = ctrl.slider('聚焦哪個 query token',{min:0,max:6,value:0,fmt:v=>v===0?'全部':`第 ${v} 個`,onChange:v=>{ this.focus=v; this.draw(); }});
     const set = ctrl.readouts([{id:'mask',label:'Mask'},{id:'pairs',label:'可見的 (q,k) 配對'},{id:'hov',label:'滑到的 query'}]);
-    ctrl.note(`<p><b>Encoder-only</b>（BERT 類）：每個 token 看得到整句，適合理解、分類、embedding。</p>
-      <p><b>Decoder-only</b>（GPT / Qwen / DeepSeek 類）：只能看左邊，所以能一顆一顆生成；訓練時整句一次算，靠的就是這個三角形 mask。</p>
-      <p><b>Encoder-Decoder</b>（T5 / 翻譯 / Whisper 類）：decoder 內部仍是因果，但多了一層 cross attention 去看 encoder 的輸出。這裡畫的是 cross 那一層。</p>
-      <p class="hint">連線束粗細 = softmax 後的權重，數值是示意，不是真實模型。</p>`);
+    ctrl.howto(['切三種 mask 看連線怎麼變','拉滑桿或滑到上排 token，只看一個 query','讀「可見的 (q,k) 配對」數']);
+    const setup=(m,f)=>{ this.mode=m; seg.set(m); this.focus=f; slider.set(f); build(); };
+    ctx.guide([
+      {say:'上排是 Query，下排是 Key / Value。每條連線 = 一個 query 看一個 key 的權重（softmax 後），粗 = 大。<b>Decoder-only</b>（GPT / Qwen / DeepSeek 類）只能看左邊：三角形 mask。', cam:{theta:0.15,phi:1.35}, spot:'Mask 類型', run:()=>setup('dec',0)},
+      {say:'聚焦第 4 個 query「吃」：它只看得到自己和左邊 3 個。靠這個三角形，訓練時整句一次算，推論時一顆一顆生成。', spot:'聚焦哪個 query', run:()=>setup('dec',4)},
+      {say:'<b>Encoder-only</b>（BERT 類）：每個 token 看得到整句，適合理解、分類、embedding。', spot:'Encoder-only', run:()=>setup('enc',0)},
+      {say:'<b>Encoder-Decoder</b>（T5 / 翻譯 / Whisper 類）：decoder 內部仍是因果，但多一層 cross attention 去看 encoder 的輸出。這裡畫的是 cross 那一層：目標序列看來源序列。連線粗細是示意，不是真實模型。', spot:'Enc-Dec', run:()=>setup('encdec',0)},
+    ]);
     ctx.legend([['signal','Query token'],['memory','Key/Value token'],['flow','attention 權重（粗 = 大）'],['state','cross attention']]);
     ctx.setCamera({theta:0.15,phi:1.35});
     build();

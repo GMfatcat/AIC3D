@@ -33,11 +33,16 @@ App.register({
     const angSl=ctrl.slider('Query 向量方向',{min:-3.1,max:3.1,step:0.05,value:qAng,fmt:v=>v.toFixed(2)+' rad',onChange:v=>{qAng=v;redraw();}});
     ctx.app.watchHover(row.cubes,(h,i)=>{ if(i>=0){ qi=i; qiSl.set(i); redraw(); } },(c,i)=>`把「${WORDS[i]}」當 Query`); // 滑過 token 就把它當 Query
     const base=new T.Vector3(); ctx.app.dragTarget(qarrow.children,(pt)=>{ qarrow.getWorldPosition(base); qAng=Math.max(-3.1,Math.min(3.1,Math.atan2(pt.x-base.x,pt.y-base.y))); angSl.set(qAng); redraw(); }); // 直接拖 Q 箭頭改方向
-    ctrl.slider('縮放 1/√d（溫度）',{min:0.2,max:3,step:0.1,value:1,fmt:v=>'×'+v.toFixed(1),onChange:v=>{scale=v;redraw();}});
+    const scSl=ctrl.slider('縮放 1/√d（溫度）',{min:0.2,max:3,step:0.1,value:1,fmt:v=>'×'+v.toFixed(1),onChange:v=>{scale=v;redraw();}});
     const set=ctrl.readouts([{id:'logit',label:'Q·K 分數'},{id:'top',label:'最大權重'},{id:'ent',label:'分佈熵（越小越集中）'}]);
-    ctrl.note(`<p>三步：<b>① Q·K</b>：query 向量跟每個 token 的 key 向量做內積，方向越接近分數越高（看 Q 箭頭和哪支 K 箭頭平行）。<b>② softmax</b>：分數變成加總為 1 的權重（橘色連線粗細、數字）。<b>③ Σ w·V</b>：用權重把各 token 的 value 加權平均，就是這個 query 的輸出。</p>
-      <p>1/√d 那個縮放是在控制 softmax 的尖銳度：d 大時內積數值大，不縮放的話權重會變 one-hot、梯度消失。拉溫度滑桿就能看到。</p>
-      <p class="hint">可以直接拖橘色的 Q 箭頭改方向，或滑到任一 token 把它當 Query。向量用 2D 方向示意；真實的 Q/K 是 64～128 維。</p>`);
+    ctrl.howto(['拖橘色 Q 箭頭或拉方向滑桿','滑到任一 token 把它當 Query','拉溫度看分佈熵集中或攤平']);
+    const setup=(i,ang,sc)=>{ qi=i; qAng=ang; scale=sc; qiSl.set(i); angSl.set(ang); scSl.set(sc); redraw(); };
+    ctx.guide([
+      {say:'三步算出 attention。<b>① Q·K</b>：橘色 Q 箭頭跟每個 token 的 K 箭頭做內積，方向越接近分數越高。現在「對焦」當 query。', cam:{theta:0.1,phi:1.45}, spot:'哪個 token 當 Query', run:()=>setup(4,0.6,1)},
+      {say:'<b>② softmax</b>：分數變成加總為 1 的權重，就是連線粗細與上面的數字。把 Q 轉到 1.9 rad 對準「在」的 K，權重就倒向它。', spot:'Query 向量方向', run:()=>setup(4,1.9,1)},
+      {say:'<b>③ Σ w·V</b>：用權重把各 token 的 V（柱高 = 內容量）加權平均，右邊那根就是這個 query 的輸出。', spot:'最大權重', run:()=>setup(4,0.6,1)},
+      {say:'1/√d 的縮放控制 softmax 的尖銳度：溫度拉到 ×3，權重變 one-hot、熵掉到接近 0，梯度也跟著消失。d 大時內積數值大，所以一定要縮。真實的 Q/K 是 64～128 維，這裡用 2D 方向示意。', spot:'縮放 1/√d', run:()=>setup(4,0.6,3)},
+    ]);
     ctx.legend([['signal','Query 與 attention 權重'],['flow','Key 向量'],['state','Value'],['memory','token']]);
     ctx.setCamera({theta:0.1,phi:1.45});
     redraw();

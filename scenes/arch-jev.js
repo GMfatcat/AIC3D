@@ -34,12 +34,17 @@ App.register({
       set('left',`${t} / ${c.gen.length} 個 token，${t} 次 forward`); set('right','1 次 forward（唯讀），4 個答案 + 機率'); set('ent',ent.map(e=>e.toFixed(2)).join(' / ')+' bit'); set('answers',slotObjs.map(so=>{ const p=soft(so.s.p); return so.s.opts[p.indexOf(Math.max(...p))]+` ${(Math.max(...p)*100).toFixed(0)}%`; }).join('，')); };
     ctrl.heading('同一個 state，兩種問法'); const seg=ctrl.segmented(null,CASES.map((c,i)=>({id:String(i),label:c.label})),'0',id=>{ci=+id;custom=null;ta.value='';build();});
     const ta=ctrl.textarea('或自己打一段 state（關鍵字示意）',{placeholder:'例：客戶 投訴 被 扣款 兩次 很 生氣',rows:2,onInput:v=>{ if(!v.trim()){ custom=null; seg.set(String(ci)); } else { custom=fromText(v); seg.set(null); } build(); }});
-    ctrl.stepper({onStep:()=>{ const c=cur(); if(t>=c.gen.length) return false; t++; redraw(); return t<c.gen.length; },onReset:()=>{t=0;redraw();},interval:450});
-    ctrl.slider('校準 / temperature',{min:0.3,max:3,step:0.1,value:1,fmt:v=>v.toFixed(1),onChange:v=>{temp=v;redraw();}});
+    const stepper=ctrl.stepper({onStep:()=>{ const c=cur(); if(t>=c.gen.length) return false; t++; redraw(); return t<c.gen.length; },onReset:()=>{t=0;redraw();},interval:450});
+    const tempSl=ctrl.slider('校準 / temperature',{min:0.3,max:3,step:0.1,value:1,fmt:v=>v.toFixed(1),onChange:v=>{temp=v;redraw();}});
     const set=ctrl.readouts([{id:'left',label:'左：已生成'},{id:'right',label:'右：成本'},{id:'answers',label:'右：讀到的答案'},{id:'ent',label:'各槽位的熵'}]);
-    ctrl.note(`<p><b>Jev</b>（typesafe.ai 的 System One 模型）：輸入是「程式狀態 + 一組有型別的問題」，輸出不是文字，而是<b>每個問題一個帶校準機率的答案</b>，一次 forward 全部算完。沒有 decode 迴圈，所以延遲固定、成本固定、答案一定合法（型別保證）。</p>
-        <p><b>Jev-like 開源實作</b>大致三種路線：OpenJev 類——凍結一個開源 LLM，把答案槽位 mask 起來，只讀那些位置的 logits；jevlike 類——從零訓練小模型，byte embedding + option attention，state 和每個選項直接做相似度；Verdict 類——在這之上加校準層。</p>
-        <p>適合的場景：分類、路由、風險判斷、規則引擎裡原本要人工寫 if-else 的地方。不適合：需要生成內容的任務。右邊的熵就是「模型多確定」，可以直接拿來決定要不要轉人工。</p>`);
+    ctrl.howto(['單步看左邊逐顆生成，右邊早就有答案','切三個 state 或自己打一段，看槽位機率即時變','拉 temperature 看熵怎麼變']);
+    const setup=(i,tt,tp)=>{ stepper.stop(); if(custom||ci!==i){ ci=i; custom=null; ta.value=''; seg.set(String(i)); build(); } temp=tp; tempSl.set(tp); t=tt; redraw(); };
+    ctx.guide([
+      {say:'同一段 state「客戶反映同一筆被扣款兩次」。左邊是一般 LLM：一顆一顆生成，9 個 token 就是 9 次 forward。', cam:{theta:0.05,phi:1.4}, spot:'單步', run:()=>setup(0,9,1)},
+      {say:'右邊是 <b>Jev</b>（typesafe.ai 的 System One 模型）：輸入是「程式狀態 + 一組有型別的問題」，輸出是每個問題一個帶校準機率的答案，<b>一次 forward 全部算完</b>。沒有 decode 迴圈：延遲固定、成本固定、答案一定合法。', spot:'右：讀到的答案', run:()=>setup(0,0,1)},
+      {say:'換一個 state「請問週末有營業嗎」：槽位的機率全變了，退款 2%、情緒平靜 90%。熵就是「模型多確定」，可以直接拿來決定要不要轉人工。', spot:'問營業時間', run:()=>setup(1,0,1)},
+      {say:'temperature 拉到 3：分佈變平、熵變大，校準就是在調這個。Jev-like 開源實作有三種路線：凍結 LLM 只讀槽位的 logits（OpenJev）、從零訓練小模型做 state 與選項的相似度（jevlike）、再加校準層（Verdict）。適合分類、路由、風險判斷；不適合要生成內容的任務。', spot:'校準 / temperature', run:()=>setup(1,0,3)},
+    ]);
     ctx.legend([['memory','輸入 state'],['signal','逐顆生成的 token'],['state','答案槽位的機率分佈']]);
     ctx.setCamera({theta:0.05,phi:1.4}); build();
   },

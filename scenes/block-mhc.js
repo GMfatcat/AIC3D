@@ -44,8 +44,8 @@ App.register({
     const sink=ctrl.html('','sink');
     const replay=ctrl.buttons([{label:'重播 Sinkhorn',onClick:()=>commit()}])[0];
     ctrl.html('在格子上<b>上下拖曳</b>改值，或用滾輪。','hint');
-    const set=ctrl.readouts([{id:'norm',label:'‖H‖₂（譜範數）'},{id:'row',label:'列和範圍'},{id:'col',label:'欄和範圍'},{id:'out',label:'第 16 層幅度'},{id:'hov',label:'滑到的流'}]);
-    const verdict=ctrl.note('');
+    const set=ctrl.readouts([{id:'verdict',label:'判定'},{id:'norm',label:'‖H‖₂（譜範數）'},{id:'row',label:'列和範圍'},{id:'col',label:'欄和範圍'},{id:'out',label:'第 16 層幅度'},{id:'hov',label:'滑到的流'}]);
+    ctrl.howto(['切 Residual / HC / mHC 看 16 層後的幅度','在格子上拖曳改 H：HC 會爆、mHC 不會','按「重播 Sinkhorn」看投影過程']);
     // energy chart in overlay (top-right)
     const chartWrap=h('div','ovl-card'); chartWrap.innerHTML='<div class="hint">每層訊號幅度（log₁₀，相對輸入）</div><canvas width="236" height="120" role="img" aria-label="每一條殘差流的訊號幅度隨層數變化的折線圖；數值見右側「第 16 層幅度」"></canvas>'; overlay.appendChild(chartWrap);
     const chart=chartWrap.querySelector('canvas'), cg=chart.getContext('2d');
@@ -70,9 +70,9 @@ App.register({
 
     const applyEff=M=>{H=M;const xs=propagate(H);applyScene(H,xs);if(mode==='mhc')renderGrid(mProj,H,false,true);stats(H,xs);drawChart(xs);};
     const stats=(M,xs)=>{const nm=specNorm(M);set('norm',nm.toFixed(3),nm>1.05?'bad':'ok');const rs=rowSums(M),cs=colSums(M);const rng=a=>`${Math.min(...a).toFixed(2)} – ${Math.max(...a).toFixed(2)}`;set('row',rng(rs));set('col',rng(cs));const last=xs[L];const mn=Math.min(...last.map(Math.abs)),mx=Math.max(...last.map(Math.abs));set('out',`${short(mn)} – ${short(mx)}`,(mx>3||mn<1/3)?'bad':'ok');
-      verdict.innerHTML= mode==='residual'?'<b>單一殘差流</b>：H = [1]，identity mapping 成立，訊號只隨 block 注入慢慢累加。'
-        : mode==='hc'?(nm>1.05?`<b>爆炸</b>：‖H‖₂ = ${nm.toFixed(2)} > 1，每層放大一次，16 層後幅度約 ${short(mx)} 倍。這就是 HC 在大規模訓練不穩的原因。`:(mx<1/3?`<b>熄滅</b>：‖H‖₂ = ${nm.toFixed(2)} < 1，訊號逐層衰減到 ${short(mx)}，梯度同樣會消失。`:`<b>目前穩定</b>，但這是碰巧：HC 沒有任何機制保證 ‖H‖₂ ≤ 1，訓練時權重一動就可能偏離。`))
-        : `<b>受控</b>：H 被投影到雙隨機矩陣（列和 = 欄和 = 1），因此 ‖H‖₂ ≤ 1 且 Hx 是各流的凸組合。不管你怎麼塗，16 層後幅度仍是 ${short(mx)}。n = 1 時退化回 [1]，即標準 residual。`;};
+      set('verdict', mode==='residual'?'單一流 H = [1]：identity mapping 成立'
+        : mode==='hc'?(nm>1.05?`爆炸：‖H‖₂ = ${nm.toFixed(2)} > 1，每層放大一次`:(mx<1/3?`熄滅：‖H‖₂ = ${nm.toFixed(2)} < 1，逐層衰減`:'目前穩定，但只是碰巧：HC 沒有機制保證 ‖H‖₂ ≤ 1'))
+        : '受控：H 投影成雙隨機矩陣，‖H‖₂ ≤ 1', mode==='hc'&&(nm>1.05||mx<1/3)?'bad':mode==='mhc'?'ok':'');};
     const commit=()=>{if(timer){clearInterval(timer);timer=null;}
       if(mode==='residual'){applyEff([[1]]);sink.textContent='';return;}
       if(mode==='hc'){applyEff(clone(Ht));sink.textContent='無約束：H 可以是任何實數矩陣。';return;}
@@ -86,6 +86,13 @@ App.register({
 
     ctx.legend([['signal','訊號幅度正常'],['alert','幅度爆炸（> 3×）'],['inactive','幅度熄滅（< ⅓）'],['flow','層間混合權重 Hᵢⱼ（粗 = 大）']]);
     ctx.setCamera({theta:0.55,phi:1.3});
+    const fill=v=>{ Ht=Ht.map(r=>r.map(()=>v)); renderEdit(); commit(); };
+    ctx.guide([
+      {say:'標準 Residual 只有一條流，H = [1]。16 層後幅度幾乎不變：identity mapping 成立，這是 <a href="#residual">Residual Block</a> 那一頁的結論。', cam:{theta:0.55,phi:1.3}, spot:'模式', run:()=>setMode('residual')},
+      {say:'<b>Hyper-Connections</b> 把殘差流加寬成 4 條，層間用矩陣 H 混合。H 沒有約束：全部塗 1，譜範數變 4，每層放大一次，16 層後就爆炸（紅）。這是 HC 在大規模訓練不穩的原因。', spot:'Hyper-Conn.', run:()=>{ setMode('hc'); fill(1); }},
+      {say:'<b>mHC</b>：同樣塗滿 1，但 H 先被 Sinkhorn-Knopp 投影成雙隨機矩陣（列和 = 欄和 = 1），所以 ‖H‖₂ ≤ 1、Hx 是各流的凸組合。看右邊的投影動畫，16 層後幅度仍然穩定。DeepSeek-V4、GLM-5.3 都用。', spot:'投影後的 H', run:()=>{ setMode('mhc'); fill(1); }},
+      {say:'隨便塗：在格子上上下拖曳改值，mHC 都會自動歸一化。n = 1 時退化回 [1]，即標準 residual。', spot:'你塗的 H̃', run:()=>{ setMode('mhc'); Ht=ident(n).map(r=>r.map(v=>v?2.5:-1)); renderEdit(); commit(); }},
+    ]);
     build(4); setMode('mhc');
     this._timerRef=()=>timer;
   },

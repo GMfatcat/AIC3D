@@ -1,5 +1,8 @@
 """P6 — per-page flow: the intro card on first visit, a banner afterwards, enter prefs (play / spin),
 the in-page guide (導讀) with spotlighted controls, and the two small fixes bundled with it (Jev labels, phone sidebar)."""
+import pathlib
+import re
+
 import pytest
 
 from conftest import Site
@@ -142,14 +145,41 @@ def test_site_goto_enters_for_the_existing_tests(site):
 
 # ---------- guide (導讀) ----------
 
-@pytest.mark.parametrize("scene_id", ["residual", "cnn", "agent-loop"])
-def test_pilot_scenes_register_a_guide_and_a_howto_card(site, scene_id):
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+CATALOG = (ROOT / "scenes" / "_catalog.js").read_text(encoding="utf-8")
+ALL_IDS = re.findall(r"\{id:'([\w-]+)'", CATALOG)
+
+
+@pytest.mark.parametrize("scene_id", ALL_IDS)
+def test_every_scene_registers_a_guide_and_a_howto_card(site, scene_id):
     site.goto(scene_id)
     assert site.ev("App.guide.steps.length") >= 4, "3+ steps plus the hand-off"
     assert site.ev("App.guide.steps[App.guide.steps.length - 1].hand"), "the last step hands over"
     assert site.ev("document.querySelectorAll('#ctrl .howto li').length") == 3
     assert not site.ev("!!document.querySelector('#ctrl .note')"), "the long note moved into the guide"
     assert site.ev("!!document.querySelector('#info button[data-act=guide]')")
+
+
+@pytest.mark.parametrize("scene_id", ALL_IDS)
+def test_guide_steps_can_be_entered_from_any_point_without_errors(site, scene_id):
+    site.goto(scene_id)
+    n = site.ev("App.guide.steps.length")
+    for i in range(n - 1, -1, -1):  # backwards: each step's run() must set up its own preconditions
+        site.ev("i => { if (!App.guide.active) App.guide.start(); App.guide.go(i); }", i)
+        site.page.wait_for_timeout(120)
+        assert site.ev("document.querySelectorAll('#ctrl .spot').length") <= 1
+        spot = site.ev("i => App.guide.steps[i].spot", i)
+        if spot:
+            assert site.ev("document.querySelectorAll('#ctrl .spot').length") == 1, f"{scene_id} step {i}: spot '{spot}' matched no control"
+    site.page.wait_for_timeout(600)
+    site.assert_clean()
+
+
+@pytest.mark.parametrize("scene_id", ALL_IDS)
+def test_catalog_decides_spin_for_every_scene(scene_id):
+    line = re.search(r"\{id:'%s',[^\n]*" % re.escape(scene_id), CATALOG).group(0)
+    assert re.search(r"spin:(true|false)", line), f"{scene_id}: set spin:true/false in the catalog (reading-direction scenes do not spin)"
+    assert "→" not in re.search(r"show:'([^']*)'", line).group(1), f"{scene_id}: show text is still the spec shorthand"
 
 
 def test_first_visit_primary_button_starts_the_guide(raw):

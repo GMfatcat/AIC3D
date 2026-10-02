@@ -82,15 +82,16 @@ const guide = {
   set(steps, item){ this.steps=steps.map(s=>Object.assign({},s)); if(this.steps.length) this.steps.push({say:'換你試試：'+(item.interact||''), hand:true}); },
   clear(){ this.stop(true); this.steps=[]; },
   start(){ if(!this.steps.length || this.active) return; this.active=true; document.body.classList.add('guiding'); App.autoSpin=false; this.bar.classList.add('on'); this._refit(); this.go(0); },
-  go(n){ n=Math.max(0,Math.min(this.steps.length-1,n)); this.n=n; const s=this.steps[n]; this._spot(s.hand?null:s.spot);
+  go(n){ n=Math.max(0,Math.min(this.steps.length-1,n)); this.n=n; const s=this.steps[n];
+    if(s.run){ try{ s.run(); }catch(e){ console.error(e); } } /* 先改狀態再聚光：run 可能會改掉面板上的文字 */
+    this._spot(s.hand?null:s.spot);
     if(s.cam){ const h=App.camHome; App.flyTo({theta:s.cam.theta,phi:s.cam.phi,dist:h.dist*(s.cam.zoom||1),target:h.target},600); }
-    if(s.run){ try{ s.run(); }catch(e){ console.error(e); } }
     this.render(); },
   stop(silent){ if(!this.active) return; this.active=false; document.body.classList.remove('guiding'); this._spot(null); this.bar.classList.remove('on'); if(!silent) this._refit(); },
   _refit(){ /* 底部多了（或少了）導讀列，重算保留帶但不要跳：fit 完把鏡頭放回原處再飛過去 */
     const c=App.cam; const cur={theta:c.theta,phi:c.phi,dist:c.dist,target:c.target.clone()}; App.fit(); const home=App.camHome; Object.assign(c,{theta:cur.theta,phi:cur.phi,dist:cur.dist}); c.target.copy(cur.target); App.flyTo(home,500); },
   _spot(text){ const root=App.ctrl && App.ctrl.root; if(!root) return; root.querySelectorAll('.spot').forEach(e=>e.classList.remove('spot')); if(!text) return;
-    const hit=[...root.querySelectorAll('h2,.ctl,.btnrow,.readouts,details,.howto,.log,.ctxbar')].find(e=>e.textContent.includes(text));
+    const hit=[...root.children].find(e=>!e.classList.contains('scenenav') && e.textContent.includes(text)); /* 面板的任何一塊都能當聚光目標 */
     if(hit){ hit.classList.add('spot'); hit.scrollIntoView({block:'nearest',behavior:Motion.reduce?'auto':'smooth'}); } },
   render(){ const N=this.steps.length, n=this.n, s=this.steps[n];
     this.bar.innerHTML=`<div class="tb-head"><span class="tb-title">導讀</span><span class="tb-step">${n+1} / ${N}</span><button type="button" class="tb-exit" data-go="skip">跳過 ✕</button></div>

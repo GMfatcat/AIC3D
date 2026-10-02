@@ -59,13 +59,18 @@
         step=0; this._cells={colCells,rnnCells,outLabels,cols,pred}; paint(); };
       const paint=()=>{ const {colCells,rnnCells,outLabels,cols,pred}=this._cells; colCells.forEach((m,c)=>{ m.material.emissiveIntensity=c===step-1?0.9:c<step?0.35:0.1; }); rnnCells.forEach((m,c)=>{ m.material.emissiveIntensity=c===step-1?1:c<step?0.4:0.1; }); outLabels.forEach((l,c)=>{ l.material.opacity=c<step?1:0.15; });
         set('cols',`${cols}（降採樣 ×${down}，再 ×4）`); set('chars',`${TEXT.length} 個字元（${TEXT}）`); set('ratio',`每字約 ${(cols/TEXT.length).toFixed(1)} 欄`); set('out',step?collapse(pred.slice(0,step)):'—'); };
-      ctrl.heading('從左到右掃'); ctrl.segmented('範例影像',SAMPLES.map(s=>({id:s,label:s})),TEXT,id=>{ TEXT=id; drawImg(); rebuild(); });
-      ctrl.stepper({onStep:()=>{ const n=this._cells.cols; if(step>=n) return false; step++; paint(); return step<n; },onReset:()=>{step=0;paint();},interval:160});
-      ctrl.slider('CNN 寬度降採樣',{min:2,max:8,step:2,value:down,fmt:v=>'×'+v,onChange:v=>{down=v;rebuild();}});
+      ctrl.heading('從左到右掃'); const seg=ctrl.segmented('範例影像',SAMPLES.map(s=>({id:s,label:s})),TEXT,id=>{ TEXT=id; drawImg(); rebuild(); });
+      const stepper=ctrl.stepper({onStep:()=>{ const n=this._cells.cols; if(step>=n) return false; step++; paint(); return step<n; },onReset:()=>{step=0;paint();},interval:160});
+      const downSl=ctrl.slider('CNN 寬度降採樣',{min:2,max:8,step:2,value:down,fmt:v=>'×'+v,onChange:v=>{down=v;rebuild();}});
       const set=ctrl.readouts([{id:'cols',label:'序列長度'},{id:'chars',label:'目標'},{id:'ratio',label:'欄 / 字元'},{id:'out',label:'目前解碼'}]);
-      ctrl.note(`<p><b>CRNN</b> = CNN + RNN + CTC。CNN 把文字列影像的高度壓到 1、寬度降採樣幾倍，得到一串「每欄一個向量」的序列——影像在這一步<b>變成序列</b>。BiLSTM 沿寬度掃，讓每欄知道左右鄰居（判斷 0 和 O 這種要看上下文）。</p>
-        <p><b>CTC</b> 解決「欄數比字元多、而且不知道哪欄對哪個字」的問題：每欄輸出一個字元或 blank，解碼時合併連續重複、刪掉 blank。所以訓練不需要逐字元標框，只要整串文字。</p>
-        <p>降採樣拉太大（×8）時欄數不夠，相鄰字會擠在同一欄、重複字（LENS-0733 的兩個 3、HELLO 的兩個 L）會被合併——這是 CRNN 的經典失敗模式。</p>`);
+      ctrl.howto(['單步或播放，看每欄吐出字元或 blank（·）','換範例影像看重複字怎麼被合併','把降採樣拉到 ×8 看失敗模式']);
+      const setup=(text,d,frac)=>{ stepper.stop(); TEXT=text; down=d; seg.set(text); downSl.set(d); drawImg(); rebuild(); step=Math.round(this._cells.cols*frac); paint(); };
+      ctx.guide([
+        {say:'<b>CRNN</b> = CNN + RNN + CTC。上面是一張文字列影像，CNN 把高度壓到 1、寬度降採樣，得到一串「每欄一個向量」：影像在這一步<b>變成序列</b>。', cam:{theta:0,phi:1.4}, spot:'從左到右掃', run:()=>setup('LENS-0733',4,0)},
+        {say:'BiLSTM 沿寬度掃，每欄知道左右鄰居（判斷 0 和 O 要看上下文）。CTC 讓每欄輸出一個字元或 blank（·）。走到一半看看。', spot:'單步', run:()=>setup('LENS-0733',4,0.5)},
+        {say:'解碼時合併連續重複、刪掉 blank，就得到整串文字。所以訓練不需要逐字元標框，只要整串文字。', spot:'目前解碼', run:()=>setup('LENS-0733',4,1)},
+        {say:'降採樣拉到 ×8：欄數不夠，相鄰字擠在同一欄，LENS-0733 的兩個 3 被合併成一個。這是 CRNN 的經典失敗模式。', spot:'CNN 寬度降採樣', run:()=>setup('LENS-0733',8,1)},
+      ]);
       ctx.legend([['memory','feature 欄'],['state','BiLSTM 狀態'],['signal','CTC 輸出字元'],['inactive','blank（·）']]);
       ctx.setCamera({theta:0.0,phi:1.4}); rebuild(); } });
 })();

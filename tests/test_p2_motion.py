@@ -182,4 +182,4 @@ def test_embedding_clear_resets_selection_and_note(site):
     assert site.ev("document.querySelectorAll('#ctrl .seg button[aria-pressed=\"true\"]').length") == 1
     site.ctrl_button("清除").click()
     assert site.ev("document.querySelectorAll('#ctrl .seg button[aria-pressed=\"true\"]').length") == 0
-    assert "word2vec" in site.ev("document.querySelector('#ctrl .note').textContent")
+    assert site.readout("落點") == "—"

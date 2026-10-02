@@ -4,10 +4,10 @@ App.register({
   init(ctx){
     const {THREE:T, P, root, ctrl} = ctx;
     const NQ=8, D=128; const STAGES=[
-      {id:'mha',label:'MHA',kv:8,cache:1.0, text:'<b>MHA</b>：8 個 Q 頭各配一組 K/V。cache 最大，表達力最完整。'},
-      {id:'gqa',label:'GQA',kv:2,cache:0.25,text:'<b>GQA</b>：4 個 Q 頭共用 1 組 K/V（2 組）。cache 降到 1/4，品質接近 MHA。Llama / Qwen 系用這個。'},
-      {id:'mqa',label:'MQA',kv:1,cache:0.125,text:'<b>MQA</b>：全部 Q 頭共用 1 組 K/V。cache 1/8，但表達力明顯受限。'},
-      {id:'mla',label:'MLA',kv:0,cache:0.28, text:'<b>MLA</b>：不減頭。把每個 token 的 K、V 一起<b>壓成一個低維 latent c</b>（這裡 512 維 vs 原本 2×8×128 = 2048；另外還有 64 維解耦的 RoPE 位置鍵，所以每 token 存 576 維）存進 cache，用到時再用上投影矩陣展開成 8 組完整的 K/V。cache 和 GQA 同級，表達力卻接近 MHA。DeepSeek 系用這個。'},
+      {id:'mha',label:'MHA',kv:8,cache:1.0, text:'8 個 Q 頭各配一組 K/V'},
+      {id:'gqa',label:'GQA',kv:2,cache:0.25,text:'4 個 Q 頭共用 1 組 K/V'},
+      {id:'mqa',label:'MQA',kv:1,cache:0.125,text:'全部 Q 頭共用 1 組 K/V'},
+      {id:'mla',label:'MLA',kv:0,cache:0.28, text:'K、V 壓成 512 維 latent，用時展開'},
     ];
     const plateGeo=new T.BoxGeometry(0.55,0.75,0.1);
     const qs=[]; for(let i=0;i<NQ;i++){ const m=new T.Mesh(plateGeo,P.mat('signal',{glow:0.4})); m.position.set((i-3.5)*0.8,1.8,0); root.add(m); qs.push(m); }
@@ -33,12 +33,19 @@ App.register({
       bar.scale.y=Math.max(0.02,s.cache*4); bar.position.y=0.2-2+bar.scale.y/2; bar.material.color.copy(P.C(s.id==='mla'?'state':'memory')); bar.material.emissive.copy(bar.material.color);
       bv.userData.setText(`${Math.round(s.cache*100)}%`);
       kl.userData.setText(s.id==='mla'?'latent c（512 維）→ 上投影成 8 組 K/V':`K/V 頭 × ${s.kv}`);
-      const kvDim = s.id==='mla'?512+64:2*s.kv*D; set('kv',s.id==='mla'?'8（展開後）':String(s.kv)); set('dim',`${kvDim} 維`); set('cache',`${Math.round(s.cache*100)}% of MHA`); set('q',s.id==='mqa'?'受限':s.id==='gqa'?'接近 MHA':'完整'); note.innerHTML=s.text; };
+      const kvDim = s.id==='mla'?512+64:2*s.kv*D; set('kv',s.id==='mla'?'8（展開後）':String(s.kv)); set('dim',`${kvDim} 維`); set('cache',`${Math.round(s.cache*100)}% of MHA`); set('q',s.id==='mqa'?'受限':s.id==='gqa'?'接近 MHA':'完整'); set('how',s.text); };
     ctrl.heading('一支滑桿從 MHA 拉到 MLA');
-    ctrl.slider('KV 設計',{min:0,max:3,value:0,fmt:v=>STAGES[v].label,onChange:v=>apply(v)});
-    const set=ctrl.readouts([{id:'kv',label:'K/V 頭數'},{id:'dim',label:'每 token 存的維度'},{id:'cache',label:'cache 相對大小'},{id:'q',label:'表達力'},{id:'hov',label:'滑到的頭'}]);
+    const sl=ctrl.slider('KV 設計',{min:0,max:3,value:0,fmt:v=>STAGES[v].label,onChange:v=>apply(v)});
+    const set=ctrl.readouts([{id:'how',label:'做法'},{id:'kv',label:'K/V 頭數'},{id:'dim',label:'每 token 存的維度'},{id:'cache',label:'cache 相對大小'},{id:'q',label:'表達力'},{id:'hov',label:'滑到的頭'}]);
     ctx.app.watchHover(qs,(h,i)=>{ hov=i; apply(cur); },(m,i)=>`Q 頭 ${i+1}`);
-    const note=ctrl.note('');
+    ctrl.howto(['拉滑桿從 MHA 走到 MLA','滑到任一 Q 頭看它用哪組 K/V','看右邊的 cache 柱與「每 token 存的維度」']);
+    const go=i=>{ sl.set(i); apply(i); };
+    ctx.guide([
+      {say:'<b>MHA</b>：8 個 Q 頭各配一組 K/V。每 token 要存 2×8×128 = 2048 維，cache 最大、表達力最完整。', cam:{theta:0.2,phi:1.35}, spot:'KV 設計', run:()=>go(0)},
+      {say:'<b>GQA</b>：4 個 Q 頭共用 1 組 K/V，只剩 2 組。cache 降到 1/4，品質接近 MHA。Llama / Qwen 系用這個。', spot:'cache 相對大小', run:()=>go(1)},
+      {say:'<b>MQA</b>：全部 Q 頭共用 1 組。cache 1/8，但表達力明顯受限。', spot:'表達力', run:()=>go(2)},
+      {say:'<b>MLA</b> 不減頭：把每個 token 的 K、V 一起壓成一個 512 維的 latent c 存進 cache（加 64 維解耦的 RoPE 位置鍵，共 576 維），用到時再上投影展開成 8 組完整 K/V。cache 和 GQA 同級，表達力接近 MHA。DeepSeek 系用這個。', spot:'每 token 存的維度', run:()=>go(3)},
+    ]);
     ctx.legend([['signal','Q 頭'],['memory','K/V 頭'],['flow','Q → 它用的 K/V'],['state','MLA 的 latent 與上投影']]);
     ctx.setCamera({theta:0.2,phi:1.35});
     apply(0);
