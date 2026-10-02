@@ -28,15 +28,20 @@ App.register({
     };
     const step=()=>{ if(t>=MAXT) return false; t++; flash=1; redraw(); return t<MAXT; };
     ctrl.heading('Decode 一步一步看');
-    ctrl.segmented(null,[{id:'on',label:'有 KV cache'},{id:'off',label:'沒有 cache（每步重算）'}],'on',id=>{useCache=id==='on';redraw();});
-    ctrl.stepper({onStep:step,onReset:()=>{t=0;flash=0;redraw();},interval:450});
+    const seg=ctrl.segmented(null,[{id:'on',label:'有 KV cache'},{id:'off',label:'沒有 cache（每步重算）'}],'on',id=>{useCache=id==='on';redraw();});
+    const stepper=ctrl.stepper({onStep:step,onReset:()=>{t=0;flash=0;redraw();},interval:450});
     const ctxSl=ctrl.slider('換算：真實 context 長度（k tokens）',{min:1,max:128,value:8,fmt:v=>v+'k',onChange:()=>redraw()});
     const set=ctrl.readouts([{id:'t',label:'已生成 token'},{id:'step',label:'這一步要算'},{id:'total',label:'累計計算量'},{id:'cache',label:'cache 佔用（示意 24 token）'},{id:'big',label:'真實 context 下的 cache'},{id:'hov',label:'滑到的 K/V 片'}]);
     const slabMeshes=[...slabs.map(p=>p[0]),...slabs.map(p=>p[1])]; // 先 K 列再 V 列
     ctx.app.watchHover(slabMeshes,(h,idx)=>{ if(idx<0){ set('hov','—'); return; } const i=idx%MAXT; set('hov',`token ${i+1}「${WORDS[i]}」的 ${idx<MAXT?'K':'V'}：${fmtB(perTokB/2)}（${MODEL.layers} 層 × ${MODEL.kvHeads} 頭 × ${MODEL.dim} 維 × ${MODEL.bytes} B）`); },(m,idx)=>`token「${WORDS[idx%MAXT]}」的 ${idx<MAXT?'K':'V'} 片`);
-    ctrl.note(`<p>每個 token 的 K、V 算一次就存起來（藍、紫片），下一步只算新 token 的 Q 去跟它們比。<b>省的是計算</b>：每步成本從「∝ 已生成長度」變成常數。</p>
-      <p><b>付出的是記憶體</b>：每個 token 存 2 × 層數 × KV 頭數 × 頭維度 × bytes。這裡用 64 層 / 8 KV 頭 / 128 維 / bf16 → 每 token 256 KB，128k context 就是 32 GB。</p>
-      <p>這也是 <a href="#kvheads">GQA、MLA</a> 和 <a href="#vllm">PagedAttention</a> 存在的理由——它們全在縮或管這條藍色 HBM 條。</p>`);
+    ctrl.howto(['單步看 K/V 片一片片堆進 GPU','切「沒有 cache」看紅色的重算連線','拉真實 context 長度換算 GB']);
+    const setup=(c,n,k)=>{ stepper.stop(); useCache=c; seg.set(c?'on':'off'); t=n; flash=c?0:1; ctxSl.set(k); redraw(); };
+    ctx.guide([
+      {say:'每 decode 一步，新 token 的 K、V 算一次就存進 GPU（藍、紫片）。走 8 步看片堆起來。', cam:{theta:0.3,phi:1.3}, spot:'Decode 一步一步看', run:()=>setup(true,8,8)},
+      {say:'<b>省的是計算</b>：下一步只算新 token 的 Q 去跟存好的 K/V 比，每步成本變常數。關掉 cache：每步要重算前面所有 token 的 attention（紅線），累計計算量二次成長。', spot:'沒有 cache', run:()=>setup(false,8,8)},
+      {say:'<b>付出的是記憶體</b>：每 token 存 2 × 層數 × KV 頭數 × 頭維度 × bytes。這裡 64 層 / 8 KV 頭 / 128 維 / bf16 = 每 token 256 KB。', spot:'cache 佔用', run:()=>setup(true,24,8)},
+      {say:'換算真實 context：128k token 就是 32 GB，比權重還大。這就是 <a href="#kvheads">GQA、MLA</a> 和 <a href="#vllm">PagedAttention</a> 存在的理由：它們全在縮或管這條藍色 HBM 條。', spot:'真實 context 長度', run:()=>setup(true,24,128)},
+    ]);
     ctx.legend([['memory','K 片 / HBM 佔用'],['state','V 片'],['signal','已生成 token'],['alert','沒有 cache 時重算的 attention']]);
     ctx.setCamera({theta:0.3,phi:1.3});
     redraw();

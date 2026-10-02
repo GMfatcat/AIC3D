@@ -47,14 +47,24 @@
       set('phase',phase===0?'各自計算':'通訊（all-reduce）');
     };
     ctrl.heading(kind==='tp'?'Tensor Parallel：切權重':'Data Parallel：切資料');
-    ctrl.segmented('模型（bf16）',Object.keys(MODELS).map(id=>({id,label:id})),model,id=>{model=id;build();});
-    ctrl.slider('GPU 數',{min:1,max:8,value:k,onChange:v=>{k=v;build();}});
-    ctrl.segmented('目前步驟',[{id:'0',label:'計算'},{id:'1',label:'通訊'}],'0',id=>{phase=+id;redraw();});
-    ctrl.segmented('對照',[{id:'off',label:'只看這種'},{id:'on',label:'並排看另一種'}],'off',id=>{cmp=id==='on';build();});
+    const mSeg=ctrl.segmented('模型（bf16）',Object.keys(MODELS).map(id=>({id,label:id})),model,id=>{model=id;build();});
+    const kSl=ctrl.slider('GPU 數',{min:1,max:8,value:k,onChange:v=>{k=v;build();}});
+    const phSeg=ctrl.segmented('目前步驟',[{id:'0',label:'計算'},{id:'1',label:'通訊'}],'0',id=>{phase=+id;redraw();});
+    const cmpSeg=ctrl.segmented('對照',[{id:'off',label:'只看這種'},{id:'on',label:'並排看另一種'}],'off',id=>{cmp=id==='on';build();});
     const set=ctrl.readouts([{id:'phase',label:'步驟'},{id:'mem',label:'每顆 GPU 的權重'},{id:'fit',label:'80 GB 卡'},{id:'comm',label:'通訊量'},{id:'freq',label:'通訊頻率'},{id:'hov',label:'滑到的 GPU'}]);
-    ctrl.note(kind==='tp'
-      ? `<p><b>切權重</b>：每顆 GPU 只放矩陣的 1/k（例如 FFN 的一部分欄、attention 的一部分頭），同一批 token 同時進所有 GPU。每層算完要 <b>all-reduce</b> 把部分和加起來，所以 TP 對 GPU 間頻寬極敏感——只在 NVLink 內（單機 8 卡）用，跨機通常不划算。</p><p>推論也要通訊：這是 70B 以上模型單卡放不下時的標準解法，代價是每層多一次同步。切到 70B、GPU 數拉到 1 看「放不下」怎麼變成「放得下」；開「並排看另一種」把 <a href="#dp">Data Parallel</a> 擺在後排比。</p>`
-      : `<p><b>切資料</b>：每顆 GPU 拿完整模型、不同的 batch。訓練時 backward 完要 all-reduce 梯度（量 = 整個模型大小），但一個 step 才一次；推論時各卡獨立處理不同請求，<b>完全不用通訊</b>。</p><p>限制很直接：模型必須單卡放得下。切到 70B 就會看到不管幾顆 GPU 都「放不下」——這時要先 TP 再 DP，或改用 pipeline / expert parallel。開「並排看另一種」把 <a href="#tp">Tensor Parallel</a> 擺在後排比。</p>`);
+    ctrl.howto(kind==='tp'?['拉 GPU 數看每顆的權重片與通訊量','切 70B / 405B 看放不放得下','開「並排看另一種」比 Data Parallel']:['拉 GPU 數看每顆都放完整權重','切 70B 看不管幾顆都放不下','開「並排看另一種」比 Tensor Parallel']);
+    const setup=(m,kk,ph,c)=>{ model=m; k=kk; phase=ph; cmp=c; mSeg.set(m); kSl.set(kk); phSeg.set(String(ph)); cmpSeg.set(c?'on':'off'); build(); };
+    ctx.guide(kind==='tp'?[
+      {say:'<b>Tensor Parallel 切權重</b>：每顆 GPU 只放矩陣的 1/k（FFN 的一部分欄、attention 的一部分頭），同一批 token 同時進所有 GPU。4 顆卡，27B 每顆 13.5 GB。', cam:{theta:0.2,phi:1.3}, spot:'GPU 數', run:()=>setup('27B',4,0,false)},
+      {say:'每層算完要 <b>all-reduce</b> 把部分和加起來（紅線）：每一層、每一步，推論也要。所以 TP 對 GPU 間頻寬極敏感，只在 NVLink 內（單機 8 卡）用，跨機通常不划算。', spot:'目前步驟', run:()=>setup('27B',4,1,false)},
+      {say:'切到 70B、1 顆卡：140 GB 放不進 80 GB 的卡。這是 70B 以上模型的標準解法：切 2 顆就放得下，代價是每層多一次同步。', spot:'80 GB 卡', run:()=>setup('70B',1,0,false)},
+      {say:'並排看 <a href="#dp">Data Parallel</a>：後排每顆卡都要放完整權重，70B 不管幾顆都放不下。', spot:'對照', run:()=>setup('70B',2,0,true)},
+    ]:[
+      {say:'<b>Data Parallel 切資料</b>：每顆 GPU 拿完整模型、不同的 batch（不同顏色的 token）。', cam:{theta:0.2,phi:1.3}, spot:'GPU 數', run:()=>setup('27B',4,0,false)},
+      {say:'訓練時 backward 完要 all-reduce 梯度（量 = 整個模型 54 GB），但一個 step 才一次；推論時各卡獨立處理不同請求，<b>完全不用通訊</b>。', spot:'通訊頻率', run:()=>setup('27B',4,1,false)},
+      {say:'限制很直接：模型必須單卡放得下。切到 70B 就會看到不管幾顆 GPU 都「放不下」。這時要先 TP 再 DP，或改用 pipeline / expert parallel。', spot:'80 GB 卡', run:()=>setup('70B',4,0,false)},
+      {say:'並排看 <a href="#tp">Tensor Parallel</a>：後排每顆卡只放 1/k，70B 切 4 片就放得下，但每層要通訊。', spot:'對照', run:()=>setup('70B',4,0,true)},
+    ]);
     ctx.legend([['state','權重'],['memory','HBM 佔用'],['signal','token / batch'],['alert','GPU 間通訊']]);
     ctx.setCamera({theta:0.2,phi:1.3});
     build();

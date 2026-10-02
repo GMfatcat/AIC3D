@@ -48,25 +48,26 @@ App.register({
       set('phase',phase); set('bound',t===0?'—':tC>tM?'compute-bound':'memory-bound',t===0?'':tC>tM?'ok':'bad'); set('time',tot?(tot*1000).toFixed(1)+' ms':'—');
       set('tps',`≤ ${tps.toFixed(1)} tok/s（${fits?'頻寬':'PCIe'} ÷ ${isMoE()?'啟用':''}權重）`,tps<10?'bad':'ok'); set('ttft',`≥ ${ttft.toFixed(0)} ms（prompt ${P_len} token）`,ttft>500?'bad':'ok');
       bar([{frac:tot?Math.min(1,tC/tot):0,color:'signal'}]); bar2([{frac:tot?Math.min(1,tM/tot):0,color:'state'}]);
-      hwNote.innerHTML = H.unified
-        ? `<p><b>Unified memory</b>：CPU、GPU 共用同一池，沒有「VRAM 放不放得下」這道牆——${fmtB(H.mem)} 放目前這組 ${fmtB(bytes)} 的權重${bytes<H.mem*0.6?'綽綽有餘':bytes<H.mem?'剛好夠':'也放不下'}（235B bf16 就只有 Mac 裝得下），還留一大塊給 KV cache，不用 TP、不用 offload、也沒有 host↔device 複製。</p><p>代價在頻寬：${(H.bw/1e9).toFixed(0)} GB/s 把 ${fmtB(bytes)} 讀一遍要 ${(bytes/H.bw*1000).toFixed(0)} ms，所以單 stream decode 上限只有 ${tps.toFixed(1)} tok/s。<b>量化在這種機器上直接換成速度</b>（切 NVFP4 看 tok/s）。Prefill 吃算力，長 prompt 的 TTFT 比 H100 慢一個數量級。適合：模型大、使用者少、prompt 不長、要在桌邊跑。</p>`
-        : `<p><b>獨立 GPU</b>：HBM 頻寬 ${(H.bw/1e12).toFixed(1)} TB/s、算力高，但 ${fmtB(H.mem)} 是硬牆。模型 + KV 超過就得 TP 切多卡、量化，或 offload 到主機 DDR——offload 時每步權重要走 PCIe 64 GB/s，decode 直接慢 60 倍（切 BF16 + 更大模型會看到）。</p><p>分工很清楚：H100 吃並發、吃長 prompt（batching 把多個請求的 decode 合在一次權重讀取裡）；Spark / Mac 裝得下、單人互動夠用。</p>`;
     };
     const step=()=>{ if(t>=G_len+1) return false; t++; redraw(); return t<G_len+1; };
-    ctrl.heading('硬體'); ctrl.segmented(null,[{id:'h100',label:'H100 NVL'},{id:'spark',label:'DGX Spark'},{id:'mac',label:'Mac Studio'}],hw,id=>{hw=id;t=0;buildHW();redraw();});
-    ctrl.segmented('模型',Object.entries(MODELS).map(([id,m])=>({id,label:m.label.split('（')[0].replace(' dense','').replace(' MoE','')})),model,id=>{model=id;redraw();});
-    ctrl.segmented('權重精度',[{id:'bf16',label:'BF16'},{id:'fp8',label:'FP8'},{id:'nvfp4',label:'NVFP4'}],dt,id=>{dt=id;redraw();});
-    ctrl.heading('一個請求的生命週期'); ctrl.stepper({onStep:step,onReset:()=>{t=0;redraw();},interval:650});
+    ctrl.heading('硬體'); const hwSeg=ctrl.segmented(null,[{id:'h100',label:'H100 NVL'},{id:'spark',label:'DGX Spark'},{id:'mac',label:'Mac Studio'}],hw,id=>{hw=id;t=0;buildHW();redraw();});
+    const mSeg=ctrl.segmented('模型',Object.entries(MODELS).map(([id,m])=>({id,label:m.label.split('（')[0].replace(' dense','').replace(' MoE','')})),model,id=>{model=id;redraw();});
+    const dtSeg=ctrl.segmented('權重精度',[{id:'bf16',label:'BF16'},{id:'fp8',label:'FP8'},{id:'nvfp4',label:'NVFP4'}],dt,id=>{dt=id;redraw();});
+    ctrl.heading('一個請求的生命週期'); const stepper=ctrl.stepper({onStep:step,onReset:()=>{t=0;redraw();},interval:650});
     ctrl.slider('Prompt 長度（token）',{min:4,max:64,step:4,value:P_len,onChange:v=>{P_len=v;t=0;buildRow();redraw();}});
     ctrl.slider('生成長度（token）',{min:2,max:16,step:1,value:G_len,onChange:v=>{G_len=v;t=0;buildRow();redraw();}});
     const setMain=ctrl.readouts([{id:'phase',label:'階段'},{id:'bound',label:'瓶頸'},{id:'time',label:'這一步最少耗時'},{id:'tps',label:'decode 上限（單 stream）'},{id:'ttft',label:'TTFT 下限'},{id:'hov',label:'滑到的 token'}]);
     ctrl.details('規格與記憶體'); const setSpec=ctrl.readouts([{id:'hw',label:'規格'},{id:'w',label:'權重大小（要放進記憶體）'},{id:'act',label:'每步要讀的權重'},{id:'fit',label:'裝得下？'}]); ctrl.endDetails(); // 次要讀數收起來，面板才不會一屏都是數字
     const SPEC=new Set(['hw','w','act','fit']); const set=(id,t,c)=>(SPEC.has(id)?setSpec:setMain)(id,t,c);
     const bar=ctrl.bar('算力需求（相對這一步的瓶頸）'); const bar2=ctrl.bar('頻寬需求');
-    const hwNote=ctrl.note('');
-    ctrl.note(`<p><b>MoE 在這張圖上的位置</b>：記憶體要放<b>全部</b>參數（284B bf16 = 568 GB，連 Mac 512 GB 都放不下，FP8 才行），但 decode 每步只讀<b>啟用</b>的 13B——所以 MoE 是「裝起來像大模型、跑起來像小模型」，在頻寬低的 unified memory 機器上特別划算：Mac 512 GB 放 284B FP8（284 GB）綽綽有餘，每步只讀 13 GB，上限 60 tok/s，比 27B dense bf16 還快；Spark 128 GB 則要壓到 3 bpw 以下或用兩台才裝得下。兩個但書：① batch 大時不同請求會踩到不同專家，實際讀取量往全部靠；② prefill 多 token 同樣會碰到更多專家（這裡示意成最多 8 份啟用權重）。</p>`);
-    ctrl.note(`<p><b>Prefill</b>：prompt 所有 token 一次算完，每 token 2×參數量 FLOP，權重只讀一次 → 卡算力，決定 TTFT。<b>Decode</b>：每步 1 個 token，卻要把整份權重讀一遍 → 卡頻寬，決定 tok/s。</p>
-      <p class="hint">峰值估算；Spark、Mac 的 bf16 算力是概略值，忽略 KV 讀取與 kernel 效率。多人併發時 H100 的優勢遠大於這裡的單 stream 數字。</p>`);
+    ctrl.howto(['單步走一個請求：prefill 一步、decode 幾步，看兩根量表','切硬體 / 模型 / 精度看 tok/s 與 TTFT','滑到任一 token 看它屬於哪個階段']);
+    const setup=(h,m,d,tt)=>{ stepper.stop(); hw=h; model=m; dt=d; hwSeg.set(h); mSeg.set(m); dtSeg.set(d); buildHW(); t=tt; redraw(); };
+    ctx.guide([
+      {say:'<b>Prefill</b>：prompt 所有 token 一次算完，每 token 2×參數量 FLOP，權重只讀一次，所以卡算力，決定 TTFT。看「算力使用率」那根量表。', cam:{theta:0.3,phi:1.3}, spot:'一個請求的生命週期', run:()=>setup('h100','m27','bf16',1)},
+      {say:'<b>Decode</b>：每步 1 個 token，卻要把整份權重讀一遍，所以卡頻寬，決定 tok/s。H100 讀 54 GB 要 14 ms，單 stream 上限 72 tok/s。多人併發時 batching 把多個請求的 decode 合在一次權重讀取裡，這是 H100 的強項。', spot:'decode 上限', run:()=>setup('h100','m27','bf16',3)},
+      {say:'換 DGX Spark：<b>Unified memory</b> 128 GB，CPU、GPU 共用一池，沒有「VRAM 放不放得下」這道牆，也不用 offload。代價在頻寬：273 GB/s 把權重讀一遍要幾百 ms。<b>量化在這種機器上直接換成速度</b>：這裡已切到 NVFP4，權重 15 GB，tok/s 比 BF16 高三倍多。', spot:'硬體', run:()=>setup('spark','m27','nvfp4',3)},
+      {say:'<b>MoE</b> 在這張圖上：記憶體要放全部 284B，但每步只讀啟用的 13B。所以 MoE 是「裝起來像大模型、跑起來像小模型」，在頻寬低的 unified memory 機器上特別划算：Mac 512 GB 放 FP8 綽綽有餘，每步只讀 13 GB。兩個但書：batch 大時不同請求踩到不同專家；prefill 多 token 也會碰到更多專家。', spot:'模型', run:()=>setup('mac','v4','fp8',3)},
+    ]);
     ctx.legend([['signal','prompt token / 算力'],['flow','生成的 token'],['state','頻寬'],['memory','記憶體中的權重（裝得下）'],['alert','放不下 / PCIe']]);
     ctx.setCamera({theta:0.3,phi:1.3});
     buildHW(); buildRow(); redraw();

@@ -23,12 +23,17 @@
         before.forEach(m=>{ const dropped=c.dropped.includes(m); m.mesh.material.opacity=1; m.mesh.material.transparent=true; if(state==='after'&&dropped){ m.mesh.material.opacity=0.2; } });
         set('cap',`${r1.total} / ${CAP}`,r1.total>CAP*0.85?'bad':'ok'); set('after',`${r2.total} / ${CAP}`,'ok'); set('ratio',`${c.oldN} → ${c.sum.n}（${Math.round(100*c.sum.n/c.oldN)}%）`); set('kept',`system prompt + 最近 ${keepLast} 段`);
       };
-      ctrl.heading('壓縮規則'); ctrl.segmented(null,[{id:'before',label:'看全部'},{id:'after',label:'標出被壓掉的'}],'before',id=>{state=id;draw();});
-      ctrl.slider('保留最近幾段原文',{min:2,max:8,value:keepLast,onChange:v=>{keepLast=v;draw();}});
+      ctrl.heading('壓縮規則'); const seg=ctrl.segmented(null,[{id:'before',label:'看全部'},{id:'after',label:'標出被壓掉的'}],'before',id=>{state=id;draw();});
+      const kSl=ctrl.slider('保留最近幾段原文',{min:2,max:8,value:keepLast,onChange:v=>{keepLast=v;draw();}});
       const set=ctrl.readouts([{id:'cap',label:'compact 前用量'},{id:'after',label:'compact 後用量'},{id:'ratio',label:'舊訊息壓縮'},{id:'kept',label:'保留原文的'}]);
-      ctrl.note(`<p>Context 快滿時，Pi 不是把舊訊息直接刪掉，而是叫 LLM 把它們<b>寫成一段摘要</b>（灰色塊），只保留結論和還在用的事實。</p>
-        <p><b>一定保留原文</b>：system prompt（工具定義、規則，不能失真）、最近幾段（正在進行的事）。<b>最先被壓</b>：工具結果——它們體積最大、而且結論通常已經寫進 LLM 的下一句話裡。</p>
-        <p>代價：摘要會丟細節。如果之後 LLM 需要那 3,800 行 log 的某一行，得重新呼叫工具。所以 compact 的門檻和保留段數是 harness 的重要參數。</p>`);
+      ctrl.howto(['切「標出被壓掉的」看哪些塊變淡','拉保留段數看壓縮後用量','比上下兩排的總長']);
+      const setup=(s,k)=>{ state=s; keepLast=k; seg.set(s); kSl.set(k); draw(); };
+      ctx.guide([
+        {say:'上排是 compact 前的 context：每個塊是一段訊息，寬度 = token 數。藍色的工具結果最肥。', cam:{theta:0.15,phi:1.4}, spot:'壓縮規則', run:()=>setup('before',4)},
+        {say:'Context 快滿時，Pi 不是把舊訊息直接刪掉，而是叫 LLM 把它們<b>寫成一段摘要</b>（灰色塊）。標出被壓掉的：工具結果最先被壓，它們體積最大、而且結論通常已經寫進 LLM 的下一句話裡。', spot:'標出被壓掉的', run:()=>setup('after',4)},
+        {say:'<b>一定保留原文</b>：system prompt（工具定義、規則，不能失真）、最近幾段（正在進行的事）。保留段數拉到 8，壓縮後用量就變多。', spot:'保留最近幾段原文', run:()=>setup('after',8)},
+        {say:'代價：摘要會丟細節。如果之後 LLM 需要那 3,800 行 log 的某一行，得重新呼叫工具。所以 compact 的門檻和保留段數是 harness 的重要參數。<a href="#goal">/goal</a> 永遠保留原文，不會被摘要掉。', spot:'舊訊息壓縮', run:()=>setup('after',2)},
+      ]);
       ctx.legend([['inactive','system prompt（釘住）'],['signal','使用者'],['state','LLM'],['flow','工具呼叫'],['memory','工具結果'],['structure','摘要']]);
       ctx.setCamera({theta:0.15,phi:1.4}); draw();
     } });
@@ -50,13 +55,18 @@
         render(); return i<S.length; };
       const reset=()=>{ i=0; mainChunks=[]; subChunks=[]; main.setT(0); sub.setT(0); sub.group.visible=false; link.hideAll(); render(); };
       ctrl.heading('同一個任務，兩種做法');
-      ctrl.segmented(null,[{id:'flat',label:'主 agent 自己做'},{id:'sub',label:'丟給子代理'}],'sub',id=>{mode=id;reset();});
-      ctrl.stepper({onStep:step,onReset:reset,interval:900});
+      const seg=ctrl.segmented(null,[{id:'flat',label:'主 agent 自己做'},{id:'sub',label:'丟給子代理'}],'sub',id=>{mode=id;reset();});
+      const stepper=ctrl.stepper({onStep:step,onReset:reset,interval:900});
       ctrl.html('<span class="hint">主 agent 的 context</span>'); ctrl.c.appendChild(mainBar); const subLabel=ctrl.html('<span class="hint">子代理的 context（獨立，用完即丟）</span>'); ctrl.c.appendChild(subBar);
       const set=ctrl.readouts([{id:'main',label:'主 context 用量'},{id:'sub',label:'子 context 用量'}]);
-      ctrl.note(`<p>「讀 log、grep、看原始碼」這種<b>吃 context 但結論很短</b>的工作，主 agent 自己做的話，幾千 token 的工具結果會一直留在主 context 裡，直到被 compact。</p>
-        <p>丟給<b>子代理（subagent）</b>：它有自己的 context，跑完只回一句結論（灰色小塊）給主 agent。主 context 乾淨，而且子任務可以平行開好幾個。</p>
-        <p>代價：subagent 看不到主對話的脈絡，任務描述要寫清楚；多一次 LLM 呼叫的延遲與成本。</p>`);
+      ctrl.howto(['切「主 agent 自己做」播放，看主 context 被工具結果撐大','切「丟給子代理」再播放，看只回一個摘要','比兩條 context 條']);
+      const setup=(m,n)=>{ stepper.stop(); mode=m; seg.set(m); reset(); for(let k=0;k<n;k++) step(); };
+      ctx.guide([
+        {say:'左邊是主 agent 的迴圈。「讀 log、grep、看原始碼」這種<b>吃 context 但結論很短</b>的工作，主 agent 自己做的話，幾千 token 的工具結果會一直留在主 context 裡。', cam:{theta:0.3,phi:1.0}, spot:'同一個任務', run:()=>setup('flat',4)},
+        {say:'主 agent 自己做到底：主 context 用了 35 / 40，快要 compact。', spot:'主 context 用量', run:()=>setup('flat',8)},
+        {say:'丟給<b>子代理（subagent）</b>：它有自己的迴圈和 context（右邊小環），跑完只回一句結論（灰色小塊）給主 agent。', spot:'丟給子代理', run:()=>setup('sub',4)},
+        {say:'跑完：主 context 乾淨，只多了一段摘要；子 context 用完即丟，而且子任務可以平行開好幾個。代價：子代理看不到主對話的脈絡，任務描述要寫清楚；多一次 LLM 呼叫的延遲與成本。', spot:'子 context 用量', run:()=>setup('sub',6)},
+      ]);
       ctx.legend([['state','LLM'],['flow','工具 / 派發任務'],['memory','工具結果'],['structure','子代理回傳的摘要']]);
       ctx.setCamera({theta:0.3,phi:1.0}); reset();
     } });

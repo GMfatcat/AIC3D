@@ -84,10 +84,10 @@ def test_notes_link_scenes_instead_of_naming_tabs(path):
     assert not bad, f"{path.name}: use <a href=\"#id\"> links, found {bad}"
 
 
-def test_kvcache_note_links_to_the_scenes_it_mentions(site):
+def test_kvcache_guide_links_to_the_scenes_it_mentions(site):
     site.goto("kvcache")
-    hrefs = site.ev("[...document.querySelectorAll('#ctrl .note a')].map(a => a.getAttribute('href'))")
-    assert "#kvheads" in hrefs and "#vllm" in hrefs
+    text = site.ev("App.guide.steps.map(s => s.say).join(' ')")  # the explanation lives in the guide steps now
+    assert 'href="#kvheads"' in text and 'href="#vllm"' in text
 
 
 def test_panel_ends_with_prev_next_links(site):

@@ -81,7 +81,7 @@ const guide = {
   steps:[], active:false, n:0, bar,
   set(steps, item){ this.steps=steps.map(s=>Object.assign({},s)); if(this.steps.length) this.steps.push({say:'換你試試：'+(item.interact||''), hand:true}); },
   clear(){ this.stop(true); this.steps=[]; },
-  start(){ if(!this.steps.length || this.active) return; this.active=true; document.body.classList.add('guiding'); App.autoSpin=false; this.bar.classList.add('on'); this._refit(); this.go(0); },
+  start(){ if(!this.steps.length || this.active) return; this.active=true; document.body.classList.add('guiding'); App.autoSpin=false; this.bar.classList.add('on'); this.n=0; this.render(); /* 先畫出導讀列，重新取景時底部保留帶才量得到它的高度 */ this._refit(); this.go(0); },
   go(n){ n=Math.max(0,Math.min(this.steps.length-1,n)); this.n=n; const s=this.steps[n];
     if(s.run){ try{ s.run(); }catch(e){ console.error(e); } } /* 先改狀態再聚光：run 可能會改掉面板上的文字 */
     this._spot(s.hand?null:s.spot);

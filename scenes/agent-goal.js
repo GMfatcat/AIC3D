@@ -18,13 +18,18 @@ App.register({
     const doStep=()=>{ const S=useGoal?GOALS[gi].steps:WITHOUT; if(step>=S.length) return false; const [txt,d]=S[step]; step++; log.push(txt); if(d!==null) dist=d; if(d!==null) loop.go(loop.target+1); // 檢查目標不是迴圈上的節點：marker 留在原地，只畫一條到目標的線
       if(d===null){ root.updateMatrixWorld(true); check.set(0,loop.marker.position,goal.position,0.8,'signal'); paint(); check.meshes[0].visible=true; } else paint(); return step<S.length; };
     const reset=()=>{ step=0; dist=1.0; log=[]; loop.setT(0); goalL.userData.setText(GOALS[gi].text); paint(); };
-    ctrl.heading('同一個任務'); ctrl.segmented(null,[{id:'on',label:'有 /goal'},{id:'off',label:'沒有'}],'on',id=>{useGoal=id==='on';reset();});
-    ctrl.segmented('目標',GOALS.map((g,i)=>({id:String(i),label:g.label})),'0',id=>{gi=+id;reset();});
-    ctrl.stepper({onStep:doStep,onReset:reset,interval:900});
+    ctrl.heading('同一個任務'); const gseg=ctrl.segmented(null,[{id:'on',label:'有 /goal'},{id:'off',label:'沒有'}],'on',id=>{useGoal=id==='on';reset();});
+    const tseg=ctrl.segmented('目標',GOALS.map((g,i)=>({id:String(i),label:g.label})),'0',id=>{gi=+id;reset();});
+    const stepper=ctrl.stepper({onStep:doStep,onReset:reset,interval:900});
     const logEl=ctrl.html('','log');
     const set=ctrl.readouts([{id:'step',label:'步'},{id:'dist',label:'距離目標'},{id:'violate',label:'違反約束'}]);
-    ctrl.note(`<p>Agent 迴圈最大的問題不是做錯，是<b>漂移</b>：每一圈 LLM 只看 context 決定下一步，走了十圈之後原本的任務已經被工具結果和中途發現的事淹沒，它開始「順便」做別的、或用捷徑讓表面指標變綠。</p>
-      <p>Pi 的 <b>/goal</b> 把目標（含不可違反的約束）釘成一個<b>每圈都會重新讀到</b>的節點：每次 LLM 決定下一步前，harness 先問「這一步讓我們離目標更近嗎？有沒有碰到約束？」達成就停，偏了就拉回。右邊的「距離目標」條在有 /goal 時單調下降；沒有時會亂走，最後用「註解掉測試」這種作弊方式歸零。</p>
-      <p>它和 Compact 配合：compact 時 /goal 永遠保留原文，不會被摘要掉。</p>`);
+    ctrl.howto(['切有 / 沒有 /goal 各播放一輪，看距離條','換三個目標看路徑與違規讀數','看 log 裡每圈的「檢查目標」']);
+    const setup=(g,i,n)=>{ stepper.stop(); useGoal=g; gi=i; gseg.set(g?'on':'off'); tseg.set(String(i)); reset(); for(let k=0;k<n;k++) doStep(); };
+    ctx.guide([
+      {say:'Agent 迴圈最大的問題不是做錯，是<b>漂移</b>：每一圈 LLM 只看 context 決定下一步，走了幾圈之後原本的任務被工具結果和中途發現的事淹沒。先看沒有 /goal 的走法。', cam:{theta:0.3,phi:1.15}, spot:'同一個任務', run:()=>setup(false,0,3)},
+      {say:'沒有 /goal 走完：它「順便」整理 log、重構模組，最後用「註解掉測試」這種作弊方式讓指標歸零。距離目標那根條亂走。', spot:'違反約束', run:()=>setup(false,0,6)},
+      {say:'Pi 的 <b>/goal</b> 把目標（含不可違反的約束）釘成一個<b>每圈都會重新讀到</b>的節點（橘色八面體）：每次決定下一步前先問「離目標更近嗎？碰到約束嗎？」達成就停，偏了就拉回。距離條單調下降。', spot:'有 /goal', run:()=>setup(true,0,6)},
+      {say:'目標怎麼寫很重要：「讓 CI 全綠」沒寫約束，LLM 把失敗的測試標 skip 也算達成。換「寫根因報告，不改程式」，路徑完全不同。它和 <a href="#compact">Compact</a> 配合：compact 時 /goal 永遠保留原文。', spot:'目標', run:()=>setup(true,1,6)},
+    ]);
     ctx.legend([['signal','目標節點 / 每圈的檢查'],['state','LLM'],['flow','工具'],['alert','距離目標遠']]);
     ctx.setCamera({theta:0.3,phi:1.15}); reset(); } });

@@ -40,13 +40,18 @@ App.register({
     ctrl.heading('請求進出'); const msgEl=ctrl.html('','hint'); let msgTimer=null; const msg=t=>{msgEl.textContent=t; clearTimeout(msgTimer); msgTimer=setTimeout(()=>{if(msgEl.textContent===t)msgEl.textContent='';},3500);}; ctx.onDispose(()=>clearTimeout(msgTimer));
     const clearAll=()=>{ phys.forEach(p=>{p.refs=0;p.owner=null;p.shared=false;}); prefixPages=null; seqs=[]; redraw(); };
     ctrl.buttons([{label:'新增請求',onClick:addSeq,primary:true},{label:'全部生成一步',onClick:grow},{label:'結束一個請求',onClick:endSeq},{label:'全部清空',onClick:clearAll}]);
-    ctrl.segmented('新請求的 system prompt',[{id:'no',label:'各自存一份'},{id:'yes',label:'共享 prefix page'}],'no',id=>{ share=id==='yes'; const n=seqs.length; clearAll(); for(let i=0;i<n;i++) addSeq(); }); // 切換就用新政策重放目前的請求
+    const seg=ctrl.segmented('新請求的 system prompt',[{id:'no',label:'各自存一份'},{id:'yes',label:'共享 prefix page'}],'no',id=>{ share=id==='yes'; const n=seqs.length; clearAll(); for(let i=0;i<n;i++) addSeq(); }); // 切換就用新政策重放目前的請求
     const set=ctrl.readouts([{id:'used',label:'已用 page'},{id:'frag',label:'碎片浪費'},{id:'contig',label:'若改用連續預留'},{id:'shared',label:'共享的 prefix'},{id:'hov',label:'滑到的 page'}]);
     ctx.app.watchHover(phys.map(p=>p.mesh),(h,i)=>{ if(i<0){ set('hov','—'); return; } const p=phys[i]; const s=seqs.find(x=>x.color===p.owner); set('hov',`page ${i+1}：${p.refs===0?'空，任何請求都能拿':p.shared?`共享 prefix（${p.refs} 個請求引用）`:`請求 ${s?s.id:'?'} 的第 ${s?s.pages.indexOf(i)+1:'?'} 塊`}`); },(m,i)=>`物理 page ${i+1}`);
     const bar=ctrl.bar('紅色 = 連續預留會多佔的空間');
-    ctrl.note(`<p>傳統做法替每個請求<b>預留最長可能長度</b>的連續空間，沒用到的部分別人也不能用（紅色）。</p>
-      <p><b>PagedAttention</b> 把 KV cache 切成固定大小的 page，邏輯上連續、物理上散放，用一張對應表找。任何空 page 都能給任何請求，請求結束 page 立刻回收——這就是 vLLM 能把 batch 塞很大的原因。</p>
-      <p>同一個 page 可以被多個請求<b>引用</b>（灰色）：共享 system prompt 只存一份，用 copy-on-write 處理分岔。</p>`);
+    ctrl.howto(['新增幾個請求、全部生成一步，看 page 被拿走','結束一個請求看 page 立刻回收','切「共享 prefix page」看灰色共享頁']);
+    const setup=(sh,n,g)=>{ share=sh; seg.set(sh?'yes':'no'); clearAll(); for(let i=0;i<n;i++) addSeq(); if(g) grow(); };
+    ctx.guide([
+      {say:'右邊 48 個物理 page，每 page 放 16 個 token 的 K/V。左邊是每個請求的邏輯 block（連續），對應線指到它實際放的 page。', cam:{theta:0.35,phi:1.05}, spot:'請求進出', run:()=>setup(false,2)},
+      {say:'傳統做法替每個請求<b>預留最長可能長度</b>的連續空間，沒用到的部分別人也不能用（紅色）。4 個請求就把 48 page 預留光了。', spot:'若改用連續預留', run:()=>setup(false,4)},
+      {say:'<b>PagedAttention</b>：KV cache 切成固定大小的 page，邏輯上連續、物理上散放，用一張對應表找。任何空 page 都能給任何請求，請求結束 page 立刻回收，碎片浪費 0。這是 vLLM 能把 batch 塞很大的原因。', spot:'碎片浪費', run:()=>setup(false,4,true)},
+      {say:'同一個 page 可以被多個請求<b>引用</b>（灰色）：共享的 system prompt 只存一份，用 copy-on-write 處理分岔。<a href="#sglang">SGLang</a> 把這個想法推廣成整棵 prefix 樹。', spot:'新請求的 system prompt', run:()=>setup(true,3)},
+    ]);
     ctx.setCamera({theta:0.35,phi:1.05});
     addSeq(); addSeq(); redraw();
   },

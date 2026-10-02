@@ -31,12 +31,17 @@
         root.updateMatrixWorld(true); flow.hideAll(); flow.set(0,new T.Vector3(-1.2,0.6,0),new T.Vector3(0.3,0.6,0),0.6,'memory'); flow.set(1,new T.Vector3(2.0,1.2,0),new T.Vector3(3.9,1.8,0),0.6,head==='o2m'?'alert':'inactive'); flow.set(2,new T.Vector3(2.0,0.0,0),new T.Vector3(3.9,0.0,0),0.6,head==='o2o'?'flow':'inactive');
         o2m.material.emissiveIntensity=head==='o2m'?0.9:0.15; o2o.material.emissiveIntensity=head==='o2o'?0.9:0.15;
         set('boxes',`${n} 個（${OBJS.length} 個物件）`); set('nms',head==='o2m'?'需要：同一物件有多個重疊框要合併':'不需要：每個物件剛好一個框'); set('lat',head==='o2m'?'推論時間 + NMS（視框數而定，不可預測）':'純網路 forward，端到端、延遲固定'); };
-      ctrl.heading('切換用哪個 head 出框'); ctrl.segmented(null,[{id:'o2m',label:'一對多（傳統 YOLO）'},{id:'o2o',label:'一對一（v10 推論）'}],'o2o',id=>{head=id;draw();});
-      ctrl.stepper({onStep:()=>{ if(stage>=3) return false; stage++; draw(); return stage<3; },onReset:()=>{stage=0;draw();},interval:800});
+      ctrl.heading('切換用哪個 head 出框'); const seg=ctrl.segmented(null,[{id:'o2m',label:'一對多（傳統 YOLO）'},{id:'o2o',label:'一對一（v10 推論）'}],'o2o',id=>{head=id;draw();});
+      const stepper=ctrl.stepper({onStep:()=>{ if(stage>=3) return false; stage++; draw(); return stage<3; },onReset:()=>{stage=0;draw();},interval:800});
       const set=ctrl.readouts([{id:'step',label:'配對步驟'},{id:'boxes',label:'輸出框數'},{id:'nms',label:'NMS'},{id:'lat',label:'延遲'}]);
-      ctrl.note(`<p>傳統 YOLO 訓練時讓<b>多個 anchor / grid 點</b>同時負責同一個物件（一對多），召回好、收斂快，但推論時同一物件會冒出一堆重疊框，要用 <b>NMS</b> 事後刪——NMS 跑在 CPU、時間隨框數變、而且是個不可微的後處理。</p>
-          <p><b>YOLOv10</b> 訓練時掛兩個 head：一對多 head 照舊提供豐富監督，另加一個<b>一對一 head</b>，用一致的配對規則讓它學會「每個物件只選一個最好的點」。推論時只留一對一 head，直接輸出，<b>不需要 NMS</b>，端到端延遲固定。</p>
-          <p>其他改動都是為了效率：rank-guided 的 block 設計、空間-通道解耦的下採樣、大核卷積與 partial self-attention 只放在深層。對產線 AOI 這種要固定延遲的場景，NMS-free 是實際的好處。</p>`);
+      ctrl.howto(['單步走完候選、打分、出框三步','切一對多 / 一對一看框數與 NMS','讀「延遲」那一行']);
+      const setup=(h,s)=>{ stepper.stop(); head=h; seg.set(h); stage=s; draw(); };
+      ctx.guide([
+        {say:'左邊是一張影像，有三個瑕疵。Backbone + PAN neck 吐出三個尺度的 feature map（P3 / P4 / P5）。', cam:{theta:0.15,phi:1.4}, spot:'切換用哪個 head', run:()=>setup('o2o',0)},
+        {say:'每個 grid 點都是候選：每個物件周圍一堆點。打分後離物件中心越近分數越高（亮）。', spot:'配對步驟', run:()=>setup('o2o',2)},
+        {say:'傳統 YOLO 的<b>一對多</b> head：分數過門檻的都出框，同一物件冒出一堆重疊框，要用 <b>NMS</b> 事後刪。NMS 跑在 CPU、時間隨框數變、而且不可微。', spot:'一對多', run:()=>setup('o2m',3)},
+        {say:'<b>YOLOv10</b> 訓練時掛兩個 head：一對多照舊提供豐富監督，另加<b>一對一</b> head 學會「每個物件只選一個最好的點」。推論只留一對一：直接出框，<b>不需要 NMS</b>，端到端延遲固定。對產線 AOI 這種要固定延遲的場景是實際的好處。', spot:'一對一', run:()=>setup('o2o',3)},
+      ]);
       ctx.legend([['memory','P3 feature map'],['state','P4'],['signal','P5'],['alert','一對多 head / 重疊框'],['flow','一對一 head / 最終框'],['structure','候選點（亮 = 分數高）']]);
       ctx.setCamera({theta:0.15,phi:1.4}); stage=0; draw(); } });
 
@@ -71,17 +76,21 @@
         kvL.userData.setText(`解碼器 KV cache 佇列 · 已生成 ${Tn} / ${totalOut} token（${pages} 頁）`);
         root.updateMatrixWorld(true); flow.hideAll(); flow.set(0,new T.Vector3(-3.7,1.6,0),new T.Vector3(-3.0,1.6,0),0.6,'memory'); flow.set(1,new T.Vector3(-0.1,1.6,0),new T.Vector3(1.1,1.6,0),0.6,'flow'); flow.set(2,new T.Vector3(2.9,1.6,0),new T.Vector3(3.8,1.6,0),0.6,'signal');
         set('enc',`${m.n} · ${m.res} · ${tokPer} token / 頁`); set('ratio',`${ratio.toFixed(1)}×`); set('acc',`${Math.round(acc*100)}%`,acc<0.8?'bad':'ok'); set('kv',`${kv}（m ${mRef} + ${kept}）`, variant==='uocr'?'ok':(kept>4000?'bad':'')); set('lat',variant==='uocr'?'固定（每步只看 m + 128）':`隨 T 成長${variant==='dsocr'?'；多頁得分頁 for-loop 跑':''}`); set('pages',variant==='uocr'?`${pages} 頁一次 forward（32K 內約 20–30 頁）`:`${pages} 頁 → ${pages} 次獨立呼叫`); };
-      ctrl.heading('編碼器 / 解碼器'); ctrl.segmented(null,[{id:'dsocr',label:'DeepSeek-OCR'},{id:'uocr',label:'Unlimited-OCR'},{id:'vlm',label:'通用 VLM 式'}],variant,id=>{variant=id;draw();});
-      ctrl.slider('解析度模式',{min:0,max:3,value:mode,fmt:v=>MODES[v].n,onChange:v=>{mode=v;draw();}});
-      ctrl.slider('一次送進幾頁',{min:1,max:40,value:pages,onChange:v=>{pages=v;T_out=0;draw();}});
-      ctrl.stepper({onStep:()=>{ const total=pages*DOC_TOKENS; if(T_out>=total) return false; T_out=Math.min(total,T_out+Math.max(200,total/20)); draw(); return T_out<total; },onReset:()=>{T_out=0;draw();},interval:250});
+      ctrl.heading('編碼器 / 解碼器'); const vseg=ctrl.segmented(null,[{id:'dsocr',label:'DeepSeek-OCR'},{id:'uocr',label:'Unlimited-OCR'},{id:'vlm',label:'通用 VLM 式'}],variant,id=>{variant=id;draw();});
+      const modeSl=ctrl.slider('解析度模式',{min:0,max:3,value:mode,fmt:v=>MODES[v].n,onChange:v=>{mode=v;draw();}});
+      const pagesSl=ctrl.slider('一次送進幾頁',{min:1,max:40,value:pages,onChange:v=>{pages=v;T_out=0;draw();}});
+      const stepper=ctrl.stepper({onStep:()=>{ const total=pages*DOC_TOKENS; if(T_out>=total) return false; T_out=Math.min(total,T_out+Math.max(200,total/20)); draw(); return T_out<total; },onReset:()=>{T_out=0;draw();},interval:250});
       const setMain=ctrl.readouts([{id:'enc',label:'編碼器輸出'},{id:'ratio',label:'壓縮比（文字 ÷ 視覺）'},{id:'acc',label:'解碼精度（示意）'}]);
-      ctrl.details('多頁與 KV cache'); const setKV=ctrl.readouts([{id:'pages',label:'多頁'},{id:'kv',label:'目前 KV cache（token）'},{id:'lat',label:'每步延遲'}]); ctrl.endDetails();
+      const det=ctrl.details('多頁與 KV cache'); const setKV=ctrl.readouts([{id:'pages',label:'多頁'},{id:'kv',label:'目前 KV cache（token）'},{id:'lat',label:'每步延遲'}]); ctrl.endDetails();
       const KVS=new Set(['pages','kv','lat']); const set=(id,t,c)=>(KVS.has(id)?setKV:setMain)(id,t,c);
-      ctrl.note(`<p><b>DeepSeek-OCR</b> 解決輸入端：DeepEncoder = SAM-base（視窗注意力，便宜處理 4096 個 patch）→ 16× 卷積壓縮 → CLIP-large（全域注意力只對 256 個 token 做）。1024² 一頁壓成 256 token；壓縮 10× 內精度約 97%，20× 掉到約 60%——拉解析度到 Tiny 看輸出出現 ▢。</p>
-        <p><b>Unlimited-OCR</b>（百度，2026-06，github.com/baidu/Unlimited-OCR）解決輸出端：拿 DeepSeek-OCR 當基底，把解碼器所有 MHA 換成 <b>R-SWA</b>（Reference Sliding Window Attention）——每個輸出 token 看得到<b>全部參考 token</b>（視覺 token + prompt，固定 m 個），但對已輸出的部分只看<b>最近 128 個</b>。KV cache 變成一個容量 m + 128 的佇列，解碼幾萬 token 記憶體和延遲都不變；因此可以幾十頁一次 forward（32K 內約 20–30 頁），OmniDocBench v1.5 還比基底高 6 分。按「播放」看下排佇列：DeepSeek-OCR 橘色一路長，Unlimited-OCR 只亮最近一段。</p>
-        <p>它和純 SWA 的差別：視覺 token <b>不進滑動窗、不被逐出</b>，所以不會像線性注意力那樣越看越糊。這也是為什麼它只適合「有參考物」的任務：OCR、ASR、翻譯。</p>
-        <p><b>通用 VLM 式 OCR</b>：vision encoder 不壓縮，token 數 4～6 倍，精度高但解碼器 context 和延遲都貴。</p>`);
+      ctrl.howto(['切三種編碼器 / 解碼器，看壓縮比與精度','拉解析度到 Tiny 看輸出出現 ▢','送 20 頁後播放，看下排 KV 佇列長或不長']);
+      const setup=(v,m,p,frac,open)=>{ stepper.stop(); variant=v; mode=m; pages=p; vseg.set(v); modeSl.set(m); pagesSl.set(p); T_out=Math.round(frac*p*DOC_TOKENS); det.open=!!open; draw(); };
+      ctx.guide([
+        {say:'<b>DeepSeek-OCR</b> 解決輸入端：SAM-base 視窗注意力便宜地處理 4096 個 patch，16× 卷積壓縮，CLIP-large 只對 256 個 token 做全域注意力。1024² 的一頁壓成 256 個視覺 token。', cam:{theta:0.1,phi:1.35}, spot:'編碼器 / 解碼器', run:()=>setup('dsocr',2,1,0)},
+        {say:'解析度切到 Tiny：一頁只剩 64 token，壓縮比 15×，精度掉到六成，輸出出現 ▢。壓縮 10× 內精度約 97%，20× 掉到約 60%。', spot:'解析度模式', run:()=>setup('dsocr',0,1,0)},
+        {say:'<b>Unlimited-OCR</b>（百度，2026-06）解決輸出端：解碼器所有 MHA 換成 <b>R-SWA</b>。每個輸出 token 看得到<b>全部</b>視覺 token（固定 m 個），但對已輸出的部分只看最近 128 個。送 20 頁、生成到一半：下排佇列只亮最近一段，更早的逐出（灰）。KV 與延遲都不隨 T 成長，所以幾十頁可以一次 forward。', spot:'多頁與 KV cache', run:()=>setup('uocr',2,20,0.5,true)},
+        {say:'同樣 20 頁換回 DeepSeek-OCR：輸出 KV 一路長，而且多頁得分頁 for-loop 跑。R-SWA 的視覺 token 不進滑動窗、不被逐出，所以不會像線性注意力越看越糊；這也是它只適合有參考物的任務（OCR、ASR、翻譯）的原因。通用 VLM 式 OCR 不壓縮，token 數 4～6 倍。', spot:'目前 KV cache', run:()=>setup('dsocr',2,20,0.5,true)},
+      ]);
       ctx.legend([['memory','SAM 階段 patch'],['flow','壓縮後視覺 token / 參考 KV（固定）'],['signal','輸出 KV（還在窗內）'],['inactive','被逐出的輸出 KV']]);
       ctx.setCamera({theta:0.1,phi:1.35}); draw(); } });
 })();

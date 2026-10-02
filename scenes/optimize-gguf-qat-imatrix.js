@@ -15,11 +15,16 @@
         fl.userData.setText(`${PRESETS[preset].label} · 約 ${total.toFixed(1)} GB（27B 參數）`); set('total',total.toFixed(1)+' GB'); set('bpw',(total*8e9/ (TENSORS.reduce((s,t)=>s+t.p,0)*1e9)).toFixed(2)); bar([{frac:Math.min(1,total/54),color:'signal'}]); describe(); };
       const describe=()=>{ if(!hovered){ info.innerHTML='<span class="hint">滑鼠移到任一張量磚上看它的量化型別。</span>'; return; } const t=hovered.userData.t, ty=hovered.userData.ty; const T_=TYPES[ty];
         info.innerHTML=`<b>${t.n}</b> <span class="hint">${t.shape}</span><br>參數 ${t.p.toFixed(2)} B · 型別 <b>${ty}</b>（${T_.bpw} bpw）· ${hovered.userData.gb.toFixed(2)} GB<br><span class="hint">${ty.endsWith('_K')?'K-quant：256 個權重一個 super-block，內有 8 個 32-權重 block，各帶 6-bit scale 與 min；':ty==='Q8_0'?'32 個權重一個 block，一個 fp16 scale；':ty==='F16'?'未量化；':'fp32 原樣存；'}${(t.kind==='attnv'||t.kind==='ffnd'||t.kind==='out')&&preset!=='F16'&&preset!=='Q8_0'?'_M 系列把 attn_v / ffn_down / output 升一級，因為它們對輸出誤差最敏感。':''}</span>`; };
-      ctrl.heading('選一個常見預設'); ctrl.segmented(null,Object.entries(PRESETS).map(([id,p])=>({id,label:p.label})),preset,id=>{preset=id;layout();});
+      ctrl.heading('選一個常見預設'); const seg=ctrl.segmented(null,Object.entries(PRESETS).map(([id,p])=>({id,label:p.label})),preset,id=>{preset=id;layout();});
       const set=ctrl.readouts([{id:'total',label:'檔案大小'},{id:'bpw',label:'平均 bpw'}]); const bar=ctrl.bar('相對 F16（54 GB）'); const info=ctrl.html('');
-      ctrl.note(`<p><b>GGUF</b> 是 llama.cpp 家族的單檔容器：開頭是 header + key-value metadata（架構、tokenizer、超參數、RoPE 設定……），後面是一個一個張量，每個張量<b>自己帶型別</b>。所以同一個檔案裡可以混：embedding 用一種、attention 用一種、敏感的 ffn_down 升一級。</p>
-        <p>K-quant（Q4_K、Q6_K）的精髓是<b>兩層 scale</b>：256 個權重一個 super-block，裡面再切小 block 各有自己的 scale/min，所以 bpw 是 4.5 而不是 4。名字尾巴的 _S / _M / _L 就是「哪些敏感張量升級」的配方差異。</p>
-        <p>搭配 <a href="#imatrix">Imatrix</a> 時，量化器會依重要度決定每個 block 的 scale 怎麼取——型別不變、誤差更小。</p>`);
+      ctrl.howto(['切 F16 到 Q3_K_M 看檔案大小怎麼縮','滑到任一張量磚看它的型別與 bpw','注意 attn_v / ffn_down / output 總是高一級']);
+      const setPreset=p=>{ preset=p; seg.set(p); layout(); };
+      ctx.guide([
+        {say:'<b>GGUF</b> 是 llama.cpp 家族的單檔容器：開頭是 header + metadata（架構、tokenizer、超參數、RoPE 設定），後面一個一個張量，每個張量<b>自己帶型別</b>。磚的寬度 ∝ GB。', cam:{theta:0.15,phi:1.4}, spot:'選一個常見預設', run:()=>setPreset('F16')},
+        {say:'Q4_K_M：同一個檔案裡可以混。embedding、attention、FFN 用 Q4_K，敏感的 attn_v / ffn_down / output 升一級到 Q6_K，norm 這類小張量留 F32。54 GB 變 16 GB 左右。', spot:'檔案大小', run:()=>setPreset('Q4_K_M')},
+        {say:'K-quant 的精髓是<b>兩層 scale</b>：256 個權重一個 super-block，裡面再切 8 個 32-權重的小 block 各有 scale 與 min，所以 bpw 是 4.5 而不是 4。名字尾巴的 _S / _M / _L 是「哪些敏感張量升級」的配方差異。', spot:'平均 bpw', run:()=>setPreset('Q4_K_M')},
+        {say:'Q3_K_M 再壓一點：attention 退到 Q4_K、FFN 到 Q3_K。搭配 <a href="#imatrix">Imatrix</a> 時，量化器依重要度決定每個 block 的 scale 怎麼取：型別不變、誤差更小。', spot:'相對 F16', run:()=>setPreset('Q3_K_M')},
+      ]);
       ctx.legend([['memory','F16'],['flow','Q8_0'],['state','Q6_K'],['signal','Q5_K'],['signal:dim','Q4_K'],['inactive','Q3_K'],['structure','F32（norm 等小張量）']]);
       ctx.setCamera({theta:0.15,phi:1.4}); layout();
       const brickMeshes=bricks.map(b=>b.mesh); ctx.app.focusTargets(brickMeshes,m=>m.userData.t.n); this.update=()=>{ const hv=ctx.app.hover(brickMeshes); if(hv!==hovered){ hovered=hv; bricks.forEach(b=>{ b.mesh.material.emissiveIntensity=b.mesh===hv?0.7:0.15; }); describe(); } }; } });
@@ -43,13 +48,18 @@
         const lr=0.02; const Wq=W.map(q); const grad=Array(NW).fill(0); X.forEach((x,n)=>{ const y=x.reduce((a,xi,i)=>a+xi*Wq[i],0); const e=y-target[n]; x.forEach((xi,i)=>grad[i]+=e*xi); });
         W=W.map((w,i)=>Math.max(-1,Math.min(1,w-lr*grad[i]/X.length))); paint(); return stepN<40; };
       const reset=()=>{ W=W0.slice(); stepN=0; paint(); };
-      ctrl.heading('用 fake-quant 訓練 40 步'); ctrl.stepper({onStep:train,onReset:reset,interval:150});
+      ctrl.heading('用 fake-quant 訓練 40 步'); const stepper=ctrl.stepper({onStep:train,onReset:reset,interval:150});
       const set=ctrl.readouts([{id:'step',label:'訓練步'},{id:'fp',label:'浮點權重的任務誤差'},{id:'q',label:'量化後的任務誤差（QAT）'},{id:'ptq',label:'直接量化原權重（PTQ）'},{id:'dist',label:'權重到格點平均距離'},{id:'hov',label:'滑到的 bin'}]);
       ctx.app.watchHover(bars,(h,b)=>{ if(b<0){ set('hov','—'); return; } const lo=-1+2*b/BINS, hi=-1+2*(b+1)/BINS; set('hov',`[${lo.toFixed(2)}, ${hi.toFixed(2)})：${lastCounts?lastCounts[b]:0} 個權重`); },(m,b)=>`區間 ${(-1+2*b/BINS).toFixed(2)}`);
       const bar=ctrl.bar('QAT'); const bar2=ctrl.bar('PTQ');
-      ctrl.note(`<p><b>PTQ</b>（訓練後量化，GPTQ / GGUF 都是）：模型訓練完才 snap 到格點，權重落在格點之間的誤差只能靠補償技巧減少。</p>
-        <p><b>QAT</b>：訓練時在 forward 插一個 <b>fake-quant</b>——用量化後的權重算輸出和 loss，但 backward 時假裝量化是 identity（straight-through estimator），把梯度加回浮點權重。結果是模型<b>自己學會把權重擺在格點附近</b>、或把任務轉嫁給不敏感的權重——看直方圖往橘線聚、量化誤差往下掉，而浮點誤差幾乎不變。</p>
-        <p>代價：要重新訓練（至少 fine-tune），需要資料和算力。所以 4-bit 以上多用 PTQ，2～3 bit 或邊緣部署才值得 QAT；Gemma、Qwen 近年都有官方 QAT 版本。</p>`);
+      ctrl.howto(['播放 40 步看直方圖往格點聚','比 QAT 與 PTQ 兩條誤差條','滑到任一 bin 看有幾個權重']);
+      const setup=n=>{ stepper.stop(); reset(); for(let i=0;i<n;i++) train(); };
+      ctx.guide([
+        {say:'60 個權重的直方圖，橘線是 4 階量化格點。<b>PTQ</b>（訓練後量化，GPTQ / GGUF 都是）：訓練完才 snap 到格點，落在格點之間的誤差只能靠補償技巧減少。', cam:{theta:0.05,phi:1.45}, spot:'直接量化原權重', run:()=>setup(0)},
+        {say:'<b>QAT</b>：訓練時在 forward 插一個 <b>fake-quant</b>：用量化後的權重算輸出和 loss，backward 時假裝量化是 identity（straight-through estimator），梯度加回浮點權重。走 15 步看直方圖往橘線聚。', spot:'單步', run:()=>setup(15)},
+        {say:'40 步後：模型<b>自己學會把權重擺在格點附近</b>，或把任務轉嫁給不敏感的權重。量化誤差往下掉，浮點誤差幾乎不變。', spot:'量化後的任務誤差', run:()=>setup(40)},
+        {say:'代價：要重新訓練（至少 fine-tune），需要資料和算力。所以 4-bit 以上多用 PTQ，2～3 bit 或邊緣部署才值得 QAT；Gemma、Qwen 近年都有官方 QAT 版本。', spot:'PTQ', run:()=>setup(40)},
+      ]);
       ctx.legend([['memory','權重分佈'],['signal','量化格點']]);
       ctx.setCamera({theta:0.05,phi:1.45}); reset(); } });
 
@@ -77,13 +87,18 @@
         const avgBits=levels.reduce((s,l)=>s+Math.log2(l),0)/C;
         set('ds',LABEL[ds]); set('bits',avgBits.toFixed(2)+' bpw（平均）'); set('alloc',ds==='none'?'全部 4 bit':'前 3 欄 6 bit、中間 4 bit、後 3 欄 2 bit'); set('eimp',Math.sqrt(eImp).toFixed(3)); set('euni',Math.sqrt(eUni).toFixed(3)); bar([{frac:Math.min(1,Math.sqrt(eImp)/1.2),color:'signal'}]); bar2([{frac:Math.min(1,Math.sqrt(eUni)/1.2),color:'alert'}]);
         root.updateMatrixWorld(true); flow.set(0,new T.Vector3(-5.6,0.6,0),new T.Vector3(-4.6,0.6,0),0.7,'flow'); tokens.styleAll({color:'flow',glow:0.5,opacity:ds==='none'?0.2:1}); };
-      ctrl.heading('換一組校準資料'); ctrl.segmented(null,Object.keys(ACT).map(id=>({id,label:LABEL[id]})),ds,id=>{ds=id;paint();});
+      ctrl.heading('換一組校準資料'); const seg=ctrl.segmented(null,Object.keys(ACT).map(id=>({id,label:LABEL[id]})),ds,id=>{ds=id;paint();});
       const set=ctrl.readouts([{id:'ds',label:'校準資料'},{id:'alloc',label:'精度分配'},{id:'bits',label:'位元預算'},{id:'eimp',label:'重要度加權誤差（有 imatrix）'},{id:'euni',label:'同樣誤差（均勻 4 bit）'},{id:'hov',label:'滑到的權重'}]);
       ctx.app.watchHover(cells.map(c=>c.m),(h,idx)=>{ if(idx<0||!lastLevels){ set('hov','—'); return; } const c=cells[idx]; const lv=lastLevels[c.j]; const w=W[c.i][c.j]; set('hov',`第 ${c.i+1} 列 第 ${c.j+1} 欄：w ${w.toFixed(2)}，${Math.log2(lv)} bit，重要度 ${ACT[ds][c.j].toFixed(2)}，誤差 ${Math.abs(w-quant(w,lv)).toFixed(3)}`); },(m,idx)=>`第 ${cells[idx].i+1} 列 第 ${cells[idx].j+1} 欄`);
       const bar=ctrl.bar('有 imatrix'); const bar2=ctrl.bar('均勻量化');
-      ctrl.note(`<p>權重誤差不是都一樣重要：如果某個輸入通道的 activation 平時都很大，它對應那一欄權重的誤差就會被放大。<b>Importance matrix</b>（llama.cpp 的 imatrix）就是讓一批校準資料流過模型，統計每個通道的平均 x²，當成權重。</p>
-        <p>量化時用它做兩件事：<b>①</b> 選 block 的 scale / min 時最小化「加權」誤差而不是普通誤差；<b>②</b>（_M / IQ 系列）把預算往重要通道傾斜。這跟 GPTQ 用 Hessian 的精神一樣，只是更輕量、不需要逐欄序列計算。</p>
-        <p>所以校準資料的<b>分佈要像實際用途</b>：用英文維基校準再拿去跑中文對話或程式碼，重要度就估錯了——切換上面的資料集看分配怎麼變。</p>`);
+      ctrl.howto(['切校準資料集看分配怎麼變','比「有 imatrix」與「均勻量化」兩條誤差','滑到任一權重讀它的位元與重要度']);
+      const setDs=d=>{ ds=d; seg.set(d); paint(); };
+      ctx.guide([
+        {say:'權重誤差不是都一樣重要：某個輸入通道的 activation 平時很大，它那一欄權重的誤差就被放大。下排柱 = 校準資料流過時各通道的平均 x²（重要度）。', cam:{theta:0.1,phi:1.4}, spot:'換一組校準資料', run:()=>setDs('code')},
+        {say:'<b>Importance matrix</b>（llama.cpp 的 imatrix）用它做兩件事：選 block 的 scale 時最小化加權誤差；把預算往重要通道傾斜。這裡最重要的 3 欄給 6 bit、最不重要的 3 欄 2 bit，平均仍是 4 bpw，誤差卻比均勻 4 bit 小。', spot:'精度分配', run:()=>setDs('code')},
+        {say:'校準資料的<b>分佈要像實際用途</b>：換成中文對話，重要的通道完全不同，分配跟著變。用英文維基校準再去跑程式碼，重要度就估錯了。', spot:'校準資料', run:()=>setDs('chat')},
+        {say:'不用校準：全部均勻 4 bit，重要和不重要的通道待遇一樣。這跟 <a href="#gptq">GPTQ</a> 用 Hessian 的精神一樣，只是更輕量、不需要逐欄序列計算。', spot:'均勻量化', run:()=>setDs('none')},
+      ]);
       ctx.legend([['state','6 bit（重要通道）'],['memory','4 bit'],['inactive','2 bit（不重要通道）'],['signal','通道重要度'],['flow','校準資料']]);
       ctx.setCamera({theta:0.1,phi:1.4}); paint(); } });
 })();

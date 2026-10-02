@@ -35,7 +35,7 @@
           const n1=vals.filter(v=>v>=1&&v<2).length; html.push(`<div class="bitrow"><b>${f.name}</b> <span class="hint">${f.bits}</span><div class="bits">${bits(f, id==='fp4'? q/scale : q).split(' ').map((s,i)=>`<button type="button" class="bitchip ${['sign','exp','man'][i]}" data-fmt="${id}" data-g="${i}" title="點一下翻這組的最低位元，看值跳到哪">${s}</button>`).join(' ')}${id==='fp4'?` <span class="hint">× scale ${scale.toPrecision(3)}</span>`:''}</div><div class="hint">[1, 2) 之間有 ${n1} 個點${id==='fp4'?'（隨 scale 伸縮）':''}</div></div>`); });
         bitsEl.innerHTML=html.join(''); };
       ctrl.heading('一個數字、三種格式'); const xSl=ctrl.slider('要表示的值 x',{min:0.01,max:4,step:0.001,value:x,fmt:v=>v.toFixed(3),onChange:v=>{x=v;redraw();}}); // 三位小數：BF16 翻一個 mantissa 位元差 0.008，兩位小數會看不到
-      ctrl.slider('NVFP4：這一組 16 個值的最大絕對值',{min:0.25,max:4,step:0.05,value:blockMax,fmt:v=>v.toFixed(2),onChange:v=>{blockMax=v;redraw();}});
+      const bmSl=ctrl.slider('NVFP4：這一組 16 個值的最大絕對值',{min:0.25,max:4,step:0.05,value:blockMax,fmt:v=>v.toFixed(2),onChange:v=>{blockMax=v;redraw();}});
       ctrl.html('<span class="hint">位元佈局：<span class="bitchip sign">sign</span> <span class="bitchip exp">exponent</span> <span class="bitchip man">mantissa</span></span>');
       const bitsEl=ctrl.html('');
       // 翻位元：把該格式目前 snap 到的值的某一組（exponent / mantissa）最低位元翻過來，x 跳到新值
@@ -46,10 +46,14 @@
         x=Math.max(0.01,Math.min(RANGE,v)); xSl.set(+x.toFixed(3)); redraw(); });
       ctx.app.watchHover(allBars,(h,i)=>{ if(i<0){ set('hov','—'); return; } const u=h.userData; const lo=u.bin/BINS*RANGE, hi=(u.bin+1)/BINS*RANGE; set('hov',`${FORMATS[u.fmt].name}：[${lo.toFixed(1)}, ${hi.toFixed(1)}) 有 ${u.count} 個點`); },(m)=>`${FORMATS[m.userData.fmt].name} 區間 ${(m.userData.bin/BINS*RANGE).toFixed(1)}`);
       const set=ctrl.readouts([{id:'hov',label:'滑到的區間'}]);
-      ctrl.note(`<p>浮點數的點<b>不是均勻的</b>：每跨一個 2 的冪，點的密度就減半。exponent 位元決定「能表示多大的範圍」，mantissa 位元決定「每個範圍裡有幾個點」。</p>
-        <p><b>BF16</b>：8 個 exponent 跟 FP32 一樣，所以範圍一樣大、不會 overflow，但 mantissa 只有 7 位——每個 2 的冪之間 128 個點。訓練用它就是圖「範圍安全」。</p>
-        <p><b>FP8 E4M3</b>：範圍 ±448，每個區間 8 個點。要搭配 per-tensor 或 per-block 的 scale 把數值移到好用的區間。</p>
-        <p><b>NVFP4</b>：每個區間只有 2 個點（0.5 的倍數 ×2ⁿ），自己幾乎沒精度；靠 <b>16 個值共用一個 FP8 scale</b>，讓格點貼著這一小塊的實際範圍伸縮。拉第二支滑桿看格點跟著動。</p>`);
+      ctrl.howto(['拉 x 看三種格式各 snap 到哪、誤差多少','點位元 chip 翻一位，看值跳到哪','拉 NVFP4 的組最大值看格點伸縮']);
+      const setup=(xx,bm)=>{ x=xx; blockMax=bm; xSl.set(xx); bmSl.set(bm); redraw(); };
+      ctx.guide([
+        {say:'三條數軸，點 = 這個格式能表示的值。浮點的點<b>不是均勻的</b>：每跨一個 2 的冪，密度減半。exponent 決定範圍，mantissa 決定每個範圍裡有幾個點。', cam:{theta:0.0,phi:1.5}, spot:'一個數字、三種格式', run:()=>setup(1.3,2.0)},
+        {say:'<b>BF16</b>：8 個 exponent 跟 FP32 一樣，範圍一樣大、不會 overflow，但 mantissa 只有 7 位：[1, 2) 之間 128 個點。訓練用它就是圖「範圍安全」。x = 1.3 的誤差只有 0.2%。', spot:'要表示的值', run:()=>setup(1.3,2.0)},
+        {say:'<b>FP8 E4M3</b>：範圍 ±448，每個 2 的冪之間只有 8 個點，要搭配 scale 把數值移到好用的區間。x = 3.3 時誤差變大：點變稀了。', spot:'位元佈局', run:()=>setup(3.3,2.0)},
+        {say:'<b>NVFP4</b>：每個區間只有 2 個點，自己幾乎沒精度；靠 <b>16 個值共用一個 FP8 scale</b> 讓格點貼著這一小塊的實際範圍伸縮。把這組的最大值拉到 0.5，格點整個縮進來，x = 0.4 反而表示得準。', spot:'NVFP4', run:()=>setup(0.4,0.5)},
+      ]);
       ctx.legend([['memory','BF16 可表示的值'],['flow','FP8 可表示的值'],['signal','NVFP4 可表示的值（已乘 scale）'],['alert','x 被 snap 到的點'],['structure','數軸後的柱 = 該區間有幾個點（log）']]);
       ctx.setCamera({theta:0.0,phi:1.5}); redraw(); } });
 
@@ -71,14 +75,19 @@
         set('col',`${col} / ${C}`); const e=err(), en=errNaive(); set('err',e.toFixed(3)); set('naive',en.toFixed(3)); bar([{frac:Math.min(1,e/1.2),color:'signal'}]); bar2([{frac:Math.min(1,en/1.2),color:'alert'}]); };
       const doStep=()=>{ if(col>=C) return false; const j=col; for(let i=0;i<R;i++){ Q[i][j]=q(W[i][j]); const e=W[i][j]-Q[i][j]; if(comp) for(let k=j+1;k<C;k++) W[i][k]-=e*Hinv(j,k); } col++; wave.position.x=(j-(C-1)/2)*0.85; if(ctx.reduceMotion){ waveT=0; wave.material.opacity=0.25; } else waveT=1; paint(); return col<C; };
       const reset=()=>{ W=W0.map(r=>r.slice()); Q=W0.map(r=>r.map(()=>0)); col=0; waveT=0; wave.material.opacity=0; paint(); };
-      ctrl.heading('一欄一欄量化'); ctrl.segmented(null,[{id:'on',label:'GPTQ：補償'},{id:'off',label:'直接四捨五入'}],'on',id=>{comp=id==='on';reset();});
-      ctrl.stepper({onStep:doStep,onReset:reset,interval:600});
+      ctrl.heading('一欄一欄量化'); const seg=ctrl.segmented(null,[{id:'on',label:'GPTQ：補償'},{id:'off',label:'直接四捨五入'}],'on',id=>{comp=id==='on';reset();});
+      const stepper=ctrl.stepper({onStep:doStep,onReset:reset,interval:600});
       const set=ctrl.readouts([{id:'col',label:'已量化的欄'},{id:'err',label:'輸出誤差（這個方法）'},{id:'naive',label:'輸出誤差（直接四捨五入）'},{id:'hov',label:'滑到的權重'}]);
       ctx.app.watchHover(cells.map(c=>c.m),(h,idx)=>{ if(idx<0){ set('hov','—'); return; } const c=cells[idx]; const done=c.j<col; set('hov',`第 ${c.i+1} 列 第 ${c.j+1} 欄：原 ${W0[c.i][c.j].toFixed(2)} → 補償後 ${W[c.i][c.j].toFixed(2)}${done?`，量化成 ${Q[c.i][c.j].toFixed(2)}`:'（還沒量化）'}`); },(m,idx)=>`第 ${cells[idx].i+1} 列 第 ${cells[idx].j+1} 欄`);
       const bar=ctrl.bar('這個方法'); const bar2=ctrl.bar('直接四捨五入');
-      ctrl.note(`<p>把第 j 欄的權重 snap 到最近格點時會產生誤差 e。<b>GPTQ</b> 不是忍下來，而是用校準資料算出的 Hessian 反矩陣，把 e 按欄之間的相關性<b>分攤到還沒量化的欄</b>（紅色波傳向右邊）：後面的欄先往反方向調一點，讓整層的輸出 XW 盡量不變。</p>
-        <p>所以 GPTQ 最小化的是<b>輸出誤差</b>，不是權重誤差——這就是它比直接四捨五入好、而且 4-bit 還能用的原因。代價是需要一批校準資料、以及逐欄的序列計算（實務上分 block 做）。</p>
-        <p class="hint">這裡用 4 階均勻格點、相鄰欄相關 0.35 做示意。<a href="#imatrix">Imatrix</a> 是把同樣的「哪些權重對輸出重要」用在 GGUF 的分級精度上。</p>`);
+      ctrl.howto(['單步看紅波把誤差推到右邊','切「直接四捨五入」比兩條誤差','滑到任一權重看它被補償了多少']);
+      const setup=(c,n)=>{ stepper.stop(); comp=c; seg.set(c?'on':'off'); reset(); for(let i=0;i<n;i++) doStep(); waveT=0; wave.material.opacity=0; };
+      ctx.guide([
+        {say:'一個 6×8 的權重矩陣，一欄一欄 snap 到 4 階格點（橘 = 已量化）。先看直接四捨五入：誤差就是誤差，忍下來。', cam:{theta:0.15,phi:1.4}, spot:'一欄一欄量化', run:()=>setup(false,8)},
+        {say:'<b>GPTQ</b>：量化第 j 欄產生的誤差 e，用校準資料算出的 Hessian 反矩陣，按欄之間的相關性<b>分攤到還沒量化的欄</b>（紅色波傳向右邊）：後面的欄先往反方向調一點。走 3 欄看看。', spot:'單步', run:()=>setup(true,3)},
+        {say:'走完 8 欄：GPTQ 最小化的是<b>輸出誤差</b> XW，不是權重誤差。比直接四捨五入好，而且 4-bit 還能用，就是這個原因。', spot:'輸出誤差（這個方法）', run:()=>setup(true,8)},
+        {say:'代價：需要一批校準資料、以及逐欄的序列計算（實務上分 block 做）。<a href="#imatrix">Imatrix</a> 是把同樣的「哪些權重對輸出重要」用在 GGUF 的分級精度上。這裡用 4 階均勻格點、相鄰欄相關 0.35 做示意。', spot:'輸出誤差（直接四捨五入）', run:()=>setup(true,8)},
+      ]);
       ctx.legend([['memory','浮點權重'],['signal','已量化'],['alert','誤差分攤到右側的欄']]);
       ctx.setCamera({theta:0.15,phi:1.4}); reset();
       this.update=(dt)=>{ if(waveT>0){ waveT=Math.max(0,waveT-dt*1.5); wave.material.opacity=0.35*waveT; wave.position.x+=dt*2.5; } }; } });
@@ -118,15 +127,19 @@
         for(let t=0;t<G;t++){ chosen[t].position.set(X(t),Y(tr.qv[t]),0); target[t].position.set(X(t),Y(w[t]),0.25); uniChosen[t].position.set(X(t),Y(un.qv[t]),-1.2); if(t<G-1){ a.copy(chosen[t].position); b.set(X(t+1),Y(tr.qv[t+1]),0); path.set(t,a,b,0.8,'signal'); } }
         set('k',`${tr.k} 個 / 欄（2^${bpw.toFixed(2)}）`); set('terr',tr.err.toFixed(3)); set('uerr',`${un.err.toFixed(3)}（${un.k} 階，${Math.round(bpw)} bpw）`); set('rot',rotate?`是：最大 |w| ${Math.max(...raw.map(Math.abs)).toFixed(2)} → ${Math.max(...w.map(Math.abs)).toFixed(2)}`:'否（有離群值）');
         bar([{frac:Math.min(1,tr.err/0.6),color:'signal'}]); bar2([{frac:Math.min(1,un.err/0.6),color:'flow'}]); };
-      ctrl.heading('位元率是連續的'); ctrl.slider('bpw（每個權重的位元）',{min:1.6,max:5,step:0.05,value:bpw,fmt:v=>v.toFixed(2),onChange:v=>{bpw=v;redraw();}});
-      ctrl.segmented('先做 Hadamard 旋轉',[{id:'on',label:'是'},{id:'off',label:'否'}],'on',id=>{rotate=id==='on';redraw();});
+      ctrl.heading('位元率是連續的'); const bpwSl=ctrl.slider('bpw（每個權重的位元）',{min:1.6,max:5,step:0.05,value:bpw,fmt:v=>v.toFixed(2),onChange:v=>{bpw=v;redraw();}});
+      const rotSeg=ctrl.segmented('先做 Hadamard 旋轉',[{id:'on',label:'是'},{id:'off',label:'否'}],'on',id=>{rotate=id==='on';redraw();});
       const set=ctrl.readouts([{id:'k',label:'trellis 每欄狀態數'},{id:'rot',label:'旋轉後離群值'},{id:'terr',label:'EXL3 誤差（RMS）'},{id:'uerr',label:'均勻格點誤差'},{id:'hov',label:'滑到的欄'}]);
       ctx.app.watchHover(chosen,(h,t)=>{ if(t<0||!lastTr){ set('hov','—'); return; } set('hov',`第 ${t+1} 欄：w ${lastW[t].toFixed(2)} → 選 ${lastTr.qv[t].toFixed(2)}（狀態 ${lastTr.path[t]}），誤差 ${Math.abs(lastW[t]-lastTr.qv[t]).toFixed(3)}`); },(m,t)=>`第 ${t+1} 欄選到的值`);
       const bar=ctrl.bar('EXL3'); const bar2=ctrl.bar('均勻格點');
-      ctrl.note(`<p><b>均勻格點</b>：每個權重獨立 snap 到 2ⁿ 個固定點，所以 bpw 只能是整數，而且離群值會把格點撐得很稀。</p>
-        <p><b>EXL3 的 trellis（格狀）量化</b>（來自 QTIP）：<b>①</b> 先用 Hadamard 矩陣把一組權重旋轉，離群值被攤平、整組變成近似高斯；<b>②</b> 每個位置的候選值不是固定的，而是由「前一個位置選了哪個狀態」決定——所以整組權重對應的是 trellis 上的<b>一條路徑</b>，用 Viterbi 找誤差最小的那條。</p>
-        <p>因為存的是路徑而不是每個值的索引，每個權重平均用幾個 bit 可以是任意數——3.25 bpw 就是這樣來的。推論時用 hash 即時重建候選值，不用查大 codebook。</p>
-        <p class="hint">候選值生成規則是示意用的簡化版，真實 EXL3 用更精細的 hash 與 2–3 層結構。</p>`);
+      ctrl.howto(['拉 bpw 到小數，看每欄狀態數與誤差','關掉 Hadamard 旋轉看離群值','比前排 EXL3 與後排均勻格點的誤差條']);
+      const setup=(b,r)=>{ bpw=b; rotate=r; bpwSl.set(b); rotSeg.set(r?'on':'off'); redraw(); };
+      ctx.guide([
+        {say:'後排是<b>均勻格點</b>：每個權重獨立 snap 到 2ⁿ 個固定點，bpw 只能是整數，離群值會把格點撐得很稀。前排是 EXL3。', cam:{theta:0.3,phi:1.35}, spot:'位元率是連續的', run:()=>setup(3.0,true)},
+        {say:'關掉 Hadamard 旋轉：原始權重有 1.6 這種離群值，格點被撐開。<b>①</b> 先用 Hadamard 矩陣把一組權重旋轉，離群值被攤平、整組變成近似高斯。', spot:'先做 Hadamard 旋轉', run:()=>setup(3.0,false)},
+        {say:'<b>② trellis</b>（格狀）量化，來自 QTIP：每個位置的候選值不是固定的，而是由「前一個位置選了哪個狀態」決定。整組權重對應 trellis 上的<b>一條路徑</b>，用 Viterbi 找誤差最小的那條。', spot:'trellis 每欄狀態數', run:()=>setup(3.0,true)},
+        {say:'因為存的是路徑而不是每個值的索引，每個權重平均用幾個 bit 可以是任意數：拉到 3.25 bpw，狀態數變 10 個。推論時用 hash 即時重建候選值，不用查大 codebook。候選值規則是示意用的簡化版。', spot:'bpw', run:()=>setup(3.25,true)},
+      ]);
       ctx.legend([['memory','原始權重'],['signal','EXL3 選到的值與路徑'],['structure','該欄的候選點'],['flow','均勻格點版本']]);
       ctx.setCamera({theta:0.3,phi:1.35}); redraw(); } });
 })();
