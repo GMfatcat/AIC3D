@@ -16,12 +16,12 @@
       const lg=new T.Group(); lg.position.set(-1.5,0.9,0); root.add(lg); const lat=gridCells(T,P,lg,L,0.42,0.46); const ll=P.label('latent z（8×8×4）',{size:17}); ll.position.set(0,2.2,0); lg.add(ll);
       const den=new P.Tower([{type:'attn'},{type:'ffn'},{type:'attn'},{type:'ffn'}],{w:2.2,d:1.2,h:0.3,label:''}); den.group.position.set(-1.5,-4.2,0); root.add(den.group); const dl=P.label('',{size:17}); dl.position.set(-1.5,-2.3,0); root.add(dl);
       const vae=new P.Tower([{type:'ffn'},{type:'ffn'},{type:'ffn'}],{w:1.6,d:1.0,h:0.3,label:'VAE 解碼器'}); vae.group.position.set(3.4,-2.2,0); root.add(vae.group); vae.layers.forEach(m=>tint(P,m,'memory',0.3));
-      const ig=new T.Group(); ig.position.set(6.8,0.9,0); root.add(ig); const img=gridCells(T,P,ig,IMG,0.22,0.24); const il=P.label('輸出影像（64×64×3 的縮圖）',{size:15}); il.position.set(0,2.3,0); ig.add(il);
+      const out=new P.Picture(3.6,3.6,{px:128}); out.mesh.position.set(6.8,0.9,0); root.add(out.mesh); const il=P.label('輸出影像（64×64×3 的縮圖）',{size:15}); il.position.set(6.8,3.2,0); root.add(il); let outKey=null;
       const beams=new P.BeamSet(4,{color:'flow',maxR:0.06,minR:0.03}); root.add(beams.group);
       const parts=[...txt.layers.map(m=>({m,p:'文字編碼器：把 prompt 變成條件向量，只算一次'})),...den.layers.map(m=>({m,p:'去噪網路：每步吃 latent + t + 文字條件，猜噪聲'})),...vae.layers.map(m=>({m,p:'VAE 解碼器：最後一步把 8×8 latent 放大成像素'})),...lat.slice(0,1).map(m=>({m,p:'latent：像素壓縮 8×8 倍後的小圖，去噪在這裡做'}))];
       const paint=()=>{ const unit=net==='dit'?0.07:0.08; const q=cfg<2?'弱：不太聽 prompt':cfg<10?'好：聽 prompt 又自然':'過飽和、過度銳利（CFG 太強）';
         lat.forEach((m,i)=>{ const v=Math.max(0,Math.min(1,(Z[i]+1)/2)); tint(P,m,'state',0.1+v*1.0); m.material.color.multiplyScalar(0.35+v*0.65); m.material.emissive.copy(m.material.color); });
-        const decoded=phase>=S+1; img.forEach((m,i)=>{ const r=Math.floor(i/IMG), c=i%IMG; const v=decoded?(TARGET[Math.floor(r/2)*L+Math.floor(c/2)]+(blob(7.5,7.5,5.5,4.2)(r,c)?0.1:0)):0; tint(P,m,decoded?'signal':'inactive',decoded?0.1+v*1.0:0.08,decoded?1:0.35); if(decoded){ m.material.color.multiplyScalar(0.3+v*0.7); m.material.emissive.copy(m.material.color); } });
+        const decoded=phase>=S+1; if(outKey!==decoded){ outKey=decoded; out.draw((g2,w,h,p)=>{ if(decoded){ p.snow(g2,w,h); p.dog(g2,w*0.5,h*0.62,w*0.62); } else p.plain(g2,w,h,P.PIC.lens); }); if(!decoded) out.noise(0.85,5); } // 解碼前只有噪聲，VAE 解碼那一步才變成圖
         den.layers.forEach(m=>tint(P,m,net==='dit'?'flow':'structure',phase>=1&&phase<=S?0.7:0.25)); dl.userData.setText(`${net==='dit'?'DiT（Transformer）':'U-Net（卷積 + attention）'} × ${S} 步${phase>=1&&phase<=S?`（第 ${phase} 步）`:''}`);
         root.updateMatrixWorld(true); beams.hideAll(); if(phase>=0) beams.set(0,new T.Vector3(-6.4,-1.3,0),new T.Vector3(-2.6,-3.0,0),0.3+Math.min(1,cfg/10)*0.7,'flow'); if(phase>=1&&phase<=S) beams.set(1,new T.Vector3(-1.5,-2.6,0),new T.Vector3(-1.5,-1.0,0),0.6,'state'); if(decoded){ beams.set(2,new T.Vector3(0.4,0.9,0),new T.Vector3(2.6,-1.2,0),0.6,'memory'); beams.set(3,new T.Vector3(4.2,-1.2,0),new T.Vector3(4.8,0.9,0),0.6,'memory'); }
         set('phase',phase<0?'—':phase===0?'文字編碼':phase<=S?`去噪 ${phase} / ${S}`:'VAE 解碼'); set('net',net==='dit'?'DiT（Transformer 塊）':'U-Net（卷積 + attention）'); set('where','latent 8×8×4：像素 64×64×3 的 1/48，每步便宜 48 倍'); set('time',`${(S*unit).toFixed(1)} 秒（示意，含解碼）`); set('cfg',String(cfg)); set('q',q,cfg>=10||cfg<2?'bad':'ok'); };
@@ -52,6 +52,10 @@
       const CAMO=(r,c)=>blob(6,5,3.2,2.0)(r,c); const MED=(r,c)=>blob(7,7,1.6,2.4)(r,c);
       let mode='img', prompt='dog', task='camo', frame=0, mem=0;
       const g=new T.Group(); root.add(g); const cells=gridCells(T,P,g,N,0.44,0.48); const tl=P.label('',{size:18}); tl.position.set(0,3.3,0); root.add(tl);
+      const pic=new P.Picture(N*0.48,N*0.48,{px:192}); pic.mesh.position.z=-0.14; g.add(pic.mesh); let picKey=''; const cx=v=>(v+0.5)/N; // 真圖；格子中心 (r, c) 對到畫布 ((c+0.5)/N, (r+0.5)/N)
+      const drawPic=()=>{ const key=`${mode}|${task}|${mode==='vid'?frame:0}`; if(key===picKey) return; picKey=key;
+        pic.draw((g2,w,h,p)=>{ if(mode==='unet'){ if(task==='camo') p.camo(g2,w,h,{cx:cx(6)*w,cy:cx(5)*h,rx:3.2/N*w,ry:2.0/N*h}); else p.tissue(g2,w,h,{cx:cx(7)*w,cy:cx(7)*h,rx:1.6/N*w,ry:2.4/N*h}); return; }
+          p.grass(g2,w,h); const dx=mode==='vid'?frame*0.9:0; p.dogParts(g2,{bx:cx(4.5+dx)*w,by:cx(6)*h,brx:2.6/N*w,bry:2.2/N*h,hx:cx(1.6+dx)*w,hy:cx(4.2)*h,hr:1.0/N*w}); p.ball(g2,cx(9.5)*w,cx(8.5)*h,1.2/N*w); }); };
       const pts=[0,1].map(()=>{ const m=new T.Mesh(new T.SphereGeometry(0.16,14,10),P.mat('signal',{glow:1})); m.visible=false; root.add(m); return m; });
       const occ=new T.Mesh(new T.BoxGeometry(2.4,5.8,0.5),P.mat('structure',{glow:0.2,opacity:0.95})); occ.visible=false; root.add(occ); const ol=P.label('遮蔽物',{size:14}); ol.position.set(0,0,0); occ.add(ol);
       const memG=new T.Group(); memG.position.set(0,-3.4,0); root.add(memG); const memCubes=[]; for(let i=0;i<FR;i++){ const m=new T.Mesh(new T.BoxGeometry(0.5,0.5,0.5),P.mat('memory',{glow:0.4})); m.position.set((i-(FR-1)/2)*0.7,0,0); m.visible=false; memG.add(m); memCubes.push(m); } const ml=P.label('記憶庫（每幀的特徵 + 遮罩）',{size:15}); ml.position.set(0,-0.7,0); memG.add(ml); ml.material.opacity=0;
@@ -61,10 +65,9 @@
       const cellPos=(r,c)=>new T.Vector3((c-(N-1)/2)*0.48,((N-1)/2-r)*0.48,0);
       const maskFn=()=>{ if(mode==='unet') return task==='camo'?CAMO:MED; if(mode==='vid'){ const dx=frame*0.9; return DOG(dx); } return prompt==='dog'?DOG():prompt==='ball'?BALL:DOGBODY(); };
       const paint=()=>{ const vid=mode==='vid', unet=mode==='unet'; const fn=maskFn(); const occluded=vid&&frame===OCC-1; let area=0;
-        cells.forEach(m=>{ const {r,c}=m.userData; const dog=vid?DOG(frame*0.9)(r,c):DOG()(r,c); const ball=BALL(r,c); const hidden=occluded&&c>=5&&c<=8; let col='inactive', glow=0.12;
-          if(!unet){ if(dog){ col='structure'; glow=0.35; } if(ball){ col='structure'; glow=0.45; } } else if((task==='camo'?CAMO:MED)(r,c)){ col='structure'; glow=0.3; }
-          const inMask=fn(r,c); if(inMask&&(!hidden||vid)){ col='flow'; glow=hidden?0.45:0.9; area++; } if(hidden&&!inMask){ col='inactive'; glow=0.05; }
-          tint(P,m,col,glow,hidden&&inMask?0.5:1); });
+        cells.forEach(m=>{ const {r,c}=m.userData; const hidden=occluded&&c>=5&&c<=8; const inMask=fn(r,c); let col='inactive', glow=0.1, op=0.04; // 格子只是遮罩覆蓋層，物件在後面的真圖上
+          if(inMask&&(!hidden||vid)){ col='flow'; glow=hidden?0.45:0.9; op=hidden?0.3:0.55; area++; }
+          tint(P,m,col,glow,op); }); drawPic();
         pts[0].visible=mode==='img'; pts[1].visible=mode==='img'&&prompt==='dogneg'; if(mode==='img'){ pts[0].position.copy(prompt==='ball'?cellPos(8,9):cellPos(6,4)); tint(P,pts[0],'signal',1); pts[1].position.copy(cellPos(4,2)); tint(P,pts[1],'alert',1); }
         occ.visible=occluded; occ.position.copy(cellPos(5.5,6.5)); memCubes.forEach((m,i)=>{ m.visible=vid&&i<mem; }); ml.material.opacity=vid?1:0;
         dec.layers.forEach(m=>tint(P,m,unet?'signal':'flow',0.5)); decL.userData.setText(unet?'輕量解碼器 + adapter（可訓練）':'提示編碼器 + 遮罩解碼器'); enc.layers.forEach(m=>tint(P,m,unet?'inactive':'memory',unet?0.15:0.4));
@@ -97,6 +100,9 @@
       const OBJ=[{k:'dog',id:1,f:dx=>blob(2.5+dx,3,1.5,1.3)},{k:'dog',id:2,f:dx=>blob(8+dx*0.6,3.5,1.6,1.3)},{k:'dog',id:3,f:dx=>blob(5+dx*0.3,8.5,1.7,1.4)},{k:'cat',id:4,f:dx=>blob(9.5-dx*0.5,8.5,1.2,1.1)}];
       const NAME={dog:'狗',cat:'貓',zebra:'斑馬'}; let concept='dog', cmp='sam3', frame=0;
       const g=new T.Group(); root.add(g); const cells=gridCells(T,P,g,N,0.44,0.48); const tl=P.label('',{size:18}); tl.position.set(0,3.3,0); root.add(tl);
+      const pic=new P.Picture(N*0.48,N*0.48,{px:192}); pic.mesh.position.z=-0.14; g.add(pic.mesh); let picKey=-1;
+      const drawPic=()=>{ if(picKey===frame) return; picKey=frame; const dx=frame*1.2; const B=[[2.5+dx,3,1.5,1.3,'dog'],[8+dx*0.6,3.5,1.6,1.3,'dog'],[5+dx*0.3,8.5,1.7,1.4,'dog'],[9.5-dx*0.5,8.5,1.2,1.1,'cat']]; // 和 OBJ 的橢圓一致
+        pic.draw((g2,w,h,p)=>{ p.grass(g2,w,h); B.forEach(([cx,cy,rx,ry,k])=>p.animal(g2,k,(cx+0.5)/N*w,(cy+0.5)/N*h,rx/N*w,ry/N*h)); }); };
       const ids=OBJ.map(o=>{ const l=P.label('',{size:14,color:P.hex('flow')}); l.position.set(0,0,0.4); g.add(l); return l; });
       const pres=new T.Mesh(new T.BoxGeometry(0.5,1,0.5),P.mat('signal',{glow:0.8})); pres.position.set(4.2,-1.2,0); root.add(pres); const prl=P.label('存在 token',{size:15}); prl.position.set(4.2,-2.4,0); root.add(prl);
       const pt=new T.Mesh(new T.SphereGeometry(0.16,14,10),P.mat('signal',{glow:1})); pt.visible=false; root.add(pt);
@@ -105,7 +111,7 @@
       const cellPos=(r,c)=>new T.Vector3((c-(N-1)/2)*0.48,((N-1)/2-r)*0.48,0);
       const found=()=>{ if(cmp==='sam2') return OBJ.filter(o=>o.id===1); return OBJ.filter(o=>o.k===concept); };
       const paint=()=>{ const dx=frame*1.2; const hits=found(); const present=hits.length>0;
-        cells.forEach(m=>{ const {r,c}=m.userData; const o=OBJ.find(o=>o.f(dx)(r,c)); const hit=o&&hits.includes(o); tint(P,m,hit?'flow':o?'structure':'inactive',hit?0.9:o?0.35:0.12); });
+        cells.forEach(m=>{ const {r,c}=m.userData; const o=OBJ.find(o=>o.f(dx)(r,c)); const hit=o&&hits.includes(o); tint(P,m,hit?'flow':'inactive',hit?0.9:0.1,hit?0.55:0.04); }); drawPic();
         OBJ.forEach((o,i)=>{ const hit=hits.includes(o); ids[i].material.opacity=hit?1:0; let sr=0,sc=0,n=0; for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(o.f(dx)(r,c)){ sr+=r; sc+=c; n++; } if(n){ ids[i].position.copy(cellPos(sr/n,sc/n)); ids[i].position.z=0.4; } ids[i].userData.setText(`ID ${o.id}`); });
         pt.visible=cmp==='sam2'; pt.position.copy(cellPos(3,2.5+dx)); const ps=present?0.97:0.03; pres.scale.y=0.05+ps*1.6; pres.position.y=-1.8+pres.scale.y/2; tint(P,pres,present?'signal':'alert',0.8);
         pl.userData.setText(cmp==='sam2'?'提示：一個點':`提示：「${NAME[concept]}」（文字概念）`); tl.userData.setText(cmp==='sam2'?'SAM2：點哪個出哪個':`SAM3：找出圖裡所有的「${NAME[concept]}」${frame?`（第 ${frame+1} 幀，ID 跟著走）`:''}`);
@@ -126,6 +132,6 @@
         {say:'多一個<b>存在 token</b>：先判斷這個概念到底在不在圖裡。問「斑馬」它答否，就不會硬把狗框成斑馬——開放詞彙偵測最常見的錯誤就在這裡。', spot:'存在', run:()=>setup({concept:'zebra'})},
         {say:'影片裡同一套：每幀重新偵測 + 用記憶追蹤，物件移動、互相遮擋時 ID 仍對得上。偵測指標（mAP）和分割指標（IoU）之後在評估分頁看。', spot:'追蹤中', run:()=>setup({concept:'dog',frame:2})},
       ]);
-      ctx.legend([['structure','圖裡的物件'],['flow','命中的實例遮罩 / ID'],['signal','存在：是 / 提示點'],['alert','存在：否']]);
+      ctx.legend([['flow','命中的實例遮罩 / ID'],['signal','存在：是 / 提示點'],['alert','存在：否']]);
       ctx.setCamera({theta:0,phi:1.45}); reset(); } });
 })();

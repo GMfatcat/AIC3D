@@ -4,8 +4,9 @@
     init(ctx){ const {THREE:T,P,root,ctrl}=ctx; const IN=8; let k=3, stride=1, layers=1, pos=0, hoverIdx=-1;
       const cell=0.5; const inG=new T.Group(); inG.position.set(-3.6,0,0); root.add(inG); const inCells=[];
       // 一張簡單的「影像」：對角邊緣
-      for(let i=0;i<IN;i++) for(let j=0;j<IN;j++){ const v=(i+j>7)?0.9:0.15; const m=new T.Mesh(new T.BoxGeometry(cell*0.92,cell*0.92,0.25),P.mat('memory',{glow:0.1+v*0.5,opacity:0.95})); m.position.set((j-(IN-1)/2)*cell,((IN-1)/2-i)*cell,0); inG.add(m); inCells.push({m,i,j,v}); }
-      const il=P.label('輸入 8×8',{size:20}); il.position.set(0,2.5,0); inG.add(il);
+      const pic=new P.Picture(3.4,3.4,{px:128,draw:(g2,w,h,p)=>{ p.grass(g2,w,h); p.dog(g2,w*0.52,h*0.58,w*0.58); }}); pic.mesh.position.set(-7.6,0,0); root.add(pic.mesh); const pl=P.label('原圖',{size:20}); pl.position.set(-7.6,2.5,0); root.add(pl); const LUM=pic.lum(IN); // 真的圖取樣成 8×8 灰階當輸入
+      for(let i=0;i<IN;i++) for(let j=0;j<IN;j++){ const v=0.1+LUM[i*IN+j]*0.85; const m=new T.Mesh(new T.BoxGeometry(cell*0.92,cell*0.92,0.25),P.mat('memory',{glow:0.1+v*0.5,opacity:0.95})); m.position.set((j-(IN-1)/2)*cell,((IN-1)/2-i)*cell,0); inG.add(m); inCells.push({m,i,j,v}); }
+      const il=P.label('取樣成 8×8 灰階',{size:20}); il.position.set(0,2.5,0); inG.add(il);
       const kern=new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(1,1,0.4)),new T.LineBasicMaterial({color:P.C('signal')})); inG.add(kern);
       const outG=new T.Group(); outG.position.set(3.2,0,0); root.add(outG); let outCells=[], outMeshes=[]; const ol=P.label('',{size:20}); ol.position.set(0,2.5,0); outG.add(ol);
       const beams=new P.BeamSet(1,{maxR:0.06,minR:0.04}); root.add(beams.group);

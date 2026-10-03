@@ -33,7 +33,7 @@ def test_training_tab_sits_between_model_and_optimize(site):
 
 def test_training_tour_and_glossary_terms_exist(site):
     tour = site.ev("App.tours.find(t => t.id === 'train')")
-    assert tour and [s[0] for s in tour["steps"]][:4] == ["train-step", "sft", "rl", "train-mem", "optimizers", "activations"]
+    assert tour and [s[0] for s in tour["steps"]][:4] == ["train-step", "sft", "rl", "train-mem"]
     assert site.ev("App.glossary.terms.filter(t => t.tab === 'train').length") >= 12
     for alias in ["SFT", "GRPO", "KL", "RLVR", "ZeRO", "gradient checkpointing", "learning rate"]:
         assert site.ev("a => App.termify('x ' + a + ' y').includes('a class=\"term\"')", alias), alias

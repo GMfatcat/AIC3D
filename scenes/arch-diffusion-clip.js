@@ -2,16 +2,16 @@
 (function(){
   /* ---------------- Diffusion Model ---------------- */
   App.register({ id:'diffusion', tab:'arch', question:'噪聲怎麼變成圖？',
-    init(ctx){ const {THREE:T,P,root,ctrl}=ctx; const N=8, TMAX=1000;
-      const PAT=['00111100','01111110','11111111','11111111','01111110','00111100','00011000','00000000'].map(r=>[...r].map(c=>c==='1'?0.9:0.1)); // 一顆愛心：示意的「原圖」
-      const X0=PAT.flat().map(v=>v*2-1); let seed=5; const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280;}; const gauss=()=>{ let s=0; for(let i=0;i<6;i++) s+=rnd(); return (s-3)/1.2; };
+    init(ctx){ const {THREE:T,P,root,ctrl}=ctx; const N=12, TMAX=1000;
+      const pic=new P.Picture(2.6,2.6,{px:96,draw:(g2,w,h,p)=>{ p.snow(g2,w,h); p.dog(g2,w*0.5,h*0.6,w*0.62); }}); pic.mesh.position.set(-5.2,0,0); root.add(pic.mesh); // 原圖：真的畫一隻狗，取樣成 12×12 灰階當 x₀
+      const X0=pic.lum(N).map(v=>v*2-1); let seed=5; const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280;}; const gauss=()=>{ let s=0; for(let i=0;i<6;i++) s+=rnd(); return (s-3)/1.2; };
       const EPS=X0.map(()=>gauss()); // 前向用的固定噪聲（同一張圖每個 t 都看得出是「同一條路」）
       let dir='fwd', t=0, sched='linear', S=20, k=0, X=X0.slice();
       const abar=(tt,sc=sched)=>{ if(sc==='cosine'){ const f=u=>Math.cos((u/TMAX+0.008)/1.008*Math.PI/2)**2; return Math.max(1e-4,f(tt)/f(0)); } let a=1; for(let i=1;i<=tt;i++) a*=1-(1e-4+(0.02-1e-4)*(i-1)/(TMAX-1)); return Math.max(1e-4,a); };
       const abarMemo={}; const ab=tt=>{ const key=sched+'|'+Math.round(tt); return abarMemo[key]??(abarMemo[key]=abar(Math.round(tt))); };
-      const g=new T.Group(); root.add(g); const cells=[]; for(let i=0;i<N*N;i++){ const m=new T.Mesh(new T.BoxGeometry(0.55,0.55,0.3),P.mat('signal',{glow:0.4})); m.position.set(((i%N)-(N-1)/2)*0.6,((N-1)/2-Math.floor(i/N))*0.6,0); g.add(m); cells.push(m); }
+      const g=new T.Group(); root.add(g); const cells=[]; for(let i=0;i<N*N;i++){ const m=new T.Mesh(new T.BoxGeometry(0.4,0.4,0.3),P.mat('signal',{glow:0.4})); m.position.set(((i%N)-(N-1)/2)*0.44,((N-1)/2-Math.floor(i/N))*0.44,0); g.add(m); cells.push(m); }
       const tl=P.label('',{size:19}); tl.position.set(0,2.95,0); root.add(tl);
-      const ref=new T.Group(); ref.position.set(-5.2,0,0); root.add(ref); for(let i=0;i<N*N;i++){ const v=(X0[i]+1)/2; const m=new T.Mesh(new T.BoxGeometry(0.3,0.3,0.15),P.mat('inactive',{glow:0.2+v*0.6})); m.position.set(((i%N)-(N-1)/2)*0.33,((N-1)/2-Math.floor(i/N))*0.33,0); ref.add(m); } const rl=P.label('原圖 x₀',{size:16}); rl.position.set(-5.2,1.7,0); root.add(rl);
+      const rl=P.label('原圖 x₀',{size:16}); rl.position.set(-5.2,1.7,0); root.add(rl);
       // 排程曲線：右邊 20 根柱 = ᾱ_t 隨 t 下降
       const SX=5.0; const bars=[]; for(let i=0;i<20;i++){ const m=new T.Mesh(new T.BoxGeometry(0.16,1,0.3),P.mat('memory',{glow:0.4})); m.position.set(SX-1.9+i*0.2,-1.0,0); root.add(m); bars.push(m); } const sl=P.label('ᾱ_t：還剩多少原圖',{size:16}); sl.position.set(SX,1.9,0); root.add(sl);
       const mark=new T.Mesh(new T.SphereGeometry(0.12,12,8),P.mat('alert',{glow:1})); root.add(mark);
@@ -41,7 +41,7 @@
         {say:'<b>前向</b>只是加噪：每一步把一點原圖換成高斯噪聲，到 t = 1000 什麼都不剩。ᾱ_t 記錄還剩多少原圖，<b>噪聲排程</b>決定它掉多快（餘弦排程前段掉得慢）。', cam:{theta:0,phi:1.45}, spot:'t（加噪到第幾步）', run:()=>setup({t:400})},
         {say:'訓練時隨機挑一個 t，把 x_t 和 t 丟給模型，要它猜<b>加進去的那份噪聲</b>：loss = ‖ε − ε̂‖²。這是整個擴散模型唯一要學的東西，網路本身可以是 U-Net 或 <a href="#transformer">Transformer</a>（DiT）。', spot:'方向', run:()=>setup({t:700})},
         {say:'<b>反向</b>從純噪聲開始：每步用模型猜的噪聲算出「此刻以為的原圖」，再往前退一小步重新加對應的噪聲。DDPM 原版走 1000 步，這裡用 20 步的 DDIM 確定性更新，看圖一步步浮出來。', spot:'單步', run:()=>setup({dir:'rev',S:20,k:12})},
-        {say:'步數越少越快但越糙：拉到 4 步還認得出愛心，1 步就糊了。<b>flow matching</b> 把路徑改成直線，本來就只需要幾步；真正的圖像模型在 <a href="#ldm">Latent Diffusion</a> 那頁，噪聲加在壓縮過的 latent 上。', spot:'取樣步數', run:()=>setup({dir:'rev',S:4,k:4})},
+        {say:'步數越少越快但越糙：拉到 4 步還認得出狗，1 步就糊了。<b>flow matching</b> 把路徑改成直線，本來就只需要幾步；真正的圖像模型在 <a href="#ldm">Latent Diffusion</a> 那頁，噪聲加在壓縮過的 latent 上。', spot:'取樣步數', run:()=>setup({dir:'rev',S:4,k:4})},
       ]);
       ctx.legend([['signal','像素亮度'],['inactive','原圖（參考）'],['memory','ᾱ_t 排程'],['alert','現在的 t']]);
       ctx.setCamera({theta:0,phi:1.45}); reset(); } });
@@ -83,13 +83,13 @@
 
   /* ---------------- CLIP ---------------- */
   App.register({ id:'clip', tab:'arch', question:'文字和圖為什麼能比？',
-    init(ctx){ const {THREE:T,P,root,ctrl}=ctx; const NAMES=['狗','貓','車','拉麵','山','書','咖啡','鞋']; const MAXN=8;
+    init(ctx){ const {THREE:T,P,root,ctrl}=ctx; const NAMES=['狗','貓','車','拉麵','山','書','咖啡','鞋']; const SPR={狗:'dog',貓:'cat',車:'car',拉麵:'ramen',山:'mountain',書:'book',咖啡:'coffee',鞋:'shoe'}; const MAXN=8;
       let mode='train', N=4, tau=0.07, stepN=0; const MAXSTEP=20;
       let seed=4; const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280;}; const BASE=Array.from({length:MAXN},()=>Array.from({length:MAXN},()=>0.15+rnd()*0.15)); // 訓練前：隨機的、大家差不多
       const sim=(i,j)=>{ const p=stepN/MAXSTEP; const diag=i===j; return diag?BASE[i][j]+(0.92-BASE[i][j])*p:BASE[i][j]*(1-p*0.7); };
       const g=new T.Group(); root.add(g); let cells=[], hov=null; const S=0.7;
       const build=()=>{ P.clear(g); cells=[]; const off=(N-1)/2*S;
-        for(let i=0;i<N;i++){ const im=new T.Mesh(new T.BoxGeometry(0.6,0.6,0.6),P.mat('signal',{glow:0.5})); im.position.set(-off-1.3,off-i*S,0); g.add(im); const il=P.label(`圖：${NAMES[i]}`,{size:15}); il.position.set(-off-2.4,off-i*S,0); g.add(il);
+        for(let i=0;i<N;i++){ const im=new P.Picture(0.62,0.62,{px:64,draw:(g2,w,h,p)=>{ p.plain(g2,w,h); p[SPR[NAMES[i]]](g2,w/2,h/2,w*0.8); }}); im.mesh.position.set(-off-1.3,off-i*S,0); g.add(im.mesh); const il=P.label(`圖：${NAMES[i]}`,{size:15}); il.position.set(-off-2.4,off-i*S,0); g.add(il);
           const tx=new T.Mesh(new T.BoxGeometry(0.6,0.6,0.6),P.mat('flow',{glow:0.5})); tx.position.set(-off+i*S,off+1.3,0); g.add(tx); const tl=P.label(`「一張${NAMES[i]}的照片」`,{size:13}); tl.position.set(-off+i*S,off+(i%2?2.5:1.95),0); g.add(tl); } // 文字標籤兩排交錯，才不會疊成樓梯
         for(let i=0;i<N;i++) for(let j=0;j<N;j++){ const m=new T.Mesh(new T.BoxGeometry(S*0.85,S*0.85,0.3),P.mat('memory',{glow:0.2})); m.position.set(-off+j*S,off-i*S,0); m.userData={i,j}; g.add(m); cells.push(m); }
         const hl=P.label('圖 × 字的相似度矩陣（對角線 = 配對）',{size:17}); hl.position.set(0,-off-1.0,0); g.add(hl);

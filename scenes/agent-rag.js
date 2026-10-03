@@ -55,16 +55,14 @@
       const QS=[{q:'Q3 哪個產品營收掉最多？',vision:2,ocr:4},{q:'去年市占第一是誰？',vision:5,ocr:3}];
       const PH=['嵌入頁面','嵌入查詢','檢索']; let mode='vision', qi=0, phase=-1;
       const g=new T.Group(); root.add(g); const pages=[]; const PX=i=>(i-2.5)*2.3;
-      PAGES.forEach((p,i)=>{ const card=new T.Group(); card.position.set(PX(i),0,0); g.add(card); const body=new T.Mesh(new T.BoxGeometry(1.7,2.2,0.12),P.mat('structure',{glow:0.08,opacity:0.95})); card.add(body); const parts=[];
-        if(p.kind==='text'){ for(let r=0;r<5;r++){ const b=new T.Mesh(new T.BoxGeometry(1.2-(r===4?0.5:0),0.12,0.06),P.mat('inactive',{glow:0.3})); b.position.set(r===4?-0.25:0,0.7-r*0.32,0.1); card.add(b); parts.push({m:b,visual:false}); } }
-        else if(p.kind==='table'){ for(let r=0;r<4;r++) for(let c=0;c<3;c++){ const b=new T.Mesh(new T.BoxGeometry(0.34,0.22,0.06),P.mat('memory',{glow:0.35})); b.position.set((c-1)*0.42,0.6-r*0.36,0.1); card.add(b); parts.push({m:b,visual:true}); } }
-        else { [0.5,1.2,0.8,0.3].forEach((h,c)=>{ const b=new T.Mesh(new T.BoxGeometry(0.22,h,0.06),P.mat('signal',{glow:0.45})); b.position.set((c-1.5)*0.34,-0.5+h/2,0.1); card.add(b); parts.push({m:b,visual:true}); }); const t=new T.Mesh(new T.BoxGeometry(1.2,0.12,0.06),P.mat('inactive',{glow:0.3})); t.position.set(0,0.85,0.1); card.add(t); parts.push({m:t,visual:false}); }
-        const l=P.label(`第 ${i+1} 頁 ${p.t}`,{size:14}); l.position.set(0,-1.45,0); card.add(l); const v=P.label('',{size:12}); v.position.set(0,1.45,0); card.add(v); pages.push({card,body,parts,vl:v,...p}); });
+      PAGES.forEach((p,i)=>{ const card=new T.Group(); card.position.set(PX(i),0,0); g.add(card); const pg=new P.Picture(1.7,2.2,{px:96}); card.add(pg.mesh); const body=pg.mesh; // 頁面縮圖是真的畫出來的
+        const edge=new T.LineSegments(new T.EdgesGeometry(new T.PlaneGeometry(1.74,2.24)),new T.LineBasicMaterial({color:P.C('structure'),transparent:true,opacity:0.7})); edge.position.z=0.01; card.add(edge);
+        const l=P.label(`第 ${i+1} 頁 ${p.t}`,{size:14}); l.position.set(0,-1.45,0); card.add(l); const v=P.label('',{size:12}); v.position.set(0,1.45,0); card.add(v); pages.push({card,body,pg,edge,vl:v,key:null,...p}); });
       const qCube=new T.Mesh(new T.BoxGeometry(0.6,0.6,0.6),P.mat('signal',{glow:0.5})); qCube.position.set(0,3.6,0); root.add(qCube); const qL=P.label('',{size:18}); qL.position.set(0,4.3,0); root.add(qL);
       const beam=new P.BeamSet(1,{color:'flow',maxR:0.06,minR:0.04}); root.add(beam.group); const lost=P.label('',{size:13,color:P.hex('alert')}); lost.position.set(0,-2.4,0); root.add(lost);
       const paint=()=>{ const vis=mode==='vision'; const q=QS[qi]; const hit=vis?q.vision:q.ocr; qL.userData.setText('問題：'+q.q);
-        pages.forEach((p,i)=>{ const isHit=phase>=2&&i===hit; p.parts.forEach(pt=>{ const dim=!vis&&pt.visual; Motion.tween(pt.m.material,{opacity:dim?0.12:1},{ms:300}); pt.m.material.transparent=true; });
-          Motion.tween(p.card.position,{y:isHit?0.9:0},{ms:400,ease:'inOut'}); p.body.material.color.copy(P.C(isHit?'flow':'structure')); p.body.material.emissive.copy(p.body.material.color); p.body.material.emissiveIntensity=isHit?0.5:0.08;
+        pages.forEach((p,i)=>{ const isHit=phase>=2&&i===hit; const key=vis?'v':'o'; if(p.key!==key){ p.key=key; p.pg.draw((g2,w,h,pp)=>pp.page(g2,w,h,{kind:p.t==='封面'?'cover':p.kind,faded:!vis})); } // OCR 模式：表格、圖表褪成灰
+          Motion.tween(p.card.position,{y:isHit?0.9:0},{ms:400,ease:'inOut'}); p.pg.tint(isHit?'flow':null); p.edge.material.color.copy(P.C(isHit?'flow':'structure')); p.edge.material.opacity=isHit?1:0.7;
           p.vl.userData.setText(phase>=0?(vis?'整頁影像 → 多向量':(p.kind==='text'?'OCR 文字 → 1 向量':'OCR 文字（圖表丟失）→ 1 向量')):''); });
         beam.hideAll(); if(phase>=2){ root.updateMatrixWorld(true); beam.set(0,new T.Vector3(0,3.3,0),new T.Vector3(PX(hit),2.0,0),0.7,'flow'); }
         lost.userData.setText(vis?'':'OCR 只留文字：表格的欄位關係、圖表的高低都不見了');
@@ -85,7 +83,7 @@
         {say:'問一個要看圖才答得出的問題：Vision RAG 找到第 3 頁的營收圖表；OCR 版只能找到文字提到「營收」的第 5 頁，答案就錯了。', spot:'檢索到的頁', run:()=>setup({phase:2})},
         {say:'生成端也換成 <b>VLM</b>：直接讀檢索到的頁面影像來回答。代價是多向量索引比較大、VLM 比純文字 LLM 貴，所以通常只對圖表多的文件這樣做。', spot:'生成端', run:()=>setup({phase:2})},
       ]);
-      ctx.legend([['structure','頁面'],['inactive','文字'],['memory','表格'],['signal','圖表 / 問題'],['flow','檢索到的頁']]);
+      ctx.legend([['structure','頁面'],['signal','問題'],['flow','檢索到的頁']]);
       ctx.setCamera({theta:0,phi:1.4}); reset(); } });
 
   /* ---------------- WeMM-Embedding ---------------- */

@@ -319,7 +319,7 @@
 
 ## P11 — 圖像用真圖（2026-10-03 使用者提出，這一輪內容做完再做）
 
-- [ ] 凡是影像輸入 / 輸出的場景（CNN、CRNN、YOLO、OCR、Diffusion、Latent Diffusion、CLIP、SAM2、SAM3、Vision RAG…）改用真正的圖片貼圖呈現，不要只有 3D 立方體像素
+- [x] 凡是影像輸入 / 輸出的場景（CNN、CRNN、YOLO、OCR、Diffusion、Latent Diffusion、CLIP、SAM2、SAM3、Vision RAG…）改用真正的圖片貼圖呈現，不要只有 3D 立方體像素
 - 圖隨便給一些動物、人或物品即可，也可以依那頁主軸設計；離線單檔要內嵌（base64 或程式畫的小圖），注意檔案大小
 
 ---

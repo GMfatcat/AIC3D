@@ -3,9 +3,8 @@
   App.register({ id:'yolo-v10', tab:'model', question:'為什麼 YOLOv10 可以不做 NMS？',
     init(ctx){ const {THREE:T,P,root,ctrl}=ctx; let head='o2o', stage=3; // stage 0 空、1 候選點、2 打分、3 出框
       // 影像平面 + 三個「物件」（鏡頭模組上的瑕疵框示意）
-      const img=new T.Mesh(new T.PlaneGeometry(6,4),P.mat('inactive',{glow:0.15,extra:{color:new T.Color(P.theme('--bg2'))}})); img.position.set(-4.2,0.6,0); root.add(img);
       const OBJS=[{x:-1.8,y:0.9,w:1.4,h:1.0,label:'刮傷'},{x:0.9,y:-0.6,w:1.8,h:1.2,label:'汙點'},{x:1.6,y:1.2,w:0.9,h:0.7,label:'氣泡'}];
-      OBJS.forEach(o=>{ const m=new T.Mesh(new T.CircleGeometry(Math.min(o.w,o.h)*0.35,24),P.mat('structure',{glow:0.3,opacity:0.6})); m.position.set(o.x,o.y,0.02); img.add(m); });
+      const KIND={刮傷:'scratch',汙點:'spot',氣泡:'bubble'}; const pic=new P.Picture(6,4,{px:384,draw:(g2,w,h,p)=>p.lens(g2,w,h,OBJS.map(o=>({x:(o.x+3)/6*w,y:(2-o.y)/4*h,w:o.w/6*w,h:o.h/4*h,kind:KIND[o.label]})))}); const img=pic.mesh; img.position.set(-4.2,0.6,0); root.add(img); // 鏡頭模組的真圖，瑕疵畫在框的位置
       const il=P.label('輸入影像',{size:20}); il.position.set(0,2.4,0); img.add(il);
       // backbone pyramid P3 / P4 / P5
       const pyr=new T.Group(); pyr.position.set(0.6,0.6,0); root.add(pyr); [[2.4,'P3（stride 8）'],[1.6,'P4（16）'],[1.0,'P5（32）']].forEach(([s,l],i)=>{ const m=new T.Mesh(new T.BoxGeometry(s,s*0.67,0.35),P.mat(['memory','state','signal'][i],{glow:0.3,opacity:0.9})); m.position.set(i*0.35,(i-1)*-1.5,i*0.6); pyr.add(m); const lb=P.label(l,{size:15}); lb.position.set(i*0.35+s/2+0.6,(i-1)*-1.5,i*0.6); pyr.add(lb); });
@@ -51,7 +50,8 @@
       const MODES=[{n:'Tiny',res:'512²',tok:64},{n:'Small',res:'640²',tok:100},{n:'Base',res:'1024²',tok:256},{n:'Large',res:'1280²',tok:400}]; const DOC_TOKENS=1000;
       const TEXT='Q25 保養手冊 §3.2：更換對焦馬達前先斷電，鬆開四顆 M2 螺絲，取下導光板，確認 FPC 無折痕後再裝回。校正流程見附錄 B。';
       // 上排：encoder 流程
-      const dense=new T.Group(); dense.position.set(-5.2,1.6,0); root.add(dense); const G=16; for(let i=0;i<G*G;i++){ const m=new T.Mesh(new T.BoxGeometry(0.15,0.15,0.1),P.mat('memory',{glow:0.25,opacity:0.9})); m.position.set((i%G-(G-1)/2)*0.17,((G-1)/2-Math.floor(i/G))*0.17,0); dense.add(m); }
+      const dense=new T.Group(); dense.position.set(-5.2,1.6,0); root.add(dense); const G=16; for(let i=0;i<G*G;i++){ const m=new T.Mesh(new T.BoxGeometry(0.15,0.15,0.1),P.mat('memory',{glow:0.25,opacity:0.45})); m.position.set((i%G-(G-1)/2)*0.17,((G-1)/2-Math.floor(i/G))*0.17,0); dense.add(m); }
+      const pg=new P.Picture(2.9,2.9,{px:160,draw:(g2,w,h,p)=>p.page(g2,w,h,{kind:'manual'})}); pg.mesh.position.z=-0.12; dense.add(pg.mesh); // patch 格後面是那一頁文件
       const dl=P.label('',{size:15}); dl.position.set(0,1.75,0); dense.add(dl);
       const comp=new T.Group(); comp.position.set(-1.6,1.6,0); root.add(comp); let cCells=[]; const cl=P.label('',{size:15}); cl.position.set(0,1.75,0); comp.add(cl);
       const conv=new T.Mesh(new T.ConeGeometry(0.9,1.1,4,1,true),P.mat('flow',{glow:0.2,opacity:0.2,extra:{side:T.DoubleSide}})); conv.rotation.z=Math.PI/2; conv.position.set(-3.4,1.6,0); root.add(conv); const convL=P.label('16× 卷積壓縮',{size:14}); convL.position.set(-3.4,0.5,0); root.add(convL);
