@@ -285,6 +285,22 @@
 
 ---
 
+## P8 — 擴充內容（2026-10-03 使用者提出，細節待討論）
+
+- [ ] 壓縮與量化分頁加 **LoRA 系列**：LoRA、QLoRA、rsLoRA 等（低秩適配：凍結原權重、訓練兩個小矩陣；QLoRA 把基底量化到 4 bit 再訓；rsLoRA 調 scale 讓高 rank 穩定）
+- [ ] 完整模型分頁加 **rerank model**（cross-encoder：query 與候選一起進模型打分，對照 embedding 的 bi-encoder）
+- [ ] Agent 分頁加 **RAG 系列**：RAG、Vision RAG、WeMM
+- [ ] 新增一個分頁講 **訓練**：初步想法是 SFT 與 RL（具體內容另外討論）
+- 每個新場景都要照 P6 / P7 的慣例：型錄 show / interact / spin、導讀 4 步、怎麼玩三行、詞彙表補詞、導覽路線視情況加站
+
+## P9 — 「關於」與外部連結（2026-10-03 使用者提出）
+
+- [ ] 頂欄加「關於」鈕：按下顯示這個網頁的簡潔說明
+- [ ] 同一處列出外部連結，來源是一個**本地 JSON**（可以自己新增、編輯），每筆：名稱、URL、類型；依類型用不同 icon：Web、Git 站（Gitea / GitHub / GitLab…）、YouTube、X、Instagram、Threads
+- 待決定：JSON 放哪（`dist/links.json` 隨 build 複製 vs 內嵌）、離線單檔部署下怎麼讀（file:// 不能 fetch，可能要內嵌成 `<script>` 或在 build 時併進去）
+
+---
+
 ## 附錄：38 個場景一覽
 
 | id | 顯示內容 | 互動 |
