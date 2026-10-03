@@ -21,6 +21,12 @@ const T = [
   {id:'gradient', tab:'arch', title:'梯度消失 / 爆炸', aka:['梯度消失','梯度爆炸'], short:'誤差往回傳時被連乘到趨近 0 或無限大。', body:'每層的導數小於 1 連乘就消失、大於 1 就爆炸。旁路（殘差）讓梯度有一條直通路徑，這是深層網路訓得起來的關鍵。', see:['residual','rnn','mhc']},
   {id:'embedding', tab:'arch', title:'embedding（嵌入向量）', aka:['embedding','嵌入向量'], short:'把詞或句子變成空間裡的一個點。', body:'訓練目標是讓語境相似的詞靠近，所以「語意相近」變成「距離相近」。sentence embedding 把整句壓成一個點，拿來做檢索。', see:['embedding','minilm']},
   {id:'mean-pooling', tab:'arch', title:'mean pooling', aka:['mean pooling'], short:'把一串向量平均成一個。', body:'不管一句話有幾個 token，平均之後只剩一個向量，再做 L2 正規化。一句話 = 一個點。', see:['minilm']},
+  {id:'diffusion', tab:'arch', title:'擴散模型', aka:['擴散模型','加噪','去噪','DDPM','DDIM'], short:'前向把資料一步步換成噪聲，模型學著反向一步步去掉噪聲。', body:'訓練只做一件事：隨機挑一個 t，猜加進 x_t 的那份噪聲。生成時從純噪聲出發，每步用猜的噪聲退一小步。DDPM 走一千步，DDIM 用確定性更新幾十步就夠，flow matching 把路徑拉直後更少。', see:['diffusion']},
+  {id:'noise-schedule', tab:'arch', title:'噪聲排程', aka:['噪聲排程','排程'], short:'ᾱ_t：到第 t 步還剩多少原圖的曲線。', body:'線性排程後段掉得太快、前段幾乎沒加噪；餘弦排程比較平均。取樣步數少時排程選得好壞差很多。', see:['diffusion']},
+  {id:'flow-matching', tab:'arch', title:'flow matching', aka:['flow matching'], short:'把噪聲到資料的路徑改成直線，學速度場而不是噪聲。', body:'路徑直，取樣就能用很少步；現在的圖像與影片模型（SD3、FLUX 一類）多半用它取代原本的 DDPM 目標。', see:['diffusion']},
+  {id:'masked-diffusion', tab:'arch', title:'遮罩擴散（Diffusion LLM）', aka:['遮罩擴散','Diffusion LLM','LLaDA','Gemini Diffusion'], short:'把整句當遮罩噪聲，每步平行預測所有位置、留下有把握的幾個。', body:'同一座 Transformer，訓練目標從「猜下一個 token」換成「猜被遮住的 token」，遮罩比例隨機。生成時一步填多個、低信心的下一步可改，也天然會填中間；代價是每步都是整句前向。', see:['dllm','diffusion']},
+  {id:'contrastive', tab:'arch', title:'對比學習', aka:['對比學習','CLIP','負樣本'], short:'把配對的拉近、不配對的推遠，讓兩種東西落在同一個空間。', body:'CLIP 一個 batch 裡 N 張圖配 N 句話，N×N 相似度矩陣只有對角線該亮；每列每欄各做一次 softmax 交叉熵，溫度 τ 控制集中程度。batch 越大負樣本越多。', see:['clip','wemm']},
+  {id:'zero-shot', tab:'arch', title:'zero-shot', aka:['zero-shot'], short:'沒看過這個任務的標註資料也能做：拿文字描述當候選類別比相似度。', body:'CLIP 把類別名寫成「一張 X 的照片」，哪句和圖最像就是哪類，不用分類頭、不用重訓。', see:['clip']},
   // ---- 模型積木 ----
   {id:'residual', tab:'block', title:'殘差連接（旁路）', aka:['殘差','旁路','skip connection'], short:'把輸入直接加到輸出的那條直通路徑。', body:'每層輸出 = x + F(x)。導數裡那個「1」讓梯度不管多深都有直通路徑，block 只需要學「該改多少」。mHC 把這條路加寬成多條流。', see:['residual','mhc']},
   {id:'doubly-stochastic', tab:'block', title:'雙隨機矩陣', aka:['雙隨機矩陣','doubly stochastic'], short:'每列、每欄加總都是 1 的非負矩陣。', body:'乘上去是各流的凸組合，譜範數不超過 1，所以不會放大訊號。mHC 用 Sinkhorn-Knopp 把任意矩陣投影成它。', see:['mhc']},

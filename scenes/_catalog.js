@@ -10,6 +10,9 @@ App.catalogAdd([
   {id:'gdn', tab:'arch', title:'Gated DeltaNet 系列', show:'一個 4×4 的狀態矩陣。每個 token 進來先沿它的 key 方向擦掉舊值（紅閃），再寫入新值（青綠閃）。', interact:'單步看兩個半步、拉 β 與 α 看擦寫強度與遺忘。', question:'delta rule 的擦寫在做什麼？', spin:false},
   {id:'jev', tab:'arch', title:'Jev-like 系列', show:'左邊是一般 LLM 一顆一顆冒 token；右邊是 Jev：同一段 state 一次 forward，四個答案槽位同時亮，槽位裡是機率直方圖。', interact:'單步看左邊生成、切換或自己打一段 state 看右邊槽位即時變、拉 temperature 看校準。', question:'一次 forward 讀機率 vs 逐 token 生成，差在哪？', spin:false},
   {id:'embedding', tab:'arch', title:'Embedding 系列', show:'三群語意點雲：動物、食物、技術。丟一個新詞進去，它會落下並連到最近的三個鄰居。', interact:'選四個新詞之一，看落點與最近鄰的距離；清除再試另一個。', question:'「相近」為什麼變成「距離近」？', spin:true},
+  {id:'diffusion', tab:'arch', title:'Diffusion Model', show:'中間一張 8×8 的小圖，拉 t 看它一步步被換成噪聲；右邊一排柱是噪聲排程 ᾱ_t。切到反向，從純噪聲開始每步去掉一點模型猜的噪聲，圖慢慢浮出來。', interact:'拉 t、切線性 / 餘弦排程；切反向去噪後播放，把取樣步數從 20 拉到 4 看差別；滑到任一像素讀亮度。', question:'噪聲怎麼變成圖？', spin:false},
+  {id:'dllm', tab:'arch', title:'Diffusion LLM（LLaDA / Gemini Diffusion）', show:'一排 12 個 token 一開始全是遮罩。遮罩擴散每一步同時預測所有位置、只留最有把握的幾個；自回歸則一次一個、從左到右。', interact:'切兩種生成方式各單步走一遍、拉去噪步數看步數少到幾步還湊得出整句；滑到任一 token 看模型對它的信心。', question:'不逐字生成，一次生整句？', spin:false},
+  {id:'clip', tab:'arch', title:'CLIP', show:'左邊一欄影像、上面一排文字描述，中間 N×N 的相似度矩陣：訓練前每格差不多亮，訓練後只有對角線（真正配對的）亮。', interact:'播放對比訓練、拉 batch 大小看負樣本數、拉溫度；切 zero-shot 看一張圖對四句 prompt 的機率；滑到任一格讀相似度。', question:'文字和圖為什麼能比？', spin:false},
   // ---- Tab 2 Model Block ----
   {id:'attention', tab:'block', title:'Attention', show:'一排 token，每個頭上一支 K 箭頭、腳下一根 V 柱。橘色 Q 箭頭跟誰平行，連到誰的線就粗。', interact:'拖 Q 箭頭改方向、滑到任一 token 當 Query、拉溫度看權重集中或攤平。', question:'attention 權重怎麼來的？', spin:false},
   {id:'residual', tab:'block', title:'Residual Block', show:'12 層的主路徑旁邊多一條旁路管。訊號的粗細隨每層增益變，顏色告訴你它在消失（灰）還是爆炸（紅）。', interact:'關掉旁路看訊號一路變灰，把增益拉過 1 看它爆炸；滑到任一層讀它進出的幅度。', question:'旁路為什麼救得了深層訓練？', spin:true},
