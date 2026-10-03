@@ -36,6 +36,8 @@
       ['sft','同一座塔換資料：對話範例，只有回答段算 loss。'],
       ['rl','SFT 之後用獎勵再推一把：一組回答、相對優勢、KL 鏈。'],
       ['train-mem','為什麼訓練比推論貴 8 倍：梯度、optimizer 狀態、activation 都要放進 GPU。'],
+      ['optimizers','更新那一步的細節：SGD、momentum、Adam、AdamW、Muon 下同一個山谷。'],
+      ['activations','層與層中間的非線性：為什麼 sigmoid 會梯度消失、softmax 的溫度在調什麼。'],
       ['lora','不訓練全部權重：LoRA 只練兩個小矩陣，QLoRA 再把底模壓到 4 bit。'],
       ['qat','如果最後要量化上線：訓練時就模擬量化，讓權重自己靠到格點。'],
     ]},
