@@ -7,7 +7,7 @@ import pytest
 
 CATALOG = (pathlib.Path(__file__).resolve().parents[1] / "scenes" / "_catalog.js").read_text(encoding="utf-8")
 SCENE_IDS = re.findall(r"\{id:'([\w-]+)'", CATALOG)
-assert len(SCENE_IDS) == 38, SCENE_IDS
+assert len(SCENE_IDS) == 42, SCENE_IDS
 
 
 @pytest.mark.parametrize("scene_id", SCENE_IDS)

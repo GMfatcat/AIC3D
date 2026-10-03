@@ -290,7 +290,14 @@
 - [ ] 壓縮與量化分頁加 **LoRA 系列**：LoRA、QLoRA、rsLoRA 等（低秩適配：凍結原權重、訓練兩個小矩陣；QLoRA 把基底量化到 4 bit 再訓；rsLoRA 調 scale 讓高 rank 穩定）
 - [ ] 完整模型分頁加 **rerank model**（cross-encoder：query 與候選一起進模型打分，對照 embedding 的 bi-encoder）
 - [ ] Agent 分頁加 **RAG 系列**：RAG、Vision RAG、WeMM
-- [ ] 新增一個分頁講 **訓練**：初步想法是 SFT 與 RL（具體內容另外討論）
+- [x] 新增一個分頁講 **訓練**（2026-10-03 決定，第一批做）：分頁放在「完整模型」之後、「壓縮與量化」之前；數字鍵切分頁改 1–7
+  - [x] `train-step` 訓練一步：token 進塔、每個位置一根預測機率柱、loss = 正確那根有多矮；紅色梯度往回流、權重磚更新。learning rate、batch 大小、四個半步
+  - [x] `sft` SFT：同一座塔、資料換成對話模板 + 問 + 答，只有回答段算 loss（問題段灰掉）。切只算回答 / 全部、換範例、開關模板
+  - [x] `rl` RL 系列：一個 prompt 生 4 條回答，獎勵柱 → 相對優勢 → 推高 / 壓低 token 機率，KL 鏈拴住。切 PPO / DPO / GRPO、獎勵模型 / RLVR、拉 KL 係數
+  - [x] `train-mem` 訓練記憶體：權重、梯度、optimizer 狀態、activation 四塊疊起來；切 BF16 / 混合精度、gradient checkpointing、ZeRO / FSDP 分卡
+  - [x] 詞彙補：loss、梯度、learning rate、batch、反向傳播、SFT、對話模板、獎勵模型、PPO / DPO / GRPO、KL、優勢、RLVR、optimizer 狀態、gradient checkpointing、ZeRO / FSDP
+  - [x] 導覽路線「從預訓練到對齊」：train-step → sft → rl → train-mem →（之後接 QLoRA）
+  - 之後再做：`distill` 蒸餾（老師軟分佈、學生貼齊、溫度）
 - 每個新場景都要照 P6 / P7 的慣例：型錄 show / interact / spin、導讀 4 步、怎麼玩三行、詞彙表補詞、導覽路線視情況加站
 
 ## P9 — 「關於」與外部連結（2026-10-03 使用者提出）

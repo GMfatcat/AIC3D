@@ -24,7 +24,12 @@ App.catalogAdd([
   {id:'ocr', tab:'model', title:'DeepSeek-OCR / Unlimited-OCR', show:'上排：影像 patch 經 16× 壓縮變成幾百個視覺 token，進解碼塔吐出文字。下排：解碼器的 KV cache 佇列。', interact:'切三種編碼器 / 解碼器、拉解析度與頁數、播放看 KV 佇列長或不長。', question:'一張圖壓成幾個 token 還讀得出來？', spin:false},
   {id:'nemotron', tab:'model', title:'Nemotron 3.5', show:'52 層的混合塔：Mamba-2（紫）、Attention（青）、MoE（粉紅）交錯；右邊 128 選 6 的專家格。', interact:'滑到任一層看它是哪一種、點它跳場景。', question:'為什麼要混合三種 block？', spin:true},
   {id:'minilm', tab:'model', title:'all-MiniLM-L6', show:'左邊 6 層的小塔把一句話的 token 平均成一顆球，球飛進右邊的語意點雲落成一個點。', interact:'選三句話之一，看它飛去哪、最近鄰是誰。', question:'一句話怎麼變成一個點？', spin:false},
-  // ---- Tab 4 Optimize ----
+  // ---- Tab 4 訓練 ----
+  {id:'train-step', tab:'train', title:'訓練一步', show:'下排一句話的 token 進塔，上排每個位置長出一組預測機率柱，橘色那根是正確答案：loss 就是它有多矮。反向時紅線把誤差往回送，右邊的權重磚閃一下更新。', interact:'單步走前向、算 loss、反向、更新四個半步；拉 learning rate 看一步跳多遠、把 batch 縮小看 loss 曲線抖；滑到任一柱讀它的機率。', question:'一步訓練到底改了什麼？', spin:false},
+  {id:'sft', tab:'train', title:'SFT', show:'同一座塔，資料換成「對話模板 + 問題 + 回答」一列 token。每個 token 頭上一根 loss 柱；預設只有回答段算 loss，問題段灰掉。', interact:'切「只算回答 / 全部 token」比回答段 loss 掉得快慢、換三組範例、關掉對話模板看 special token 消失；滑到任一 token 讀它的角色與 loss。', question:'SFT 和預訓練差在哪？', spin:false},
+  {id:'rl', tab:'train', title:'RL 系列（GRPO / PPO / DPO）', show:'左邊一個 prompt，右邊一組 4 條回答，每條尾端一根獎勵柱。算出相對優勢後，好的回答被推亮放大、差的壓暗縮小；下方一條 KL 鏈把新模型拴在原模型旁邊。', interact:'單步走生成、打分、算優勢、更新；切 GRPO / PPO / DPO 看基準從哪來、切獎勵模型 / 可驗證答案、拉 KL 係數看模型被拴多緊。', question:'獎勵怎麼變成梯度？', spin:false},
+  {id:'train-mem', tab:'train', title:'訓練記憶體', show:'幾顆 GPU 並排，每顆裡面疊四塊：權重（藍）、梯度（紅）、optimizer 狀態（紫）、activation（橘）；旁邊一條 80 GB 的天花板線。', interact:'切全參數 / 8-bit optimizer / LoRA / QLoRA / 只推論看每參數 bytes、拉每步 token 數與 gradient checkpointing 看 activation、拉 GPU 數並切 ZeRO 看哪幾塊被切開。', question:'推論 2 bytes/參數，訓練為什麼要 16？', spin:true},
+  // ---- Tab 5 Optimize ----
   {id:'kvcache', tab:'optimize', title:'KV Cache', show:'一顆 GPU 裡 K、V 片隨每步 decode 一片片堆高；關掉 cache 時畫出每步重算的紅線。', interact:'單步看片堆起來、切有 / 無 cache、拉真實 context 長度換算 GB。', question:'KV cache 省了什麼、付出什麼？', spin:false},
   {id:'gguf', tab:'optimize', title:'GGUF', show:'一個容器殼，裡面一塊塊張量磚：寬度 = GB、顏色 = 量化型別。', interact:'切 F16 到 Q3_K_M 看檔案縮多少，滑到任一磚看它的型別。', question:'GGUF 檔案裡裝什麼？', spin:false},
   {id:'qat', tab:'optimize', title:'QAT', show:'60 個權重的直方圖，橘線是量化格點。播放訓練時直方圖往格點聚攏。', interact:'播放 40 步，比 QAT 與 PTQ 的誤差條，滑到任一 bin。', question:'訓練時就知道會被量化有什麼差？', spin:false},
@@ -32,14 +37,14 @@ App.catalogAdd([
   {id:'gptq', tab:'optimize', title:'GPTQ', show:'一個 6×8 的權重矩陣一欄一欄量化，紅色波把誤差推到右邊還沒量化的欄。', interact:'單步逐欄、切補償 / 直接四捨五入、滑到任一權重。', question:'誤差補償在做什麼？', spin:false},
   {id:'fp', tab:'optimize', title:'BF16 / FP8 / NVFP4', show:'三條數軸：BF16、FP8、NVFP4 各自能表示的點，後面的柱子是每段的點密度。紅球是 x 被 snap 到的地方。', interact:'拉 x 看誤差、點位元翻一位、拉 NVFP4 的組最大值看格點伸縮。', question:'位元怎麼分配、精度在哪？', spin:false},
   {id:'imatrix', tab:'optimize', title:'Imatrix', show:'一個 6×10 的權重矩陣，下排柱子是校準資料流過時各欄的重要度；重要的欄給高精度（紫）、不重要的給低精度（灰）。', interact:'切校準資料集看分配變、比有 / 無 imatrix 的誤差、滑到任一權重。', question:'為什麼量化需要校準資料？', spin:false},
-  // ---- Tab 5 Infra ----
+  // ---- Tab 6 Infra ----
   {id:'stages', tab:'infra', title:'LLM/VLM Inference stage', show:'一顆 GPU（或一台統一記憶體機器）加算力、頻寬兩根量表，下排是 prompt 與生成的 token。', interact:'單步走一個請求、切硬體 / 模型 / 精度、拉 prompt 與生成長度。', question:'compute-bound 和 memory-bound 怎麼看？', spin:false},
   {id:'tiling', tab:'infra', title:'TileLang / Triton', show:'A·B = C 三個矩陣，一次亮一塊 tile；下排是 HBM、shared memory、暫存器三層巢狀的箱子。', interact:'單步看 tile 搬動、拉 tile 大小、滑到 C 的任一格。', question:'tiling 為什麼快？', spin:false},
   {id:'vllm', tab:'infra', title:'vLLM core', show:'左邊每個請求的邏輯 block，右邊 48 個物理 page；對應線指到實際放的位置，紅色是連續預留會多佔的空間。', interact:'新增、生成、結束請求，切共享 prefix page。', question:'KV 記憶體碎片化怎麼解？', spin:false},
   {id:'sglang', tab:'infra', title:'SGLang core', show:'一棵 prefix 樹：節點是 KV 片段，被多個請求共用的變青綠。', interact:'丟四種請求進來看命中率、清空樹重來。', question:'prefix 共享怎麼做到的？', spin:false},
   {id:'tp', tab:'infra', title:'Tensor Parallel', show:'幾顆 GPU 並排，每顆只放權重的一片；通訊步驟時卡間拉出紅線。', interact:'拉 GPU 數、切模型大小、切計算 / 通訊、並排看 Data Parallel。', question:'切權重要付出什麼通訊？', spin:false},
   {id:'dp', tab:'infra', title:'Data Parallel', show:'幾顆 GPU 並排，每顆放完整權重、吃不同顏色的 batch。', interact:'拉 GPU 數、切模型大小看放不放得下、並排看 Tensor Parallel。', question:'切資料和切權重差在哪？', spin:false},
-  // ---- Tab 6 Agent（Pi） ----
+  // ---- Tab 7 Agent（Pi） ----
   {id:'agent-loop', tab:'agent', title:'Agent loop', show:'一個 Agent 迴圈：使用者、LLM、工具呼叫、工具結果四個節點，走一圈就往上一層。每段訊息是一顆方塊，堆在 context 裡。', interact:'單步或播放，看 Pi 修一個 CI 失敗的 21 步；盯著 context 條什麼時候滿、compact 怎麼把舊的圈壓成底座。', question:'一圈裡發生什麼？', spin:true},
   {id:'compact', tab:'agent', title:'Compact', show:'上排 compact 前的訊息塊、下排 compact 後：舊訊息壓成一個灰色摘要塊，system prompt 與最近幾段保留原文。', interact:'切「標出被壓掉的」、拉保留段數。', question:'什麼被丟、什麼被留？', spin:false},
   {id:'goal', tab:'agent', title:'/goal', show:'一個往上爬的 agent 迴圈，上方釘一個橘色的目標節點；右邊一根「距離目標」的柱子。', interact:'切有 / 沒有 /goal 各播放一輪，換三個目標看路徑。', question:'目標如何約束迴圈？', spin:true},

@@ -30,6 +30,13 @@
       ['qat','如果能重新訓練：讓模型自己把權重擺到格點附近。'],
       ['stages','量化換到什麼：在頻寬低的機器上直接變成 tok/s。'],
     ]},
+    { id:'train', title:'從預訓練到對齊', minutes:15, steps:[
+      ['train-step','先把一步訓練拆開：前向、loss、反向、更新，每個詞之後都會再出現。'],
+      ['sft','同一座塔換資料：對話範例，只有回答段算 loss。'],
+      ['rl','SFT 之後用獎勵再推一把：一組回答、相對優勢、KL 鏈。'],
+      ['train-mem','為什麼訓練比推論貴 8 倍：梯度、optimizer 狀態、activation 都要放進 GPU。'],
+      ['qat','如果最後要量化上線：訓練時就模擬量化，讓權重自己靠到格點。'],
+    ]},
     { id:'agent', title:'Agent 怎麼不失控（Pi）', minutes:12, steps:[
       ['agent-loop','一圈裡發生什麼：吃掉 context 的是工具結果，不是 LLM 的話。'],
       ['compact','context 快滿：舊訊息壓成摘要，什麼留、什麼丟。'],

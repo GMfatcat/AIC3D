@@ -9,10 +9,10 @@ Windows 上請用 `python`（`python3` 會被導到 Microsoft Store 捷徑）。
 - `core/primitives.js` 共用 3D 原件（TokenRow、BeamSet、TensorBrick、GPUBox、Loop、Grid1D、State、Tower）
 - `core/controls.js` 控制元件（slider / segmented / buttons / stepper / select / readouts / bar）
 - `core/app.js` 殼：renderer、orbit、Tab 與項目導覽、場景生命週期、hash 路由（`#mhc`）
-- `core/tours.js` 六條跨 Tab 導覽路線（`#tour=kv&step=3`）
+- `core/tours.js` 七條跨 Tab 導覽路線（`#tour=kv&step=3`）
 - `core/guide.js` 每一頁的流程：第一次進頁的進場卡、之後的小橫幅、進場偏好（立即播放 / 旋轉展示）、頁內導讀（`App.intro`、`App.guide`）
 - `core/glossary.js` 專有名詞：詞彙資料、說明文字的自動連結（`App.termify`）、詞彙頁（`#glossary`、`#term=<id>`）、回上一步
-- `scenes/_catalog.js` 全部 38 個項目與規格
+- `scenes/_catalog.js` 全部 42 個項目與規格
 - `scenes/<tab>-<id>.js` 一個檔案一個場景，用 `App.register({...})` 註冊
 - `tests/` 瀏覽器層級測試（見下）
 - `smoke.py` 逐場景截圖到 `shots/`，給人眼看的
@@ -27,7 +27,7 @@ Windows 上請用 `python`（`python3` 會被導到 Microsoft Store 捷徑）。
 ```
 pip install playwright pytest      # 不需下載瀏覽器，用系統已裝的 Chrome
 python -m pytest                   # 會先自動 build
-python smoke.py                    # 38 張截圖 + console 錯誤
+python smoke.py                    # 42 張截圖 + console 錯誤
 python smoke.py --mobile           # 手機尺寸
 ```
 - `tests/test_smoke.py`：每個場景都能掛載、沒有 console error / warning
