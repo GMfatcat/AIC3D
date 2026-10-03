@@ -57,3 +57,37 @@ def test_lora_hovering_reports_frozen_or_trainable(site):
     site.page.wait_for_timeout(200)
     assert "可訓練" in site.readout("滑到的格")
     site.assert_clean()
+
+
+# ---------- rerank ----------
+
+def test_rerank_cross_encoder_reorders_the_bi_encoder_list(site):
+    site.goto("rerank", settle=600)
+    assert site.ev("App.currentItem.tab") == "model"
+    site.ctrl_button("重置").click()
+    first = site.readout("第一階段的第 1 名")
+    assert site.readout("重排後的第 1 名") == "—"
+    for _ in range(6):
+        site.ctrl_button("單步").click()
+        site.page.wait_for_timeout(80)
+    site.page.wait_for_timeout(400)
+    after = site.readout("重排後的第 1 名")
+    assert after != "—" and after != first, (first, after)
+    assert site.readout("已打分") == "6 / 6"
+
+
+def test_rerank_top_k_sets_the_number_of_forward_passes(site):
+    site.goto("rerank", settle=600)
+    site.set_slider("top-k", 2)
+    assert site.readout("cross-encoder 前向次數").startswith("2")
+    site.set_slider("top-k", 6)
+    assert site.readout("cross-encoder 前向次數").startswith("6")
+
+
+def test_rerank_hovering_a_candidate_reports_both_scores(site):
+    site.goto("rerank", settle=600)
+    site.page.focus(f"{FOCUS_BTN} >> nth=0")
+    site.page.wait_for_timeout(200)
+    txt = site.readout("滑到的候選")
+    assert "bi-encoder" in txt, txt
+    site.assert_clean()

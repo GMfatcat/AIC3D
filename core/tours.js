@@ -53,6 +53,7 @@
       ['ocr','整頁文件：壓成 256 個視覺 token 還讀得出來；多頁一次解碼靠 R-SWA。'],
       ['embedding','文字變成空間裡的點：相近 = 距離近。'],
       ['minilm','一句話怎麼變成一個點：6 層 + mean pooling。'],
+      ['rerank','兩個向量的內積只是粗篩：cross-encoder 把 query 和候選一起讀，重排前幾名。'],
     ]},
     { id:'gpu', title:'GPU 上到底在忙什麼', minutes:15, steps:[
       ['stages','prefill 卡算力、decode 卡頻寬；unified memory 機器把牆換成天花板。'],

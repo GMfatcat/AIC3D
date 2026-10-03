@@ -24,6 +24,7 @@ App.catalogAdd([
   {id:'ocr', tab:'model', title:'DeepSeek-OCR / Unlimited-OCR', show:'上排：影像 patch 經 16× 壓縮變成幾百個視覺 token，進解碼塔吐出文字。下排：解碼器的 KV cache 佇列。', interact:'切三種編碼器 / 解碼器、拉解析度與頁數、播放看 KV 佇列長或不長。', question:'一張圖壓成幾個 token 還讀得出來？', spin:false},
   {id:'nemotron', tab:'model', title:'Nemotron 3.5', show:'52 層的混合塔：Mamba-2（紫）、Attention（青）、MoE（粉紅）交錯；右邊 128 選 6 的專家格。', interact:'滑到任一層看它是哪一種、點它跳場景。', question:'為什麼要混合三種 block？', spin:true},
   {id:'minilm', tab:'model', title:'all-MiniLM-L6', show:'左邊 6 層的小塔把一句話的 token 平均成一顆球，球飛進右邊的語意點雲落成一個點。', interact:'選三句話之一，看它飛去哪、最近鄰是誰。', question:'一句話怎麼變成一個點？', spin:false},
+  {id:'rerank', tab:'model', title:'Rerank model', show:'左欄是 bi-encoder 用向量內積粗篩出來的 6 筆候選（照相似度排），中間一座 cross-encoder 塔把 query 和候選一起讀，右欄是重排後的順序。', interact:'單步讓塔逐筆打分看順序怎麼換、換三個查詢、拉 top-k 看要多跑幾次前向；滑到任一候選讀兩種分數。', question:'有了 embedding 為什麼還要 rerank？', spin:false},
   // ---- Tab 4 訓練 ----
   {id:'train-step', tab:'train', title:'訓練一步', show:'下排一句話的 token 進塔，上排每個位置長出一組預測機率柱，橘色那根是正確答案：loss 就是它有多矮。反向時紅線把誤差往回送，右邊的權重磚閃一下更新。', interact:'單步走前向、算 loss、反向、更新四個半步；拉 learning rate 看一步跳多遠、把 batch 縮小看 loss 曲線抖；滑到任一柱讀它的機率。', question:'一步訓練到底改了什麼？', spin:false},
   {id:'sft', tab:'train', title:'SFT', show:'同一座塔，資料換成「對話模板 + 問題 + 回答」一列 token。每個 token 頭上一根 loss 柱；預設只有回答段算 loss，問題段灰掉。', interact:'切「只算回答 / 全部 token」比回答段 loss 掉得快慢、換三組範例、關掉對話模板看 special token 消失；滑到任一 token 讀它的角色與 loss。', question:'SFT 和預訓練差在哪？', spin:false},
