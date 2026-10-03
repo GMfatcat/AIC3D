@@ -12,6 +12,7 @@ Windows 上請用 `python`（`python3` 會被導到 Microsoft Store 捷徑）。
 - `core/tours.js` 八條跨 Tab 導覽路線（`#tour=kv&step=3`）
 - `core/guide.js` 每一頁的流程：第一次進頁的進場卡、之後的小橫幅、進場偏好（立即播放 / 旋轉展示）、頁內導讀（`App.intro`、`App.guide`）
 - `core/glossary.js` 專有名詞：詞彙資料、說明文字的自動連結（`App.termify`）、詞彙頁（`#glossary`、`#term=<id>`）、回上一步
+- `core/about.js` 頂欄「關於」卡：簡介 + 外部連結，資料在根目錄 `about.json`（name / url / type，type 可省略由網址判斷：web、git、youtube、x、instagram、threads）。離線單檔版由 build 內嵌；靜態伺服器會改讀同目錄的 about.json
 - `scenes/_catalog.js` 全部 47 個項目與規格
 - `scenes/<tab>-<id>.js` 一個檔案一個場景，用 `App.register({...})` 註冊
 - `tests/` 瀏覽器層級測試（見下）
@@ -52,7 +53,7 @@ id 必須對應 `_catalog.js` 裡的 id，存檔後 `python build.py` 即可。
 - 相機：`ctx.setCamera({theta, phi, zoom})`。距離與目標由 `fit()` 依內容自動算，`zoom` 是倍數（1.3 = 退遠一點）。
 - 重建物件時用 `P.drop(obj)`（移除 + 釋放）或 `P.clear(group)`，不要只 `remove`。被 remove 的 3D 文字標籤會自動註銷。
 - 自己開的 timer / listener 用 `ctx.onDispose(() => ...)` 登記清理。
-- hover 最簡單的寫法是 `ctx.app.watchHover(meshes, (obj, i) => {...}, (m, i) => '描述')`：App 每幀幫你檢查、物件變了才回呼，並自動登記鍵盤聚焦清單。自己寫 update 的場景用 `ctx.app.hover(meshes)`，不要碰全域 `App`。hover 會改播放狀態的場景記得先 `stepper.stop()`。
+- hover 最簡單的寫法是 `ctx.app.watchHover(meshes, (obj, i) => {...}, (m, i) => '描述')`：App 每幀幫你檢查、物件變了才回呼，並自動登記鍵盤聚焦清單。自己寫 update 的場景用 `ctx.app.hover(meshes)`，不要碰全域 `App`。hover 會改播放狀態的場景記得先 `stepper.stop()`。 物件重建後用 `watchHover(...)` 回傳的 `set(newMeshes)` 換掉，describe 回呼要用傳進來的物件（`m => m.userData…`），不要閉包第一次建的陣列。場景的取景範圍（卡數、rank）會變時，固定各區塊的中心位置，或在重建後比照 guide 的 `_refit` 重新 `fit()` 再 `flyTo`。
 - 自由文字輸入用 `ctrl.textarea(label, {placeholder, onInput})`。
 - 動畫用 `Motion.tween(obj, {x: 1}, {ms, ease, onUpdate})`；`prefers-reduced-motion` 時會瞬間完成，場景自己的每幀動畫要看 `ctx.reduceMotion`。迴圈 marker 用 `loop.go(t)`。readout 的數字會自動滾動補間。
 - 換場景有 220ms 交叉淡入，`App.routing` 為 true 時表示還在切換；測試用 `site.goto(id)` 會等到切換完成。

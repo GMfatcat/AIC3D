@@ -97,7 +97,7 @@ def test_panel_ends_with_prev_next_links(site):
     assert "Attention" in links[0][1] and "mHC" in links[1][1]
     assert site.ev("document.querySelector('#ctrl').lastElementChild.classList.contains('scenenav')")
     site.goto("cnn")
-    assert site.ev("document.querySelector('#ctrl .scenenav a').getAttribute('href')") == "#subagent"
+    assert site.ev("document.querySelector('#ctrl .scenenav a').getAttribute('href')") == "#wemm"
 
 
 # ---------- tour bar ----------

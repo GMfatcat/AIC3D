@@ -302,13 +302,13 @@
 
 ## P9 — 「關於」與外部連結（2026-10-03 使用者提出）
 
-- [ ] 頂欄加「關於」鈕：按下顯示這個網頁的簡潔說明
-- [ ] 同一處列出外部連結，來源是一個**本地 JSON**（可以自己新增、編輯），每筆：名稱、URL、類型；依類型用不同 icon：Web、Git 站（Gitea / GitHub / GitLab…）、YouTube、X、Instagram、Threads
-- 待決定：JSON 放哪（`dist/links.json` 隨 build 複製 vs 內嵌）、離線單檔部署下怎麼讀（file:// 不能 fetch，可能要內嵌成 `<script>` 或在 build 時併進去）
+- [x] 頂欄加「關於」鈕：按下顯示這個網頁的簡潔說明（`core/about.js`，2026-10-03）
+- [x] 同一處列出外部連結，來源是一個**本地 JSON**（可以自己新增、編輯），每筆：名稱、URL、類型；依類型用不同 icon：Web、Git 站（Gitea / GitHub / GitLab…）、YouTube、X、Instagram、Threads
+- 決定（使用者）：根目錄 `about.json`；build 時內嵌成 `window.ABOUT` 並複製到 `dist/about.json`；用 http(s) 靜態伺服器開時 runtime 改 fetch 同目錄的 about.json，改完不用重 build
 
 ---
 
-## 附錄：38 個場景一覽
+## 附錄：47 個場景一覽
 
 | id | 顯示內容 | 互動 |
 |---|---|---|
@@ -333,6 +333,11 @@
 | ocr | SAM patch → 壓縮 → CLIP token → 解碼塔；KV 佇列 | segmented、slider ×2、stepper |
 | nemotron | 52 層 Mamba/MoE/Attention 塔 + 專家格 | hover 層 |
 | minilm | MiniLM 塔 → pooling 球飛進點雲 | segmented |
+| rerank | bi-encoder 候選欄 → cross-encoder 塔逐筆打分 → 重排欄 | segmented、slider、stepper |
+| train-step | token 進塔、每位置 5 根機率柱、紅線反向、權重磚、loss 曲線 | stepper、slider ×2 |
+| sft | 對話模板 + 問 + 答 token 列，每 token 一根 loss 柱，回答段才算 | segmented ×3、stepper |
+| rl | prompt → 4 條回答 + 獎勵柱 + 優勢標籤；原模型 / 新模型兩座塔 + KL 鏈 | segmented ×2、slider、stepper |
+| train-mem | N 顆 GPU 各疊權重 / 梯度 / optimizer / activation 四塊，80 GB 天花板 | segmented ×4、slider ×2 |
 | kvcache | GPU 內 K/V 片逐步堆疊；無 cache 時畫重算連線 | segmented、stepper、slider |
 | gguf | 容器殼內張量磚，寬 ∝ GB、色 = 量化型別 | segmented、hover 磚 |
 | qat | 權重直方圖往格點聚攏 | stepper |
@@ -340,6 +345,7 @@
 | gptq | 6×8 權重矩陣逐欄量化，紅波往右傳 | segmented、stepper |
 | fp | BF16/FP8/NVFP4 三條數軸 + 位元佈局 | slider ×2 |
 | imatrix | 6×10 權重格依重要度分配位元 | segmented |
+| lora | 12×12 的 W 凍結 + B（12×r）· A（r×12）可訓練；QLoRA 底模變 4 bit | segmented ×2、slider |
 | stages | 硬體 + 算力/頻寬量表 + prefill/decode token 列 | segmented ×3、stepper、slider ×2 |
 | tiling | A·B=C tile 走訪 + HBM/SMEM/暫存器巢狀箱 | stepper、slider、segmented |
 | vllm | 48 個物理 page，邏輯 block → page 對應線 | 按鈕 ×3、segmented |
@@ -350,3 +356,6 @@
 | compact | 上下兩排訊息方塊，比較 compact 前後 | segmented、slider |
 | goal | 迴圈 + /goal 八面體 + 距離目標柱 | segmented、stepper |
 | subagent | 主迴圈 + 子迴圈；兩條 context 條 | segmented、stepper |
+| rag | 問題 → 段落向量點雲找 top-k → prompt 疊卡 → LLM 塔生成 | segmented ×2、slider、stepper |
+| vision-rag | 六頁 PDF（文字 / 表格 / 圖表），OCR 模式圖表褪色；檢索到的頁抬起 | segmented ×2、stepper |
+| wemm | 四種模態的點在同一空間；分開模型時裂成四塊；交錯查詢的最近鄰連線 | segmented ×2、slider |

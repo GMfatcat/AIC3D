@@ -3,8 +3,9 @@
 
 Order: core/theme.css -> <style>; vendor/three.min.js inlined;
 core/app.js, core/primitives.js, core/controls.js, scenes/_catalog.js, then scenes/*.js (sorted).
+about.json is embedded as window.ABOUT (file:// cannot fetch) and also copied next to the build for static hosts.
 """
-import pathlib, re, sys
+import json, pathlib, re, shutil, sys
 CDN = "--cdn" in sys.argv
 
 ROOT = pathlib.Path(__file__).parent
@@ -12,8 +13,9 @@ tpl = (ROOT / "index.template.html").read_text(encoding="utf-8")
 css = (ROOT / "core/theme.css").read_text(encoding="utf-8")
 three = (ROOT / "vendor/three.min.js").read_text(encoding="utf-8")
 fonts = (ROOT / "vendor/fonts.css").read_text(encoding="utf-8")
+about = json.loads((ROOT / "about.json").read_text(encoding="utf-8"))  # validated here so a typo fails the build, not the page
 
-order = ["core/primitives.js", "core/motion.js", "core/controls.js", "core/app.js", "core/tours.js", "core/guide.js", "core/glossary.js", "scenes/_catalog.js"]
+order = ["core/primitives.js", "core/motion.js", "core/controls.js", "core/app.js", "core/tours.js", "core/guide.js", "core/glossary.js", "core/about.js", "scenes/_catalog.js"]
 scenes = sorted(p for p in (ROOT / "scenes").glob("*.js") if p.name != "_catalog.js")
 files = [ROOT / p for p in order] + scenes
 
@@ -24,10 +26,10 @@ for f in files:
 js.append("window.App.boot();")
 
 GF = '@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap");'
-out = tpl.replace("/*@FONTS@*/", GF if CDN else fonts).replace("/*@CSS@*/", css).replace("/*@THREE@*/", three).replace("/*@JS@*/", "\n".join(js))
+out = tpl.replace("/*@FONTS@*/", GF if CDN else fonts).replace("/*@CSS@*/", css).replace("/*@THREE@*/", three).replace("/*@ABOUT@*/", "window.ABOUT=" + json.dumps(about, ensure_ascii=False).replace("</", "<\\/") + ";").replace("/*@JS@*/", "\n".join(js))
 DIST = ROOT / ("dist-cdn" if CDN else "dist"); DIST.mkdir(exist_ok=True)
 (DIST / "index.html").write_text(out, encoding="utf-8")
-import shutil
+shutil.copy(ROOT / "about.json", DIST / "about.json")
 if not CDN:
     shutil.rmtree(ROOT / "dist/fonts", ignore_errors=True); shutil.copytree(ROOT / "vendor/fonts", ROOT / "dist/fonts")
 print(DIST.name + "/index.html", len(out) // 1024, "KB,", len(scenes), "scene files", "(CDN fonts)" if CDN else "+ local fonts")
