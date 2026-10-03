@@ -216,6 +216,9 @@
 | mamba | hover token、與 RNN 並排 | hover 追蹤；「RNN 對照」在上方多一排固定衰減 0.7 的狀態 | [x] 2026-10-02 |
 | jev | 打一段 state | textarea 自由輸入，關鍵字打分即時改槽位機率 | [x] 2026-10-02 |
 | embedding | 新點落下、cosine 弧 | 新點從上方落下，落定後連最近鄰；弧改用距離（P0 已改成歐氏距離） | [x] 2026-10-02 |
+| diffusion | 8×8 小圖加噪 / 去噪、ᾱ_t 排程柱、DDIM 取樣 | segmented ×2、slider ×2、stepper |
+| dllm | 12 個遮罩 token，遮罩擴散平行填 vs 自回歸逐字 | segmented、slider、stepper |
+| clip | 影像欄 × 文字排的 N×N 相似度矩陣、對比訓練、zero-shot | segmented、slider ×2、stepper |
 | attention | 拖曳向量 | 可直接拖 Q 箭頭（`App.dragTarget`，拖時不轉鏡頭）；滑過 token 就當 Query | [x] 2026-10-02 |
 | engram | hover token | hover / Tab 到 token 就選它 | [x] 2026-10-02 |
 | deepseek-v4 / glm / nemotron | 點層跳場景 | 點 3D 的層直接跳（`App.clickTarget`）；聚焦清單按 Enter 也可 | [x] 2026-10-02 |
@@ -311,7 +314,7 @@
 - [x] P10a 基礎架構（b596cf1）：`diffusion`（前向加噪 / 反向去噪、排程、步數）、`dllm`（Diffusion LLM：LLaDA / Gemini Diffusion 一類，全部遮罩 → 平行填、對照自回歸）、`clip`（影像塔 + 文字塔、N×N 相似度矩陣、溫度、zero-shot）
 - [x] P10a 完整模型：`ldm`（Latent Diffusion：文字編碼 → latent 噪聲 → UNet / DiT 去噪迴圈 → VAE 解碼；步數、CFG）、`sam2`（Hiera 編碼 → 點 / 框提示 → 遮罩解碼；影片記憶庫；模式可切 SAM2-UNet：凍結編碼器 + adapter + 輕量解碼器）、`sam3`（概念提示找全部實例 + 存在 token + 追蹤；對照 SAM2）
 - [x] P10b 訓練：`optimizers`（SGD / momentum / Adam / AdamW / Muon 同一地形下山；每參數幾份狀態）、`activations`（sigmoid / tanh / ReLU / GELU / SiLU / SwiGLU 曲線與導數、十層梯度；softmax 與溫度）
-- [ ] P10c 新分頁 **模型評估**（放在訓練之後、壓縮與量化之前；數字鍵 1–8）：`cls-metrics`（門檻 → 混淆矩陣 → P / R / F1、PR / ROC / AUC）、`det-seg-metrics`（IoU → AP → mAP@0.5 / @0.5:0.95；遮罩 IoU / Dice / mIoU）、`text-metrics`（BLEU / ROUGE / chrF，n-gram 重疊）、`llm-eval`（perplexity、exact match、pass@k、LLM-as-judge / Elo）、`retrieval-metrics`（Recall@k / MRR / nDCG）、`latency-metrics`（TTFT / TPOT / 吞吐，連回推論基礎設施）
+- [x] P10c 新分頁 **模型評估**（放在訓練之後、壓縮與量化之前；數字鍵 1–8）：`cls-metrics`（門檻 → 混淆矩陣 → P / R / F1、PR / ROC / AUC）、`det-seg-metrics`（IoU → AP → mAP@0.5 / @0.5:0.95；遮罩 IoU / Dice / mIoU）、`text-metrics`（BLEU / ROUGE / chrF，n-gram 重疊）、`llm-eval`（perplexity、exact match、pass@k、LLM-as-judge / Elo）、`retrieval-metrics`（Recall@k / MRR / nDCG）、`latency-metrics`（TTFT / TPOT / 吞吐，連回推論基礎設施）
 - 每個場景照 P6 / P7 慣例；新導覽路線「生成：從噪聲到圖與文」（diffusion → ldm → clip → dllm）
 
 ## P11 — 圖像用真圖（2026-10-03 使用者提出，這一輪內容做完再做）
@@ -321,7 +324,7 @@
 
 ---
 
-## 附錄：47 個場景一覽
+## 附錄：61 個場景一覽
 
 | id | 顯示內容 | 互動 |
 |---|---|---|
@@ -347,10 +350,21 @@
 | nemotron | 52 層 Mamba/MoE/Attention 塔 + 專家格 | hover 層 |
 | minilm | MiniLM 塔 → pooling 球飛進點雲 | segmented |
 | rerank | bi-encoder 候選欄 → cross-encoder 塔逐筆打分 → 重排欄 | segmented、slider、stepper |
+| ldm | 文字編碼器 → 8×8 latent 去噪迴圈（U-Net / DiT）→ VAE 解碼 → 輸出影像 | segmented、slider ×2、stepper |
+| sam2 | 12×12 格影像：點 / 負點 → 遮罩；影片記憶庫；SAM2-UNet 凍結編碼器 + skip | segmented ×3、stepper |
+| sam3 | 三隻狗一隻貓：概念提示找全部實例 + ID、存在 token 柱、追蹤 | segmented ×2、stepper |
 | train-step | token 進塔、每位置 5 根機率柱、紅線反向、權重磚、loss 曲線 | stepper、slider ×2 |
 | sft | 對話模板 + 問 + 答 token 列，每 token 一根 loss 柱，回答段才算 | segmented ×3、stepper |
 | rl | prompt → 4 條回答 + 獎勵柱 + 優勢標籤；原模型 / 新模型兩座塔 + KL 鏈 | segmented ×2、slider、stepper |
 | train-mem | N 顆 GPU 各疊權重 / 梯度 / optimizer / activation 四塊，80 GB 天花板 | segmented ×4、slider ×2 |
+| optimizers | 狹長 loss 山谷，SGD / momentum / Adam / AdamW / Muon 五顆球 + 軌跡 | segmented、slider、stepper |
+| activations | 函數曲線 + 導數 + 紅球、N 層後梯度柱；softmax 五根機率柱 | segmented、slider ×3 |
+| cls-metrics | 分數軸上正負樣本、門檻線、混淆矩陣、PR / ROC 曲線 | slider、segmented |
+| det-seg-metrics | 真框 vs 預測框（IoU、TP / FP）、AP / mAP；12×12 遮罩 IoU / Dice | segmented、slider |
+| text-metrics | 參考句 / 候選句 n-gram 命中連線、BLEU / ROUGE-L / chrF | segmented、slider |
+| llm-eval | perplexity 柱、pass@k 抽樣格、評審塔 + A / B 卡、Elo 雙塔 | segmented ×2、slider ×2、stepper |
+| retrieval-metrics | 十筆排序結果、k 切線、DCG 貢獻柱 | 按鈕 ×2、slider |
+| latency-metrics | 請求時間線：排隊 / prefill（TTFT）/ decode（TPOT）、吞吐 | slider ×3、stepper |
 | kvcache | GPU 內 K/V 片逐步堆疊；無 cache 時畫重算連線 | segmented、stepper、slider |
 | gguf | 容器殼內張量磚，寬 ∝ GB、色 = 量化型別 | segmented、hover 磚 |
 | qat | 權重直方圖往格點聚攏 | stepper |

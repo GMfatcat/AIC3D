@@ -33,8 +33,8 @@ def _stacked(a, b):
 def test_tabs_are_all_chinese_and_progress_is_position(site):
     site.goto("residual")
     labels = site.ev("[...document.querySelectorAll('#tabs button')].map(b => b.textContent)")
-    assert labels == ["基礎架構", "模型積木", "完整模型", "訓練", "壓縮與量化", "推論基礎設施", "Agent"]
-    assert site.ev("document.getElementById('progress').textContent").replace(" ", "") == "14/55"
+    assert labels == ["基礎架構", "模型積木", "完整模型", "訓練", "模型評估", "壓縮與量化", "推論基礎設施", "Agent"]
+    assert site.ev("document.getElementById('progress').textContent").replace(" ", "") == "14/61"
     assert site.ev("document.querySelector('#top .brand small').textContent") == "看懂概念，不追數值"
 
 

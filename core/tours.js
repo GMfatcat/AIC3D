@@ -55,6 +55,14 @@
       ['clip','文字和圖為什麼能比：對比學習把兩者拉到同一個空間。'],
       ['dllm','同一招用在文字上：整句遮罩、每步平行填，對照自回歸。'],
     ]},
+    { id:'eval', title:'評估：數字從哪裡來', minutes:18, steps:[
+      ['cls-metrics','先把門檻、混淆矩陣、precision / recall 搞清楚，後面全部建立在這上面。'],
+      ['det-seg-metrics','框對框：IoU 決定 TP，PR 曲線面積是 AP，平均成 mAP；遮罩看 IoU 與 Dice。'],
+      ['text-metrics','生成文字：BLEU 數 n-gram、ROUGE 看 recall，同義改寫是盲點。'],
+      ['llm-eval','LLM 的成績單：perplexity、pass@k、評審、Elo 各量什麼。'],
+      ['retrieval-metrics','檢索：Recall@k、MRR、nDCG 誰在乎名次。'],
+      ['latency-metrics','上線後的數字：TTFT、TPOT、吞吐分別卡在算力還是頻寬。'],
+    ]},
     { id:'agent', title:'Agent 怎麼不失控（Pi）', minutes:12, steps:[
       ['agent-loop','一圈裡發生什麼：吃掉 context 的是工具結果，不是 LLM 的話。'],
       ['compact','context 快滿：舊訊息壓成摘要，什麼留、什麼丟。'],

@@ -3,7 +3,7 @@
 'use strict';
 const T = THREE;
 const TABS = [
-  {id:'arch', label:'基礎架構'}, {id:'block', label:'模型積木'}, {id:'model', label:'完整模型'}, {id:'train', label:'訓練'},
+  {id:'arch', label:'基礎架構'}, {id:'block', label:'模型積木'}, {id:'model', label:'完整模型'}, {id:'train', label:'訓練'}, {id:'eval', label:'模型評估'},
   {id:'optimize', label:'壓縮與量化'}, {id:'infra', label:'推論基礎設施'}, {id:'agent', label:'Agent'},
 ];
 const scenes = {}; const catalog = [];
@@ -105,9 +105,9 @@ const App = {
     c.addEventListener('wheel',e=>{ e.preventDefault(); this._camTween&&this._camTween.cancel(); this.cam.dist=this._clampDist(this.cam.dist*(1+Math.sign(e.deltaY)*0.08)); this._placeCamera(); },{passive:false});
     c.addEventListener('dblclick',()=>{ if(this.camHome) this.flyTo(this.camHome,500); });
     addEventListener('keydown',e=>{ if(e.target.closest('input,select,textarea,button')) return; const k=e.key;
-      if(!this._inTour && !this.guide?.active && this.currentItem){ // [ ] 上下一個場景、1–7 切分頁（導覽模式的 [ ] 由 tours.js 接手）
+      if(!this._inTour && !this.guide?.active && this.currentItem){ // [ ] 上下一個場景、1–8 切分頁（導覽模式的 [ ] 由 tours.js 接手）
         if(k===']'||k==='['){ const i=catalog.indexOf(this.currentItem); location.hash=catalog[(i+(k===']'?1:-1)+catalog.length)%catalog.length].id; e.preventDefault(); return; }
-        if(/^[1-7]$/.test(k)){ const first=catalog.find(x=>x.tab===TABS[+k-1].id); if(first){ location.hash=first.id; e.preventDefault(); } return; } }
+        if(/^[1-8]$/.test(k)){ const first=catalog.find(x=>x.tab===TABS[+k-1].id); if(first){ location.hash=first.id; e.preventDefault(); } return; } }
       const step=0.08*this.cam.dist; if(k==='ArrowLeft') this._pan(-step*12,0); else if(k==='ArrowRight') this._pan(step*12,0); else if(k==='ArrowUp') this._pan(0,-step*12); else if(k==='ArrowDown') this._pan(0,step*12); else if(k==='f'||k==='F'){ this.fit(); return; } else return; e.preventDefault(); this._placeCamera(); });
     this.pointer = new T.Vector2(-9,-9); this.raycaster = new T.Raycaster();
     c.addEventListener('pointermove',e=>this._setPointer(e));

@@ -21,19 +21,19 @@ def _steps(site, n, settle=80):
 # ---------- the tab ----------
 
 def test_training_tab_sits_between_model_and_optimize(site):
-    assert site.ev("App.TABS.map(t => t.id)") == ["arch", "block", "model", "train", "optimize", "infra", "agent"]
-    assert site.ev("App.catalog.filter(i => i.tab === 'train').map(i => i.id)") == ["train-step", "sft", "rl", "train-mem"]
+    assert site.ev("App.TABS.map(t => t.id)") == ["arch", "block", "model", "train", "eval", "optimize", "infra", "agent"]
+    assert site.ev("App.catalog.filter(i => i.tab === 'train').map(i => i.id)") == ["train-step", "sft", "rl", "train-mem", "optimizers", "activations"]
     site.goto("cnn")
     site.page.keyboard.press("4")
     site.page.wait_for_function("!App.routing && App.currentItem.id === 'train-step'")
     site.ev("App.intro.isOpen() && App.intro.enter('free')")
-    site.page.keyboard.press("5")
+    site.page.keyboard.press("6")
     site.page.wait_for_function("!App.routing && App.currentItem.id === 'kvcache'")
 
 
 def test_training_tour_and_glossary_terms_exist(site):
     tour = site.ev("App.tours.find(t => t.id === 'train')")
-    assert tour and [s[0] for s in tour["steps"]][:4] == ["train-step", "sft", "rl", "train-mem"]
+    assert tour and [s[0] for s in tour["steps"]][:4] == ["train-step", "sft", "rl", "train-mem", "optimizers", "activations"]
     assert site.ev("App.glossary.terms.filter(t => t.tab === 'train').length") >= 12
     for alias in ["SFT", "GRPO", "KL", "RLVR", "ZeRO", "gradient checkpointing", "learning rate"]:
         assert site.ev("a => App.termify('x ' + a + ' y').includes('a class=\"term\"')", alias), alias
