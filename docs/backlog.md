@@ -306,6 +306,14 @@
 - [x] 同一處列出外部連結，來源是一個**本地 JSON**（可以自己新增、編輯），每筆：名稱、URL、類型；依類型用不同 icon：Web、Git 站（Gitea / GitHub / GitLab…）、YouTube、X、Instagram、Threads
 - 決定（使用者）：根目錄 `about.json`；build 時內嵌成 `window.ABOUT` 並複製到 `dist/about.json`；用 http(s) 靜態伺服器開時 runtime 改 fetch 同目錄的 about.json，改完不用重 build
 
+## P10 — 第二波擴充（2026-10-03 使用者提出，細節待討論）
+
+- [ ] 基礎架構加 **Diffusion Model**（`diffusion`：前向加噪 / 反向去噪、步數、噪聲排程）與 **CLIP**（`clip`：影像塔 + 文字塔、N×N 相似度矩陣、zero-shot）
+- [ ] 完整模型加 **擴散完整模型**（`ldm`：文字編碼 → latent 噪聲 → UNet / DiT 去噪迴圈 → VAE 解碼；哪一個模型待定）、**SAM2**（`sam2`：Hiera 編碼 → 點 / 框提示 → 遮罩解碼 → 影片記憶庫）、**SAM3**（`sam3`：概念提示找全部實例 + 追蹤）、**SAM2-UNet**（`sam2-unet`：SAM2 編碼器當 U-Net 編碼器 + 輕量解碼器）
+- [ ] 訓練分頁加 **Optimizers**（`optimizers`：SGD / momentum / Adam / AdamW / Muon 在同一個 loss 地形上的路徑、每參數多存幾份狀態）與 **Activation functions**（`activations`：sigmoid / tanh / ReLU / GELU / SiLU / SwiGLU 曲線與導數、十層後的梯度；softmax 與溫度）
+- [ ] 新分頁 **模型評估**（內容待討論）：語言與視覺的指標都要，例如 mAP、BLEU
+- 分批：P10a 架構 + 完整模型、P10b 訓練、P10c 評估分頁；每個場景照 P6 / P7 慣例
+
 ---
 
 ## 附錄：47 個場景一覽
