@@ -306,13 +306,18 @@
 - [x] 同一處列出外部連結，來源是一個**本地 JSON**（可以自己新增、編輯），每筆：名稱、URL、類型；依類型用不同 icon：Web、Git 站（Gitea / GitHub / GitLab…）、YouTube、X、Instagram、Threads
 - 決定（使用者）：根目錄 `about.json`；build 時內嵌成 `window.ABOUT` 並複製到 `dist/about.json`；用 http(s) 靜態伺服器開時 runtime 改 fetch 同目錄的 about.json，改完不用重 build
 
-## P10 — 第二波擴充（2026-10-03 使用者提出，細節待討論）
+## P10 — 第二波擴充（2026-10-03 使用者提出；決定：Latent Diffusion 不綁型號、加 diffusion LLM、SAM2 與 SAM3 分頁且 SAM2 頁可切 SAM2-UNet、評估分頁照提案加 TTFT）
 
-- [ ] 基礎架構加 **Diffusion Model**（`diffusion`：前向加噪 / 反向去噪、步數、噪聲排程）與 **CLIP**（`clip`：影像塔 + 文字塔、N×N 相似度矩陣、zero-shot）
-- [ ] 完整模型加 **擴散完整模型**（`ldm`：文字編碼 → latent 噪聲 → UNet / DiT 去噪迴圈 → VAE 解碼；哪一個模型待定）、**SAM2**（`sam2`：Hiera 編碼 → 點 / 框提示 → 遮罩解碼 → 影片記憶庫）、**SAM3**（`sam3`：概念提示找全部實例 + 追蹤）、**SAM2-UNet**（`sam2-unet`：SAM2 編碼器當 U-Net 編碼器 + 輕量解碼器）
-- [ ] 訓練分頁加 **Optimizers**（`optimizers`：SGD / momentum / Adam / AdamW / Muon 在同一個 loss 地形上的路徑、每參數多存幾份狀態）與 **Activation functions**（`activations`：sigmoid / tanh / ReLU / GELU / SiLU / SwiGLU 曲線與導數、十層後的梯度；softmax 與溫度）
-- [ ] 新分頁 **模型評估**（內容待討論）：語言與視覺的指標都要，例如 mAP、BLEU
-- 分批：P10a 架構 + 完整模型、P10b 訓練、P10c 評估分頁；每個場景照 P6 / P7 慣例
+- [ ] P10a 基礎架構：`diffusion`（前向加噪 / 反向去噪、排程、步數）、`dllm`（Diffusion LLM：LLaDA / Gemini Diffusion 一類，全部遮罩 → 平行填、對照自回歸）、`clip`（影像塔 + 文字塔、N×N 相似度矩陣、溫度、zero-shot）
+- [ ] P10a 完整模型：`ldm`（Latent Diffusion：文字編碼 → latent 噪聲 → UNet / DiT 去噪迴圈 → VAE 解碼；步數、CFG）、`sam2`（Hiera 編碼 → 點 / 框提示 → 遮罩解碼；影片記憶庫；模式可切 SAM2-UNet：凍結編碼器 + adapter + 輕量解碼器）、`sam3`（概念提示找全部實例 + 存在 token + 追蹤；對照 SAM2）
+- [ ] P10b 訓練：`optimizers`（SGD / momentum / Adam / AdamW / Muon 同一地形下山；每參數幾份狀態）、`activations`（sigmoid / tanh / ReLU / GELU / SiLU / SwiGLU 曲線與導數、十層梯度；softmax 與溫度）
+- [ ] P10c 新分頁 **模型評估**（放在訓練之後、壓縮與量化之前；數字鍵 1–8）：`cls-metrics`（門檻 → 混淆矩陣 → P / R / F1、PR / ROC / AUC）、`det-seg-metrics`（IoU → AP → mAP@0.5 / @0.5:0.95；遮罩 IoU / Dice / mIoU）、`text-metrics`（BLEU / ROUGE / chrF，n-gram 重疊）、`llm-eval`（perplexity、exact match、pass@k、LLM-as-judge / Elo）、`retrieval-metrics`（Recall@k / MRR / nDCG）、`latency-metrics`（TTFT / TPOT / 吞吐，連回推論基礎設施）
+- 每個場景照 P6 / P7 慣例；新導覽路線「生成：從噪聲到圖與文」（diffusion → ldm → clip → dllm）
+
+## P11 — 圖像用真圖（2026-10-03 使用者提出，這一輪內容做完再做）
+
+- [ ] 凡是影像輸入 / 輸出的場景（CNN、CRNN、YOLO、OCR、Diffusion、Latent Diffusion、CLIP、SAM2、SAM3、Vision RAG…）改用真正的圖片貼圖呈現，不要只有 3D 立方體像素
+- 圖隨便給一些動物、人或物品即可，也可以依那頁主軸設計；離線單檔要內嵌（base64 或程式畫的小圖），注意檔案大小
 
 ---
 
