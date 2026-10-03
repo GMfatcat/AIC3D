@@ -289,7 +289,7 @@
 
 - [x] 壓縮與量化分頁加 **LoRA 系列**（`lora`，2026-10-03）：LoRA、QLoRA、rsLoRA 等（低秩適配：凍結原權重、訓練兩個小矩陣；QLoRA 把基底量化到 4 bit 再訓；rsLoRA 調 scale 讓高 rank 穩定）
 - [x] 完整模型分頁加 **rerank model**（`rerank`，2026-10-03）（cross-encoder：query 與候選一起進模型打分，對照 embedding 的 bi-encoder）
-- [ ] Agent 分頁加 **RAG 系列**：RAG、Vision RAG、WeMM
+- [x] Agent 分頁加 **RAG 系列**：RAG、Vision RAG、WeMM（`rag`、`vision-rag`、`wemm`，2026-10-03；WeMM = 騰訊 WeMM-Embedding 多模態嵌入；新導覽路線「RAG：從向量到答案」）
 - [x] 新增一個分頁講 **訓練**（2026-10-03 決定，第一批做）：分頁放在「完整模型」之後、「壓縮與量化」之前；數字鍵切分頁改 1–7
   - [x] `train-step` 訓練一步：token 進塔、每個位置一根預測機率柱、loss = 正確那根有多矮；紅色梯度往回流、權重磚更新。learning rate、batch 大小、四個半步
   - [x] `sft` SFT：同一座塔、資料換成對話模板 + 問 + 答，只有回答段算 loss（問題段灰掉）。切只算回答 / 全部、換範例、開關模板

@@ -85,6 +85,11 @@ const T = [
   {id:'tp-dp', tab:'infra', title:'TP / DP', aka:['Tensor Parallel','Data Parallel','TP','DP'], short:'切權重，或切資料的兩種平行方式。', body:'TP 每顆 GPU 放 1/k 的權重、每層通訊；DP 每顆放完整模型吃不同 batch，模型必須單卡放得下。', see:['tp','dp']},
   {id:'offload', tab:'infra', title:'offload', aka:['offload'], short:'放不下的權重放到主機記憶體，用到時經 PCIe 搬進來。', body:'PCIe 只有 64 GB/s，decode 每步都要搬，速度直接掉幾十倍。', see:['stages']},
   // ---- Agent ----
+  {id:'rag', tab:'agent', title:'RAG（檢索增強生成）', aka:['RAG','檢索增強生成','向量索引'], short:'先從文件裡檢索相關段落，塞進 prompt 再讓 LLM 回答。', body:'文件離線切塊、算 embedding 放進向量索引；問題進來也算一個向量，找最近的 k 段原文塞進 prompt。模型不用重新訓練就能答它沒看過的資料，還能附引用；代價是 prompt 變長、檢索錯答案就錯。', see:['rag','rerank','embedding']},
+  {id:'chunk', tab:'agent', title:'切塊（chunk）', aka:['切塊','chunk'], short:'把長文件切成幾百 token 的段落，每段一個向量。', body:'太長一段裡混太多主題，向量變糊；太短又缺上下文。常見做法是依標題或段落切、相鄰段落重疊一點。', see:['rag']},
+  {id:'vision-rag', tab:'agent', title:'Vision RAG', aka:['Vision RAG','VisRAG','ColPali','late interaction'], short:'不經 OCR，直接把文件頁面當影像嵌入與檢索。', body:'視覺編碼器把整頁切成 patch、每個 patch 一個向量，查詢的每個字和頁面每塊各自比對（late interaction），表格與圖表的資訊不會在 OCR 時丟掉；生成端用 VLM 直接讀頁面影像。', see:['vision-rag','ocr']},
+  {id:'multimodal-embedding', tab:'agent', title:'多模態嵌入（WeMM-Embedding）', aka:['WeMM','WeMM-Embedding','多模態嵌入'], short:'一個模型把文字、圖片、影片、視覺文件都投到同一個向量空間。', body:'騰訊微信視覺團隊的 WeMM-Embedding 有 2B / 4B / 9B 三個大小，用同一個視覺語言模型骨幹，支援交錯的圖文輸入當查詢；模態之間可以互相檢索，是多模態 RAG 的底座。', see:['wemm','vision-rag']},
+  {id:'flexible-dim', tab:'agent', title:'彈性輸出維度', aka:['彈性輸出維度','Matryoshka'], short:'同一個向量可以截短到較少維度還能用。', body:'訓練時讓前幾百維就承載大部分語意（Matryoshka 式），部署時依索引大小與速度需求選維度：256 維索引縮 8 倍、品質只掉一點。', see:['wemm']},
   {id:'agent-loop', tab:'agent', title:'Agent 迴圈', aka:['Agent 迴圈','agent loop'], short:'LLM 看 context、決定呼叫工具、工具結果回到 context，反覆。', body:'不是一次問答，是一個迴圈。吃掉 context 的主要是工具結果，所以 harness 要有 compact 與子代理。', see:['agent-loop']},
   {id:'tool-call', tab:'agent', title:'工具呼叫', aka:['工具呼叫','tool call'], short:'LLM 輸出一個結構化指令，由 harness 執行後把結果塞回 context。', body:'讀檔、grep、跑測試都是工具。一個 log 檔的結果就能吃掉幾千 token。', see:['agent-loop','subagent']},
   {id:'compact', tab:'agent', title:'compact', aka:['compact'], short:'context 快滿時把舊訊息壓成一段摘要。', body:'system prompt 與最近幾段保留原文，工具結果最先被壓。代價是摘要會丟細節。', see:['compact','agent-loop']},

@@ -32,7 +32,7 @@ def fresh(browser, dist_url):
 
 def test_landing_shows_when_there_is_no_hash(fresh):
     assert fresh.ev("getComputedStyle(document.getElementById('landing')).display") != "none"
-    assert fresh.ev("document.querySelectorAll('#landing .tour-card').length") == 7
+    assert fresh.ev("document.querySelectorAll('#landing .tour-card').length") == 8
     assert fresh.ev("document.querySelectorAll('#landing .role-chip').length") == 8
     assert fresh.ev("!!document.querySelector('#landing a[href=\"#cnn\"]')"), "needs a 'browse all scenes' link"
     assert fresh.ev("App.root.children.length") > 0, "landing should have a floating 3D composition behind it"

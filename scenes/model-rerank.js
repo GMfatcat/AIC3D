@@ -44,7 +44,7 @@
         {say:'第一階段是 <b>bi-encoder</b>：query 和每份文件<b>各自</b>經過 <a href="#minilm">embedding 模型</a>變成一個向量，相似度就是內積。文件向量事先算好，一百萬份也能毫秒內找出前幾名。', cam:{theta:0,phi:1.4}, spot:'查詢', run:()=>setup(0,N,0)},
         {say:'它的盲點：兩個向量各自壓縮，只能比「大概講什麼」。第 1 名「記憶體條怎麼安裝」字面最像，內容卻不對；真正有用的量化、checkpointing 排在後面。', spot:'第一階段的第 1 名', run:()=>setup(0,N,0)},
         {say:'<b>cross-encoder</b> 把 query 和候選<b>接成一串</b>送進同一座塔，attention 可以在兩段之間逐字比對，直接吐一個相關分數。6 筆打完，右欄的順序就對了。', spot:'單步', run:()=>setup(0,N,N)},
-        {say:'代價：每對都要跑一次前向，不能預先算，所以只重排 <b>top-k</b>。實際管線是 bi-encoder 撈 100 筆、<b>rerank</b> 選 5 筆、交給 LLM 當參考。拉 top-k 到 3，只有前 3 筆被重看。', spot:'top-k', run:()=>setup(0,3,3)},
+        {say:'代價：每對都要跑一次前向，不能預先算，所以只重排 <b>top-k</b>。實際管線是 bi-encoder 撈 100 筆、<b>rerank</b> 選 5 筆、交給 LLM 當參考（<a href="#rag">RAG</a>）。拉 top-k 到 3，只有前 3 筆被重看。', spot:'top-k', run:()=>setup(0,3,3)},
       ]);
       ctx.legend([['signal','query / cross-encoder 高分'],['memory','bi-encoder 候選與分數'],['inactive','重排後低分'],['flow','送進塔的候選']]);
       ctx.setCamera({theta:0,phi:1.4}); build(); } });

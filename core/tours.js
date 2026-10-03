@@ -39,6 +39,14 @@
       ['lora','不訓練全部權重：LoRA 只練兩個小矩陣，QLoRA 再把底模壓到 4 bit。'],
       ['qat','如果最後要量化上線：訓練時就模擬量化，讓權重自己靠到格點。'],
     ]},
+    { id:'rag', title:'RAG：從向量到答案', minutes:15, steps:[
+      ['embedding','相近 = 距離近：先有這個空間，才有「找最近的幾段」。'],
+      ['minilm','一句話怎麼變成一個點：embedding 模型在做的事。'],
+      ['rerank','內積只是粗篩：cross-encoder 把 query 和候選一起讀，重排前幾名。'],
+      ['rag','整條管線：切塊、嵌入、檢索、塞進 prompt、生成。'],
+      ['vision-rag','文件有圖表：不經 OCR，直接嵌入整頁影像。'],
+      ['wemm','文字、圖、影片、文件一個空間：交錯查詢也能找。'],
+    ]},
     { id:'agent', title:'Agent 怎麼不失控（Pi）', minutes:12, steps:[
       ['agent-loop','一圈裡發生什麼：吃掉 context 的是工具結果，不是 LLM 的話。'],
       ['compact','context 快滿：舊訊息壓成摘要，什麼留、什麼丟。'],

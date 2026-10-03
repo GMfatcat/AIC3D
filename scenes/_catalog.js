@@ -51,4 +51,7 @@ App.catalogAdd([
   {id:'compact', tab:'agent', title:'Compact', show:'上排 compact 前的訊息塊、下排 compact 後：舊訊息壓成一個灰色摘要塊，system prompt 與最近幾段保留原文。', interact:'切「標出被壓掉的」、拉保留段數。', question:'什麼被丟、什麼被留？', spin:false},
   {id:'goal', tab:'agent', title:'/goal', show:'一個往上爬的 agent 迴圈，上方釘一個橘色的目標節點；右邊一根「距離目標」的柱子。', interact:'切有 / 沒有 /goal 各播放一輪，換三個目標看路徑。', question:'目標如何約束迴圈？', spin:true},
   {id:'subagent', tab:'agent', title:'Subagent', show:'左邊主 agent 的迴圈，右邊子代理的小迴圈；面板兩條 context 條。', interact:'切主 agent 自己做 / 丟給子代理，播放比兩條 context。', question:'為什麼要隔離 context？', spin:true},
+  {id:'rag', tab:'agent', title:'RAG', show:'左邊一個問題，中間一片文件段落的向量點雲，右邊一疊 prompt 和一座 LLM 塔。問題變成一個點、找最近的幾段、原文塞進 prompt、再生成。', interact:'單步走切塊嵌入、嵌入查詢、檢索、塞 prompt、生成五步；拉 top-k、換問題、關掉 RAG 看答案來源怎麼變；滑到任一段讀相似度。', question:'LLM 怎麼回答它沒看過的資料？', spin:false},
+  {id:'vision-rag', tab:'agent', title:'Vision RAG', show:'六頁 PDF 排成一列，有文字頁、表格頁、圖表頁。切到 OCR 模式時表格和圖表褪成灰色、只剩文字被嵌入；Vision RAG 直接嵌入整頁影像。', interact:'切索引方式、單步走嵌入頁面、嵌入查詢、檢索三步，比兩種方式各找到哪一頁；滑到任一頁看它的向量怎麼來。', question:'文件裡的圖表怎麼被檢索到？', spin:false},
+  {id:'wemm', tab:'agent', title:'WeMM-Embedding', show:'一個共用的向量空間，文字、圖片、影片、視覺文件四種顏色的點按意思聚在一起。切成每個模態各一個模型時，空間裂成四塊互不相通。', interact:'切查詢型態（純文字、圖片、圖 + 文交錯）看最近鄰是哪種模態、切一個模型 / 各一個模型、拉輸出維度看索引大小。', question:'為什麼要一個模型嵌入所有模態？', spin:true},
 ]);
