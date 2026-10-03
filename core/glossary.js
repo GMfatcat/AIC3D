@@ -59,7 +59,7 @@ const T = [
   {id:'grad-ckpt', tab:'train', title:'gradient checkpointing', aka:['gradient checkpointing','重算'], short:'不存全部 activation，反向時再算一次。', body:'存 √L 個檢查點，其餘反向時從最近的檢查點重算。記憶體從 O(L) 降到 O(√L)，代價是多做一次前向。', see:['train-mem']},
   {id:'zero-fsdp', tab:'train', title:'ZeRO / FSDP', aka:['ZeRO','FSDP','ZeRO-3'], short:'把 optimizer 狀態、梯度、權重切到多張卡上，各放一份。', body:'Data Parallel 原本每張卡放完整的一套；ZeRO-1 先切 optimizer 狀態，ZeRO-2 再切梯度，ZeRO-3（PyTorch 叫 FSDP）連權重也切、用到時再 all-gather 回來。activation 不會被切，每張卡還是自己的 batch。', see:['train-mem','dp','tp']},
   {id:'mixed-precision', tab:'train', title:'混合精度', aka:['混合精度','mixed precision'], short:'前向 / 反向用 bf16，主權重與 optimizer 狀態留 fp32。', body:'bf16 算得快、省一半記憶體，但小更新量會被捨掉，所以累積更新的那份權重用 fp32。FP8 訓練再把矩陣乘法壓一層。', see:['train-mem','fp']},
-  {id:'lora', tab:'optimize', title:'LoRA / QLoRA', aka:['LoRA','QLoRA'], short:'凍結原權重，只訓練每層旁邊兩個小的低秩矩陣。', body:'可訓練參數剩 1% 以下，梯度與 optimizer 狀態跟著縮到幾乎為零；QLoRA 再把凍結的底模量化到 4 bit，一張 24 GB 的卡就能微調 70B。', see:['train-mem','sft']},
+  {id:'lora', tab:'optimize', title:'LoRA / QLoRA / rsLoRA', aka:['LoRA','QLoRA','rsLoRA','低秩','rank'], short:'凍結原權重，只訓練每層旁邊兩個小的低秩矩陣 B·A。', body:'可訓練參數剩 1% 以下，梯度與 optimizer 狀態跟著縮到幾乎為零；QLoRA 再把凍結的底模量化到 4 bit，一張 24 GB 的卡就能微調 70B；rsLoRA 把 scale 從 α/r 改成 α/√r，高 rank 才學得動。', see:['lora','train-mem','sft']},
   // ---- 壓縮與量化 ----
   {id:'quantization', tab:'optimize', title:'量化', aka:['量化'], short:'把權重從 16 位元浮點壓成更少位元。', body:'檔案變小、每步要讀的記憶體變少，在頻寬低的機器上直接換成速度。代價是權重落到格點之間的誤差，GPTQ、imatrix、QAT 都在減這個誤差。', see:['fp','gguf','gptq','stages']},
   {id:'bpw', tab:'optimize', title:'bpw', aka:['bpw'], short:'bits per weight：每個權重平均占幾個位元。', body:'Q4_K 是 4.5 而不是 4，因為 scale 也要算進去。EXL3 存的是路徑，所以 bpw 可以是 3.25 這種小數。', see:['gguf','exl3','imatrix']},

@@ -37,6 +37,7 @@ App.catalogAdd([
   {id:'gptq', tab:'optimize', title:'GPTQ', show:'一個 6×8 的權重矩陣一欄一欄量化，紅色波把誤差推到右邊還沒量化的欄。', interact:'單步逐欄、切補償 / 直接四捨五入、滑到任一權重。', question:'誤差補償在做什麼？', spin:false},
   {id:'fp', tab:'optimize', title:'BF16 / FP8 / NVFP4', show:'三條數軸：BF16、FP8、NVFP4 各自能表示的點，後面的柱子是每段的點密度。紅球是 x 被 snap 到的地方。', interact:'拉 x 看誤差、點位元翻一位、拉 NVFP4 的組最大值看格點伸縮。', question:'位元怎麼分配、精度在哪？', spin:false},
   {id:'imatrix', tab:'optimize', title:'Imatrix', show:'一個 6×10 的權重矩陣，下排柱子是校準資料流過時各欄的重要度；重要的欄給高精度（紫）、不重要的給低精度（灰）。', interact:'切校準資料集看分配變、比有 / 無 imatrix 的誤差、滑到任一權重。', question:'為什麼量化需要校準資料？', spin:false},
+  {id:'lora', tab:'optimize', title:'LoRA 系列（LoRA / QLoRA / rsLoRA）', show:'左邊一塊 8×8 的權重矩陣 W 凍結不動，右邊兩個細長的小矩陣 B、A 才是在訓練的，相乘的結果加回 W。', interact:'拉 rank 看 A、B 變寬、可訓練參數與任務誤差怎麼變；切 QLoRA 把底模壓成 4 bit、切 rsLoRA 看高 rank 時更新幅度不再縮水。', question:'只訓練 1% 的參數為什麼夠？', spin:false},
   // ---- Tab 6 Infra ----
   {id:'stages', tab:'infra', title:'LLM/VLM Inference stage', show:'一顆 GPU（或一台統一記憶體機器）加算力、頻寬兩根量表，下排是 prompt 與生成的 token。', interact:'單步走一個請求、切硬體 / 模型 / 精度、拉 prompt 與生成長度。', question:'compute-bound 和 memory-bound 怎麼看？', spin:false},
   {id:'tiling', tab:'infra', title:'TileLang / Triton', show:'A·B = C 三個矩陣，一次亮一塊 tile；下排是 HBM、shared memory、暫存器三層巢狀的箱子。', interact:'單步看 tile 搬動、拉 tile 大小、滑到 C 的任一格。', question:'tiling 為什麼快？', spin:false},
