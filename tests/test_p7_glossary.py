@@ -129,3 +129,16 @@ def test_back_without_a_return_point_goes_home(raw):
     _goto_glossary(raw, "term=moe")
     raw.page.locator("#glossary button", has_text="回上一步").click()
     raw.page.wait_for_function("!App.routing && App.home")
+
+
+def test_landing_glossary_link_seen_count_and_reset_share_the_browse_button_background(raw):
+    raw.page.evaluate("localStorage.setItem('visited', JSON.stringify(['cnn']))")
+    raw.page.evaluate("location.hash='home'")
+    raw.page.wait_for_function("!App.routing && App.home")
+    raw.page.wait_for_timeout(200)
+    raw.ev("App._landingFoot()")
+    bg = raw.ev("sel => getComputedStyle(document.querySelector(sel)).backgroundColor", "#landing a.browse")
+    assert bg not in ("rgba(0, 0, 0, 0)", "transparent")
+    for sel in ("#landing a[href=\"#glossary\"]", "#landing .land-foot .seen", "#landing .land-foot button"):
+        assert raw.ev("sel => getComputedStyle(document.querySelector(sel)).backgroundColor", sel) == bg, sel
+        assert raw.ev("sel => getComputedStyle(document.querySelector(sel)).borderTopWidth", sel) != "0px", sel

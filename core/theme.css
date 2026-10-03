@@ -162,7 +162,7 @@ body.home,body.glossary{grid-template-columns:1fr;grid-template-areas:"top" "sta
 #landing .tours{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:22px;}
 .tour-card{display:flex;flex-direction:column;gap:4px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--fg);text-decoration:none;backdrop-filter:blur(8px);transition:transform .15s,border-color .15s;}
 .tour-card:hover{transform:translateY(-2px);border-color:var(--signal);} .tour-card:focus-visible{outline:2px solid var(--signal);} .tour-card b{font-size:14px;font-weight:600;} .tour-card span{font-size:12px;color:var(--fg3);font-family:var(--mono);} .tour-card small{font-size:12px;color:var(--fg2);}
-#landing .browse{display:inline-block;text-decoration:none;} #landing a.ghost{text-decoration:none;}
+#landing .browse,#landing a[href="#glossary"]{display:inline-block;text-decoration:none;} /* 詞彙表、看過幾個、重設都和「直接瀏覽」一樣有底色，浮在 3D 背景上才看得清 */
 /* 專有名詞：說明文字裡的詞是連結 */
 a.term{color:inherit;text-decoration:none;border-bottom:1px dotted var(--signal);cursor:help;} a.term:hover{color:var(--signal);border-bottom-style:solid;}
 #glossbtn{margin-left:auto;margin-right:8px;white-space:nowrap;} #glossbtn + #tourbtn{margin-left:0;}
@@ -178,7 +178,7 @@ a.term{color:inherit;text-decoration:none;border-bottom:1px dotted var(--signal)
 #glossary .gl-list h3{font-size:12.5px;font-weight:500;color:var(--fg3);margin:22px 0 8px;} #glossary .gl-list ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px;}
 #glossary .gl-list a{display:flex;flex-direction:column;gap:2px;padding:9px 12px;background:rgba(21,29,44,.7);border:1px solid var(--line);border-radius:10px;color:var(--fg);text-decoration:none;backdrop-filter:blur(6px);} #glossary .gl-list a:hover,#glossary .gl-list li.cur a{border-color:var(--signal);}
 #glossary .gl-list b{font-size:13.5px;font-weight:600;} #glossary .gl-list span{font-size:12px;color:var(--fg3);}
-#landing .land-foot{margin:36px 0 0;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--fg3);} #landing .land-foot .btn{font-size:12px;padding:3px 9px;}
+#landing .land-foot{margin:36px 0 0;display:flex;align-items:center;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--fg3);} #landing .land-foot .btn{font-size:12px;padding:3px 9px;} #landing .land-foot .seen{cursor:default;color:var(--fg2);} #landing .land-foot .seen:empty{display:none;}
 @media (max-width:900px){
   body{grid-template-columns:1fr;grid-template-rows:auto auto 1fr auto;grid-template-areas:"top" "side" "stage" "ctrl";}
   #side{border-right:0;border-bottom:1px solid var(--line);padding:6px 10px;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 40px),transparent);} /* 右緣淡出：暗示可以橫向捲 */

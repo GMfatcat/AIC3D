@@ -258,8 +258,8 @@ const App = {
     el.innerHTML=`<div class="land-in"><h1>AI 概念 3D 教學</h1><p class="lead">${catalog.length} 個互動 3D 場景，每個只回答一個問題：從 CNN 到 Agent，看懂概念，不追數值。</p>
       <p class="roles-cap">整站只用八種顏色，每種代表一個角色：</p><div class="roles">${roles}</div>
       <h2>挑一條路線，按順序看</h2><div class="tours">${tours}</div>
-      <a class="btn browse" href="#${catalog[0].id}">或直接瀏覽 ${catalog.length} 個場景 →</a> <a class="btn ghost" href="#glossary">詞彙表</a>
-      <p class="land-foot"><span class="seen"></span><button type="button" class="btn ghost">重設看過的紀錄</button></p></div>`;
+      <a class="btn browse" href="#${catalog[0].id}">或直接瀏覽 ${catalog.length} 個場景 →</a> <a class="btn" href="#glossary">詞彙表</a>
+      <p class="land-foot"><span class="seen btn"></span><button type="button" class="btn">重設看過的紀錄</button></p></div>`;
     el.querySelector('.land-foot button').addEventListener('click',()=>{ this.visited=new Set(); try{ localStorage.removeItem('visited'); localStorage.removeItem('prefs'); }catch(e){} this._landingFoot(); }); },
   /* 開場頁最底下：看過幾個、重設（看過與否只存在這個瀏覽器的 localStorage） */
   _landingFoot(){ const f=document.querySelector('#landing .land-foot'); if(!f) return; const n=[...this.visited].filter(id=>catalog.some(i=>i.id===id)).length; f.querySelector('.seen').textContent=n?`已看過 ${n} / ${catalog.length} 個場景（記在這個瀏覽器裡）`:'還沒看過任何場景'; f.querySelector('button').style.display=n?'':'none'; },
