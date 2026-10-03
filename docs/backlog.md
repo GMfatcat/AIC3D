@@ -308,8 +308,8 @@
 
 ## P10 — 第二波擴充（2026-10-03 使用者提出；決定：Latent Diffusion 不綁型號、加 diffusion LLM、SAM2 與 SAM3 分頁且 SAM2 頁可切 SAM2-UNet、評估分頁照提案加 TTFT）
 
-- [ ] P10a 基礎架構：`diffusion`（前向加噪 / 反向去噪、排程、步數）、`dllm`（Diffusion LLM：LLaDA / Gemini Diffusion 一類，全部遮罩 → 平行填、對照自回歸）、`clip`（影像塔 + 文字塔、N×N 相似度矩陣、溫度、zero-shot）
-- [ ] P10a 完整模型：`ldm`（Latent Diffusion：文字編碼 → latent 噪聲 → UNet / DiT 去噪迴圈 → VAE 解碼；步數、CFG）、`sam2`（Hiera 編碼 → 點 / 框提示 → 遮罩解碼；影片記憶庫；模式可切 SAM2-UNet：凍結編碼器 + adapter + 輕量解碼器）、`sam3`（概念提示找全部實例 + 存在 token + 追蹤；對照 SAM2）
+- [x] P10a 基礎架構（b596cf1）：`diffusion`（前向加噪 / 反向去噪、排程、步數）、`dllm`（Diffusion LLM：LLaDA / Gemini Diffusion 一類，全部遮罩 → 平行填、對照自回歸）、`clip`（影像塔 + 文字塔、N×N 相似度矩陣、溫度、zero-shot）
+- [x] P10a 完整模型：`ldm`（Latent Diffusion：文字編碼 → latent 噪聲 → UNet / DiT 去噪迴圈 → VAE 解碼；步數、CFG）、`sam2`（Hiera 編碼 → 點 / 框提示 → 遮罩解碼；影片記憶庫；模式可切 SAM2-UNet：凍結編碼器 + adapter + 輕量解碼器）、`sam3`（概念提示找全部實例 + 存在 token + 追蹤；對照 SAM2）
 - [ ] P10b 訓練：`optimizers`（SGD / momentum / Adam / AdamW / Muon 同一地形下山；每參數幾份狀態）、`activations`（sigmoid / tanh / ReLU / GELU / SiLU / SwiGLU 曲線與導數、十層梯度；softmax 與溫度）
 - [ ] P10c 新分頁 **模型評估**（放在訓練之後、壓縮與量化之前；數字鍵 1–8）：`cls-metrics`（門檻 → 混淆矩陣 → P / R / F1、PR / ROC / AUC）、`det-seg-metrics`（IoU → AP → mAP@0.5 / @0.5:0.95；遮罩 IoU / Dice / mIoU）、`text-metrics`（BLEU / ROUGE / chrF，n-gram 重疊）、`llm-eval`（perplexity、exact match、pass@k、LLM-as-judge / Elo）、`retrieval-metrics`（Recall@k / MRR / nDCG）、`latency-metrics`（TTFT / TPOT / 吞吐，連回推論基礎設施）
 - 每個場景照 P6 / P7 慣例；新導覽路線「生成：從噪聲到圖與文」（diffusion → ldm → clip → dllm）
