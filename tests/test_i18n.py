@@ -166,3 +166,23 @@ def test_english_glossary_term_toc_search_and_tooltips(en):
     assert en.ev("[...document.querySelectorAll('#glossary .gl-list li')].filter(li => li.style.display !== 'none').map(li => li.querySelector('b').textContent)") == ["Receptive field"]
     assert en.ev("I18N.missing()") == []
 
+# ---- tour step notes (third batch) ----
+def test_every_tour_note_has_an_english_entry():
+    tours = (ROOT / "core" / "tours.js").read_text(encoding="utf-8")
+    keys = _en_keys() | set(re.findall(r"'((?:[^'\\]|\\.)*)':", (ROOT / "core" / "i18n-en-tours.js").read_text(encoding="utf-8")))
+    notes = re.findall(r"\['([\w-]+)','([^']+)'\]", tours)
+    assert len(notes) >= 67, len(notes)
+    missing = [(sid, note[:24]) for sid, note in notes if note not in keys]
+    assert not missing, missing
+
+
+def test_english_tour_bar_note(en):
+    en.page.evaluate("location.hash = 'tour=kv&step=3'")
+    en.page.wait_for_function("App.currentItem && App.currentItem.id === 'kvcache' && !App.routing && document.querySelector('#tourbar.on')")
+    note = en.ev("document.querySelector('#tourbar .tb-note').textContent")
+    assert note.startswith("KV Cache") and "Why store it" in note, note
+    assert not re.search(r"[一-鿿]", en.ev("document.getElementById('tourbar').textContent"))
+    en.goto("tour=kv&step=4")
+    en.page.wait_for_function("App.currentItem && App.currentItem.id === 'vllm' && !App.routing")
+    assert "Where to put it" in en.ev("document.querySelector('#tourbar .tb-note').textContent")
+    assert not re.search(r"[一-鿿]", en.ev("document.getElementById('tourbar').textContent"))  # panel text itself is the next batch

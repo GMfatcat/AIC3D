@@ -1,7 +1,7 @@
 /* English strings. Keys are the Traditional Chinese source strings (see core/i18n.js).
    Covered so far: UI chrome, tabs, every scene's title / question / what-you-see / what-you-do, tour titles, the desk, visitors.
-   Glossary entries live in core/i18n-en-glossary.js.
-   Not yet: text inside scene panels (how-to, readouts, segmented options, guide steps), tour step notes. */
+   Glossary entries live in core/i18n-en-glossary.js, tour step notes in core/i18n-en-tours.js.
+   Not yet: text inside scene panels (how-to, readouts, segmented options, guide steps). */
 (function(){
 'use strict';
 Object.assign(I18N.dict.en, {
