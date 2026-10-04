@@ -172,14 +172,14 @@ function book(){
   return { group, parts, slots:[], height:0.6, radius:1.1, open(){}, idle(){ return 0; } };
 }
 function frame(){
-  const group = new T.Group(), parts = []; const f = new T.Group(); f.position.set(0,0.65,0); f.rotation.x = -0.25; f.rotation.y = -0.5; group.add(f);
+  const group = new T.Group(), parts = []; const f = new T.Group(); f.position.set(0,0.65,0); f.rotation.x = -0.2; f.rotation.y = 0.45; group.add(f); // 稍微轉向鏡頭那一側
   mesh(parts, f, box(1.5,1.2,0.08), 'signal', { step:0 }); // 外框
   mesh(parts, f, box(1.26,0.96,0.02), 'memory', { pos:[0,0,0.05], step:0, glow:0.1 }); // 天空
   mesh(parts, f, sph(0.12,12,8), 'signal:hot', { pos:[0.35,0.25,0.07], step:0, glow:0.9 }); // 太陽
   mesh(parts, f, sph(0.5,16,10), 'flow', { pos:[-0.3,-0.48,0.06], scale:[1,0.6,0.3], step:0 }); // 山丘
   mesh(parts, f, sph(0.42,16,10), 'flow:dim', { pos:[0.45,-0.52,0.07], scale:[1,0.55,0.3], step:0 });
   mesh(parts, f, box(0.08,0.9,0.5), 'inactive', { pos:[0,-0.1,-0.32], rot:[0.45,0,0], step:0 }); // 背後的撐腳
-  return { group, parts, slots:[], height:1.3, radius:0.9, open(){}, idle(){ return 0; } };
+  return { group, parts, slots:[], height:1.3, radius:0.9, view:{ phi:1.25, dist:4.2, ty:0.7, tz:0.1 }, open(){}, idle(){ return 0; } };
 }
 
 Object.assign(P.deskModels, { building, bricks, scale, suitcase, rack, robot, map, book, frame });

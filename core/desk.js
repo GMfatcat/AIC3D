@@ -11,7 +11,7 @@ const POS = [[-8.4,-3.0],[-2.8,-3.0],[2.8,-3.0],[8.4,-3.0],[-8.4,3.2],[-2.8,3.2]
 const FIXTURES = [
   { id:'tours', kind:'map', name:'導覽路線', pos:[12.7, 4.0], noun:'條路線', verb:'走完', enter:'開始路線 →' },
   { id:'glossary', kind:'book', name:'詞彙表', pos:[12.7, -0.9], go:()=>{ location.hash = 'glossary'; } },
-  { id:'about', kind:'frame', name:'關於', pos:[12.7, -5.3], go:()=>{ App.about && App.about.open(); } },
+  { id:'about', kind:'frame', name:'關於', pos:[12.7, -5.3], panel:()=>App.about.html() }, // 相框：飛過去，內容顯示在面板
 ];
 const WIDE = { theta:0.3, phi:0.95 };
 const PAINT_MS = 550, FLY_MS = 900;
@@ -56,7 +56,7 @@ const desk = {
       const st = this._st(this.focused); const it = st && st.items()[m.userData.slot]; return it ? `${m.userData.slot + 1} ${it.title}${st.seenIdx(m.userData.slot) ? '（看過）' : ''}` : '零件'; };
     this._hover = App.watchHover(this._wideHits, (h)=>this._hoverCb(h), describe);
     this._click = App.clickTarget(this._wideHits, (m)=>{ this._hintDone(); if(m.userData.st !== undefined){ const s = this._st(m.userData.st); if(s.go) s.go(); else location.hash = 'tab=' + s.id; } else { const s = this.slots.find(x=>x.hit === m); if(s) this.select(s); } });
-    this._key = (e)=>{ if(e.key==='Escape' && App.home && this.focused && !(App.intro && App.intro.isOpen()) && !(App.about && App.about.isOpen())){ e.preventDefault(); if(this.selected) this._unselect(true); else location.hash = 'home'; } };
+    this._key = (e)=>{ if(e.key==='Escape' && App.home && this.focused && !(App.intro && App.intro.isOpen())){ e.preventDefault(); if(this.selected) this._unselect(true); else location.hash = 'home'; } };
     addEventListener('keydown', this._key);
     document.body.classList.remove('desk-focus'); this._bar(null); this._hint();
   },
@@ -83,7 +83,7 @@ const desk = {
 
   /* ---------- 聚焦一件 / 回全景 ---------- */
   focus(id){
-    const target = id && this._st(id) && this._st(id).model.slots.length ? id : null;
+    const target = id && this._st(id) && (this._st(id).model.slots.length || this._st(id).panel) ? id : null; // 有零件的玩具、或有面板的固定物（相框）
     const prev = this.focused; const first = this._first; this._first = false;
     if(target === prev && !first) return;
     this.focused = target; this.ready = false; this._clearSlots(); App.autoSpin = false; if(target) this._hintDone();
@@ -94,6 +94,7 @@ const desk = {
     if(!target){ this._bar(null); this._hover.set(this._wideHits); this._click.set(this._wideHits); const ms = first ? 0 : FLY_MS;
       if(App.camHome) App.flyTo(App.camHome, ms); Motion.tween({ t:0 }, { t:1 }, { ms, onDone:done }); return; }
     const st = this._st(target); this._bar(st);
+    if(st.panel){ this._hover.set([]); this._click.set([]); } // 面板型：沒有零件可點
     // 場景 = 零件：每個 slot 一個可點的 hit，左上角列一份清單。點零件或清單 → 鏡頭靠近它、出現名字與「進入」鈕；再點一次才進場景
     const items = st.items(); const ol = document.querySelector('#deskbar ol');
     st.model.slots.forEach((s, i)=>{ const it = items[i]; if(!it) return; const seen = st.seenIdx(i);
@@ -137,9 +138,10 @@ const desk = {
     for(const st of this._all()){ const on = !this.focused && h === st.hit; if(on === st.hov) continue; st.hov = on; Motion.tween(st, { lift: on ? 1 : 0 }, { ms:260 }); st.label.el.classList.toggle('hot', on); }
     for(const s of this.slots){ const on = s.hit === h; if(on === !!s.on) continue; s.on = on; s.li.classList.toggle('hot', on); s.node.userData.lift = (on || this.selected === s) ? 1 : 0; } },
   _bar(st){ const el = document.getElementById('deskbar'); if(!el) return; if(!st){ el.innerHTML = ''; el.classList.remove('on'); return; }
-    el.innerHTML = `<div class="row"><b></b><span class="n"></span><button type="button" class="btn">回工作桌</button></div><ol class="dlist" aria-label="這一件上的項目"></ol><div class="dcard"></div><span class="hint">點物件上的零件或清單看那一個 · Esc 退回</span>`;
+    el.innerHTML = st.panel ? `<div class="row"><b>${st.name}</b><button type="button" class="btn">回工作桌</button></div><div class="dpanel">${st.panel()}</div>`
+      : `<div class="row"><b></b><span class="n"></span><button type="button" class="btn">回工作桌</button></div><ol class="dlist" aria-label="這一件上的項目"></ol><div class="dcard"></div><span class="hint">點物件上的零件或清單看那一個 · Esc 退回</span>`;
     el.querySelector('.row button').addEventListener('click', ()=>{ location.hash = 'home'; }); el.classList.add('on'); this._barUpdate(); },
-  _barUpdate(){ const el = document.getElementById('deskbar'); const st = this.focused && this._st(this.focused); if(!el || !st || !el.firstChild) return;
+  _barUpdate(){ const el = document.getElementById('deskbar'); const st = this.focused && this._st(this.focused); if(!el || !st || !el.firstChild || st.panel) return;
     const n = st.items().length, v = st.visited();
     el.querySelector('b').textContent = st.name; el.querySelector('.n').textContent = `${n} ${st.noun} · ${st.verb} ${v} / ${n}${v >= n ? ' · 全部上色了' : ''}`; },
 

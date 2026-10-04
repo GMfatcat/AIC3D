@@ -267,8 +267,8 @@ def test_dictionary_opens_the_glossary_and_frame_opens_about(fresh):
     fresh.goto("home")
     fresh.page.focus(f"{FOCUS_BTN} >> nth=10")
     fresh.page.keyboard.press("Enter")
-    fresh.page.wait_for_function("App.about.isOpen()")
-    assert fresh.ev("App.home"), "the about card opens over the desk"
+    fresh.page.wait_for_function("App.about.isOpen() && App.desk.ready")
+    assert fresh.ev("App.home") and fresh.ev("App.desk.focused") == "about", "about is a place on the desk: the camera flies to the frame"
 
 
 def test_route_map_lists_tours_and_paints_completed_ones(fresh):

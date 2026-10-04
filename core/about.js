@@ -17,32 +17,21 @@
     if(/(^|\.)(github\.com|gitlab\.com|codeberg\.org|bitbucket\.org|sr\.ht)$/.test(h) || /git(ea|lab|hub|ee|ogs)?\./.test(h) || /^git\./.test(h)) return 'git'; return 'web'; };
   const normalize=d=>{ const o=d&&typeof d==='object'?d:{}; return { title:String(o.title||document.title||''), description:Array.isArray(o.description)?o.description.map(String):(o.description?[String(o.description)]:[]), links:(Array.isArray(o.links)?o.links:[]).filter(l=>l&&l.url).map(l=>({name:String(l.name||host(l.url)||l.url), url:String(l.url), type:typeOf(l.url,l.type)})) }; };
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const INERT=['top','side','stage','ctrl']; const $=id=>document.getElementById(id);
-  const about={ data:normalize(window.ABOUT), typeOf, el:null, _prevFocus:null,
-    isOpen(){ return !!(this.el && this.el.classList.contains('open')); },
-    open(){ if(this.isOpen()) return; const d=this.data; const el=this.el;
-      el.innerHTML=`<div class="intro-card about-card" role="dialog" aria-modal="true" aria-labelledby="about-title">
-        <small class="crumb">關於這個網站</small><h2 id="about-title">${esc(d.title)}</h2>
+  const about={ data:normalize(window.ABOUT), typeOf,
+    /* 「關於」是桌上的相框：開 = 飛過去（#tab=about），內容顯示在旁邊的面板，不另開視窗 */
+    isOpen(){ return !!(App.home && App.desk && App.desk.focused==='about'); },
+    open(){ location.hash='tab=about'; },
+    close(){ if(this.isOpen()) location.hash='home'; },
+    html(){ const d=this.data; return `<div class="about-panel"><small class="crumb">關於這個網站</small><h2>${esc(d.title)}</h2>
         <div class="about-desc">${d.description.map(p=>`<p>${esc(p)}</p>`).join('')}</div>
         ${d.links.length?`<h3>延伸連結</h3><ul class="about-links">${d.links.map(l=>`<li><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" data-type="${l.type}"><span class="aicon">${svg(l.type)}</span><b>${esc(l.name)}</b><small>${esc(host(l.url)||l.url)}</small></a></li>`).join('')}</ul>`:''}
-        <p class="about-foot">連結清單來自 about.json：直接編輯那個檔就能新增或修改（離線單檔版要重新 build）。</p>
-        <div class="intro-actions"><span class="sp"></span><button type="button" class="btn primary" data-act="close">關閉</button></div></div>`;
-      el.querySelector('[data-act=close]').addEventListener('click',()=>this.close());
-      el.addEventListener('click',e=>{ if(e.target===el) this.close(); },{once:true}); /* 點卡片外面也關 */
-      this._prevFocus=document.activeElement && !document.activeElement.closest('#about') ? document.activeElement : null;
-      el.classList.add('open'); document.body.classList.add('about'); INERT.forEach(id=>{ const n=$(id); if(n) n.inert=true; });
-      el.querySelector('.btn.primary').focus(); },
-    close(){ if(!this.isOpen()) return; this.el.classList.remove('open'); this.el.innerHTML=''; document.body.classList.remove('about'); INERT.forEach(id=>{ const n=$(id); if(n) n.inert=false; });
-      const f=this._prevFocus; this._prevFocus=null; if(f && f.isConnected){ try{ f.focus({preventScroll:true}); }catch(e){} } },
+        <p class="about-foot">連結清單來自 about.json：直接編輯那個檔就能新增或修改（離線單檔版要重新 build）。</p></div>`; },
   };
   App.about=about;
   document.addEventListener('DOMContentLoaded',init); if(document.readyState!=='loading') init();
-  function init(){ if(about.el) return; about.el=$('about'); if(!about.el){ about.el=document.createElement('div'); about.el.id='about'; document.body.appendChild(about.el); }
+  function init(){ if(about._init) return; about._init=true;
     const btn=document.createElement('button'); btn.type='button'; btn.className='btn'; btn.id='aboutbtn'; btn.textContent='關於'; btn.addEventListener('click',()=>about.open());
-    const top=$('top'); top.insertBefore(btn, $('tourbtn'));
+    const top=document.getElementById('top'); top.insertBefore(btn, document.getElementById('tourbtn'));
     /* 靜態伺服器：讀同目錄的 about.json，成功就蓋掉內嵌的那份；file:// 不能 fetch，就用內嵌 */
     if(/^https?:$/.test(location.protocol) && window.fetch){ fetch('about.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{ if(d) about.data=normalize(d); }).catch(()=>{}); } }
-  document.addEventListener('keydown',e=>{ if(!about.isOpen()) return;
-    if(e.key==='Escape'){ e.preventDefault(); about.close(); return; }
-    if(e.key==='Tab'){ const f=[...about.el.querySelectorAll('a,button')].filter(x=>!x.disabled); if(!f.length) return; const i=f.indexOf(document.activeElement); const n=e.shiftKey?(i<=0?f.length-1:i-1):(i<0||i===f.length-1?0:i+1); f[n].focus(); e.preventDefault(); } });
 })();

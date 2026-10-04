@@ -180,7 +180,7 @@ const App = {
     let id=location.hash.replace('#','') || 'home';
     if(id==='home'){ this._inTour=false; this.hideTour && this.hideTour(); this._goFull('home'); return; }
     { const gm=id.match(/^(glossary|term=([\w-]+))$/); if(gm){ this._inTour=false; this.hideTour && this.hideTour(); this._goFull('glossary', gm[2]||null); return; } } // 詞彙頁
-    { const tb=id.match(/^tab=(\w+)$/); if(tb && (TABS.some(t=>t.id===tb[1]) || tb[1]==='tours')){ this._inTour=false; this.hideTour && this.hideTour(); this._goFull('home', tb[1]); return; } } // 工作桌上聚焦一件物件
+    { const tb=id.match(/^tab=(\w+)$/); if(tb && (TABS.some(t=>t.id===tb[1]) || tb[1]==='tours' || tb[1]==='about')){ this._inTour=false; this.hideTour && this.hideTour(); this._goFull('home', tb[1]); return; } } // 工作桌上聚焦一件物件
     const tm=id.match(/^tour=([\w-]+)&step=(\d+)$/);
     if(tm && this.renderTour){ const sid=this.renderTour(tm[1],+tm[2]); if(sid){ id=sid; this._inTour=true; } else { this._inTour=false; } }
     else { this._inTour=false; this.hideTour && this.hideTour(); }
