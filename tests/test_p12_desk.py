@@ -285,3 +285,37 @@ def test_route_map_lists_tours_and_paints_completed_ones(fresh):
     p = fresh.ev("App.desk.painted('tours')")
     assert 0 < p < fresh.ev("App.desk.parts('tours')"), "finishing one tour paints the map and its pin, not everything"
     assert re.search(r"1\s*/\s*10", fresh.ev("document.getElementById('deskbar').textContent"))
+
+
+# ---------- P12d: polish ----------
+
+def test_phone_list_docks_at_the_bottom_so_it_does_not_cover_the_toy(phone_site):
+    phone_site.goto("home")
+    _focus(phone_site, "train")
+    r = phone_site.ev("(() => { const s = document.getElementById('stage').getBoundingClientRect(), d = document.getElementById('deskbar').getBoundingClientRect(); return { top: d.top - s.top, bottom: s.bottom - d.bottom, stageH: s.height }; })()")
+    assert r["top"] > r["stageH"] * 0.5, "the list sits in the lower half on a phone"
+    assert r["bottom"] >= 0, "and stays inside the stage"
+    assert phone_site.ev("getComputedStyle(document.querySelector('#deskbar .dlist')).flexDirection") == "row", "scrolls sideways"
+    phone_site.page.locator("#deskbar .dlist button").nth(1).click()
+    phone_site.page.wait_for_function("App.desk.selected && App.desk.ready")
+    assert phone_site.ev("document.querySelector('#deskbar .dcard').getBoundingClientRect().height") > 0
+
+
+def test_first_visit_shows_a_desk_hint_that_goes_away_after_the_first_click(fresh):
+    assert fresh.ev("getComputedStyle(document.getElementById('deskhint')).display") != "none"
+    assert "點" in fresh.ev("document.getElementById('deskhint').textContent")
+    fresh.page.focus(f"{FOCUS_BTN} >> nth=3")
+    fresh.page.keyboard.press("Enter")
+    fresh.page.wait_for_function("!App.routing && App.home && App.desk.focused === 'train'")
+    fresh.page.wait_for_function("getComputedStyle(document.getElementById('deskhint')).display === 'none'")
+    fresh.page.reload()
+    fresh.page.wait_for_function("window.App && !App.routing && App.home && App.desk.ready")
+    assert fresh.ev("getComputedStyle(document.getElementById('deskhint')).display") == "none", "remembered in this browser"
+
+
+def test_desk_hint_close_button_dismisses_it(fresh):
+    fresh.page.locator("#deskhint button").click()
+    fresh.page.wait_for_function("getComputedStyle(document.getElementById('deskhint')).display === 'none'")
+    fresh.goto("cnn")
+    fresh.goto("home")
+    assert fresh.ev("getComputedStyle(document.getElementById('deskhint')).display") == "none"

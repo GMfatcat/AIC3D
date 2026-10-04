@@ -55,11 +55,17 @@ const desk = {
     const describe = (m)=>{ if(m.userData.st !== undefined){ const s = this._st(m.userData.st); const n = s.items().length; return `${s.name}：${NAME[s.kind]}${n ? `（${s.verb} ${s.visited()} / ${n}）` : ''}`; }
       const st = this._st(this.focused); const it = st && st.items()[m.userData.slot]; return it ? `${m.userData.slot + 1} ${it.title}${st.seenIdx(m.userData.slot) ? '（看過）' : ''}` : '零件'; };
     this._hover = App.watchHover(this._wideHits, (h)=>this._hoverCb(h), describe);
-    this._click = App.clickTarget(this._wideHits, (m)=>{ if(m.userData.st !== undefined){ const s = this._st(m.userData.st); if(s.go) s.go(); else location.hash = 'tab=' + s.id; } else { const s = this.slots.find(x=>x.hit === m); if(s) this.select(s); } });
+    this._click = App.clickTarget(this._wideHits, (m)=>{ this._hintDone(); if(m.userData.st !== undefined){ const s = this._st(m.userData.st); if(s.go) s.go(); else location.hash = 'tab=' + s.id; } else { const s = this.slots.find(x=>x.hit === m); if(s) this.select(s); } });
     this._key = (e)=>{ if(e.key==='Escape' && App.home && this.focused && !(App.intro && App.intro.isOpen()) && !(App.about && App.about.isOpen())){ e.preventDefault(); if(this.selected) this._unselect(true); else location.hash = 'home'; } };
     addEventListener('keydown', this._key);
-    document.body.classList.remove('desk-focus'); this._bar(null);
+    document.body.classList.remove('desk-focus'); this._bar(null); this._hint();
   },
+  /* 第一次進站：桌面下方一句提示，點過任何東西或按 × 就不再出現（記在這個瀏覽器） */
+  _hint(){ const el = document.getElementById('deskhint'); if(!el) return; let seen = false; try{ seen = !!localStorage.getItem('deskhint'); }catch(e){}
+    if(seen || !App.home){ el.classList.remove('on'); el.innerHTML = ''; return; }
+    el.innerHTML = `<span>桌上的東西都可以點：八件玩具是八個主題，路線圖是導覽，字典是詞彙表。看過的場景越多，玩具的顏色越完整。</span><button type="button" class="btn" aria-label="關閉提示">×</button>`;
+    el.querySelector('button').addEventListener('click', ()=>this._hintDone()); el.classList.add('on'); },
+  _hintDone(){ const el = document.getElementById('deskhint'); if(!el || !el.classList.contains('on')) return; el.classList.remove('on'); el.innerHTML = ''; try{ localStorage.setItem('deskhint', '1'); }catch(e){} },
   dispose(){ removeEventListener('keydown', this._key); this._unselect(); this._known = {}; this._all().forEach(st=>{ this._known[st.id] = st.visited(); }); this._anims = []; this.slots = []; this.focused = null; this.ready = true; document.body.classList.remove('desk-focus'); this._bar(null); },
 
   /* ---------- 上色：零件要嘛對應某個場景（idx：看過它就上色），要嘛是本體（step：看過 step 個才上色）。新上色的一塊塊補間；退回灰土是立即的 ---------- */
@@ -80,7 +86,7 @@ const desk = {
     const target = id && this._st(id) && this._st(id).model.slots.length ? id : null;
     const prev = this.focused; const first = this._first; this._first = false;
     if(target === prev && !first) return;
-    this.focused = target; this.ready = false; this._clearSlots(); App.autoSpin = false;
+    this.focused = target; this.ready = false; this._clearSlots(); App.autoSpin = false; if(target) this._hintDone();
     document.querySelectorAll('#tabs button').forEach(b=>{ const on = b.dataset.tab === target; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
     document.body.classList.toggle('desk-focus', !!target);
     for(const st of this._all()){ st.label.material.opacity = (!target || st.id === target) ? 1 : 0.25; if(st.id !== target && st.open > 0){ Motion.tween(st, { open:0 }, { ms:300, onUpdate:()=>st.model.open(st.open) }); } }
@@ -98,8 +104,8 @@ const desk = {
     const hits = this.slots.map(s=>s.hit); this._hover.set(hits); this._click.set(hits);
     // 鏡頭：對準物件（模型可以指定看哪裡、多遠、多高），從物件所在的那一側看過去
     const v = st.model.view || {}; const c = new T.Vector3(st.group.position.x, v.ty ?? (st.model.height * 0.5 + 0.1), st.group.position.z + (v.tz || 0));
-    const dist = v.dist || Math.max(6, st.model.radius * 3.6); const side = st.group.position.x < 0 ? -0.18 : 0.18; const theta = WIDE.theta + side;
-    if(!matchMedia('(max-width:900px)').matches) c.addScaledVector(new T.Vector3(Math.cos(theta), 0, -Math.sin(theta)), -dist * 0.16); // 桌機：左上角有清單，物件往右讓一點
+    const mobile = matchMedia('(max-width:900px)').matches; const dist = (v.dist || Math.max(6, st.model.radius * 3.6)) * (mobile ? 1.25 : 1); const side = st.group.position.x < 0 ? -0.18 : 0.18; const theta = WIDE.theta + side; // 手機畫面窄，退遠一點
+    if(!mobile) c.addScaledVector(new T.Vector3(Math.cos(theta), 0, -Math.sin(theta)), -dist * 0.16); // 桌機：左上角有清單，物件往右讓一點
     st.cam = { theta, phi: v.phi || 1.05, dist, target: c }; App.flyTo(st.cam, FLY_MS);
     Motion.tween(st, { open:1 }, { ms: FLY_MS + 300, ease:'inOut', onUpdate:()=>st.model.open(st.open), onDone:done });
   },
@@ -117,7 +123,7 @@ const desk = {
     slot.li.classList.add('current'); slot.node.userData.lift = 1;
     const card = document.querySelector('#deskbar .dcard'); card.innerHTML = `<b>${slot.n}  ${slot.title}</b><p>${slot.item.question || ''}</p><div class="acts"><a class="btn primary enter" href="#${slot.id}">${st.enter}</a><button type="button" class="btn back">看整件</button></div>`; card.classList.add('on');
     card.querySelector('.back').addEventListener('click', ()=>this._unselect(true));
-    const p = slot.node.getWorldPosition(new T.Vector3()); p.y += 0.35; const dist = Math.max(2.4, (st.model.view && st.model.view.partDist) || st.model.radius * 1.25);
+    const p = slot.node.getWorldPosition(new T.Vector3()); p.y += 0.35; const dist = Math.max(2.4, (st.model.view && st.model.view.partDist) || st.model.radius * 1.25) * (matchMedia('(max-width:900px)').matches ? 1.6 : 1);
     App.flyTo({ theta: st.cam.theta, phi: (st.model.view && st.model.view.partPhi) || st.cam.phi, dist, target: p }, FLY_MS * 0.7); /* 棋子這種會互相擋的，從高一點的角度看 */
     Motion.tween({ t:0 }, { t:1 }, { ms: FLY_MS * 0.7, onDone:()=>{ this.ready = true; } });
   },

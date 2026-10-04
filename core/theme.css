@@ -165,7 +165,12 @@ body.home #deskbar.on{display:flex;} #deskbar .row{display:flex;align-items:cent
 #deskbar .dcard{display:none;flex-direction:column;gap:6px;padding:12px 14px;background:var(--panel);border:1px solid var(--signal);border-radius:12px;backdrop-filter:blur(8px);text-shadow:none;} #deskbar .dcard.on{display:flex;}
 #deskbar .dcard b{font-size:14px;color:var(--fg);} #deskbar .dcard p{margin:0;font-size:12.5px;color:var(--fg2);line-height:1.5;} #deskbar .dcard .acts{display:flex;gap:6px;margin-top:4px;} #deskbar .dcard .btn{font-size:12.5px;padding:4px 12px;text-decoration:none;}
 .l3d.hot{color:#fff;background:rgba(9,14,23,.85);}
-@media (max-width:900px){ body.home,body.glossary{grid-template-rows:auto 1fr;} #deskbar{max-width:80%;} #deskbar .dlist{max-height:30vh;} } /* 手機：開場頁與詞彙頁的舞台也要撐滿（列數是手機版的四列時第二列高度為 0） */
+#deskhint{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:none;align-items:center;gap:10px;max-width:min(640px,calc(100% - 32px));padding:8px 10px 8px 14px;font-size:12.5px;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:999px;backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(0,0,0,.35);z-index:3;} body.home #deskhint.on{display:flex;} body.desk-focus #deskhint{display:none;} #deskhint .btn{font-size:14px;line-height:1;padding:2px 8px;}
+/* 手機：清單停在舞台底部橫著滑，不蓋住物件 */
+@media (max-width:900px){ body.home,body.glossary{grid-template-rows:auto 1fr;}
+  #deskbar{left:0;right:0;top:auto;bottom:0;max-width:none;padding:8px 12px 10px;gap:6px;background:linear-gradient(to top,rgba(14,20,32,.96) 70%,rgba(14,20,32,0));}
+  #deskbar .dlist{flex-direction:row;overflow-x:auto;max-height:none;gap:4px;padding:4px;scrollbar-width:none;} #deskbar .dlist::-webkit-scrollbar{display:none;} #deskbar .dlist li{flex:0 0 auto;} #deskbar .dlist button{white-space:nowrap;padding:5px 10px;}
+  #deskbar .hint{display:none;} #deskbar .dcard{padding:10px 12px;} #deskhint{bottom:12px;border-radius:14px;} } /* 手機：開場頁與詞彙頁的舞台也要撐滿（列數是手機版的四列時第二列高度為 0） */
 #landing h1{font-size:clamp(26px,3.6vw,40px);margin:0 0 10px;letter-spacing:.5px;text-shadow:0 2px 12px rgba(0,0,0,.6);}
 #landing .lead{font-size:15px;color:var(--fg2);max-width:560px;margin:0 0 22px;text-shadow:0 1px 6px rgba(0,0,0,.6);}
 #landing .desk-hint{font-size:13px;color:var(--fg2);max-width:420px;margin:0 0 14px;text-shadow:0 1px 6px rgba(0,0,0,.6);}
