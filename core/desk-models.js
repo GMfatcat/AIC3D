@@ -19,6 +19,7 @@ const sph = (r, w=18, h=12) => new T.SphereGeometry(r, w, h);
 const box = (w,h,d) => new T.BoxGeometry(w,h,d);
 /* 把一串零件群平均分到 1..n 步：第 j 群（共 G 群）在第 1+floor(j*n/G) 步上色 */
 const spread = (G, n) => j => 1 + Math.floor(j * n / G);
+const slide = (t, i, n, amp) => Math.max(0, Math.min(1, (t * (n + 2) - i) / 2)) * amp; // 依序滑出去就停在那
 const hop = (t, i, n, amp=0.22) => { const u = Math.max(0, Math.min(1, (t * (n + 2) - i) / 2)); return Math.sin(u * Math.PI) * amp; }; // 依序小跳一下
 
 /* ---------- 西洋棋：完整模型。每顆棋子一個場景 ---------- */
@@ -116,5 +117,5 @@ function blob(n){
     idle(t){ group.children[0].rotation.y = t * 0.2; return 0; } };
 }
 
-P.deskModels = { chess, chef, blob };
+P.deskModels = { chess, chef, blob, _h:{ mesh, lathe, cyl, sph, box, spread, hop, slide } };
 })();

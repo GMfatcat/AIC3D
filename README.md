@@ -14,7 +14,7 @@ Windows 上請用 `python`（`python3` 會被導到 Microsoft Store 捷徑）。
 - `core/glossary.js` 專有名詞：詞彙資料、說明文字的自動連結（`App.termify`）、詞彙頁（`#glossary`、`#term=<id>`）、回上一步
 - `core/about.js` 頂欄「關於」卡：簡介 + 外部連結，資料在根目錄 `about.json`（name / url / type，type 可省略由網址判斷：web、git、youtube、x、instagram、threads）。離線單檔版由 build 內嵌；靜態伺服器會改讀同目錄的 about.json
 - `core/desk.js` 開場頁的工作桌：八件玩具 = 八個分頁，`#tab=<id>` 飛到那件、打開、場景 = 零件；看過越多上色越完整（`App.desk`）
-- `core/desk-models.js` 桌上的玩具，全部程式畫（`P.deskModels`：chess、chef、blob 佔位）；每件回傳 parts（可上色零件，step = 看過幾個場景才上色）、slots（場景對應的零件）、open(t)、idle(t)、view
+- `core/desk-models.js`、`core/desk-toys.js` 桌上的八件玩具，全部程式畫（`P.deskModels`：building、bricks、chess、chef、scale、suitcase、rack、robot）；每件回傳 parts（可上色零件，step = 看過幾個場景才上色）、slots（場景對應的零件）、open(t)、idle(t)、view（鏡頭距離 / 角度、partDist / partPhi 選零件時的鏡頭、labelFromSlot）
 - `scenes/_catalog.js` 全部 61 個項目與規格
 - `scenes/<tab>-<id>.js` 一個檔案一個場景，用 `App.register({...})` 註冊
 - `tests/` 瀏覽器層級測試（見下）

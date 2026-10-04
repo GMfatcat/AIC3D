@@ -215,3 +215,32 @@ def test_reset_on_the_landing_page_strips_the_paint(fresh):
     assert fresh.ev("App.desk.painted('train')") > 0
     fresh.page.locator("#landing .land-foot button").click()
     assert fresh.ev("App.desk.painted('train')") == 0
+
+
+# ---------- P12b: every tab has its own toy ----------
+
+KINDS = {"arch": "building", "block": "bricks", "model": "chess", "train": "chef", "eval": "scale", "optimize": "suitcase", "infra": "rack", "agent": "robot"}
+
+
+def test_every_tab_has_its_own_toy_no_placeholders(fresh):
+    assert fresh.ev("Object.fromEntries(Object.entries(App.desk.stations).map(([k, s]) => [k, s.kind]))") == KINDS
+    for tab in TABS:
+        n = fresh.ev("t => App.catalog.filter(i => i.tab === t).length", tab)
+        st = fresh.ev("t => { const s = App.desk.stations[t]; return { slots: s.model.slots.length, parts: s.parts.length, h: s.model.height, steps: [...new Set(s.parts.map(p => p.step))].sort((a, b) => a - b) }; }", tab)
+        assert st["slots"] == n, tab
+        assert st["parts"] > n, (tab, "a toy is more than its slots")
+        assert st["steps"][0] == 1 and st["steps"][-1] == n, (tab, "paint steps span 1..n so the last scene finishes the colouring")
+        assert 1.2 <= st["h"] <= 3.2, (tab, st["h"])
+    fresh.assert_clean()
+
+
+@pytest.mark.parametrize("tab", ["arch", "block", "eval", "optimize", "infra", "agent"])
+def test_new_toys_focus_select_and_enter(fresh, tab):
+    _focus(fresh, tab)
+    first = fresh.ev("t => App.catalog.filter(i => i.tab === t)[0]", tab)
+    fresh.page.locator("#deskbar .dlist button").first.click()
+    fresh.page.wait_for_function("id => App.desk.selected && App.desk.selected.id === id && App.desk.ready", arg=first["id"])
+    assert first["title"] in fresh.ev("App.desk.selected.label.el.textContent")
+    fresh.page.locator("#deskbar .dcard a.enter").click()
+    fresh.page.wait_for_function("id => !App.routing && App.currentItem && App.currentItem.id === id", arg=first["id"])
+    fresh.assert_clean()

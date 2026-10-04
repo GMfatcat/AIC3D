@@ -4,8 +4,8 @@
 (function(){
 'use strict';
 const T = THREE;
-const MODEL = { arch:'blob', block:'blob', model:'chess', train:'chef', eval:'blob', optimize:'blob', infra:'blob', agent:'blob' };
-const NAME = { chess:'西洋棋', chef:'廚師公仔端著一盤菜', blob:'還沒上色的灰土' };
+const MODEL = { arch:'building', block:'bricks', model:'chess', train:'chef', eval:'scale', optimize:'suitcase', infra:'rack', agent:'robot' };
+const NAME = { building:'紙模型小樓', bricks:'一盒積木', chess:'西洋棋', chef:'廚師公仔端著一盤菜', scale:'天秤與砝碼', suitcase:'打開的行李箱', rack:'小機櫃', robot:'揹工具腰帶的小機器人', blob:'還沒上色的灰土' };
 const POS = [[-8.4,-3.0],[-2.8,-3.0],[2.8,-3.0],[8.4,-3.0],[-8.4,3.2],[-2.8,3.2],[2.8,3.2],[8.4,3.2]];
 const WIDE = { theta:0.3, phi:0.95 };
 const PAINT_MS = 550, FLY_MS = 900;
@@ -51,12 +51,12 @@ const desk = {
 
   /* ---------- 上色：看過 step 個場景的零件變彩色。新上色的一塊塊補間；退回灰土是立即的 ---------- */
   repaint(animate=true){
-    let delay = 0;
     for(const st of Object.values(this.stations)){ const v = this.visitedIn(st.tab.id);
+      const lo = Math.min(...st.parts.filter(p=>p.k < 1 && v >= p.step).map(p=>p.step)); // 這次新上色的最低一步：同一步的零件一起上，一步隔 0.12 秒，最多拖 1.5 秒
       st.parts.forEach(p=>{ const k = v >= p.step ? 1 : 0; const pending = this._anims.find(a=>a.p===p); if(k === p.k && !pending) return;
         if(pending){ if(pending.to === k) return; this._anims.splice(this._anims.indexOf(pending), 1); }
         if(!animate || !k || App.reduceMotion){ p.k = k; this._apply(p); return; }
-        this._anims.push({ p, to:k, delay, t:0 }); delay += 0.05; }); }
+        this._anims.push({ p, to:k, delay: Math.min(1.5, (p.step - lo) * 0.12), t:0 }); }); }
     this._barUpdate();
   },
   _apply(p){ const m = p.mesh.material; m.color.copy(p.clay).lerp(p.col, p.k); m.emissive.copy(m.color); m.emissiveIntensity = 0.04 + 0.2 * p.k; m.roughness = 0.9 - 0.35 * p.k; m.metalness = 0.12 * p.k; },
@@ -95,7 +95,7 @@ const desk = {
     this._unselect(); this.selected = slot; this.ready = false; const st = this.stations[this.focused];
     // 名字貼在零件正上方（用零件的實際包圍盒，不靠模型估的高度）；腳下一圈光環標出是哪一個
     st.group.updateMatrixWorld(true); const box = new T.Box3().setFromObject(slot.node); const bc = box.getCenter(new T.Vector3());
-    slot.label = P.label(`${slot.n}  ${slot.title}`, { size:20 }); slot.label.el.classList.add('hot'); slot.label.position.set(bc.x, box.max.y + 0.3, bc.z); App.root.add(slot.label);
+    slot.label = P.label(`${slot.n}  ${slot.title}`, { size:20 }); slot.label.el.classList.add('hot'); if(st.model.view && st.model.view.labelFromSlot){ slot.label.position.copy(st.group.localToWorld(slot.pos.clone())); } else slot.label.position.set(bc.x, box.max.y + 0.3, bc.z); App.root.add(slot.label); /* 疊起來的零件（樓層、機櫃單元）名字放模型指定的位置，不然會蓋到上一層 */
     const r = Math.max(box.max.x - box.min.x, box.max.z - box.min.z) * 0.5 + 0.05;
     slot.ring = new T.Mesh(new T.TorusGeometry(r, 0.035, 8, 48), P.mat('signal', { glow:1.0 })); slot.ring.rotation.x = Math.PI / 2; slot.ring.position.set(bc.x, box.min.y + 0.03, bc.z); App.root.add(slot.ring);
     slot.li.classList.add('current'); slot.node.userData.lift = 1;
