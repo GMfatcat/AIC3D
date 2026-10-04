@@ -17,12 +17,12 @@ const messenger = {
   init(root){ this._root = root; this.owl = null; this.state = 'away'; this.item = null; this._timer = FIRST; this._dialog = false; this._hide(); },
   hit(){ return this.state === 'landed' && this.owl ? this.owl.hit : null; },
   _spawn(kind){ if(this.owl){ P.drop(this.owl.group); } this.kind = kind; const role = BIRD_ROLES[Math.floor(Math.random()*BIRD_ROLES.length)];
-    this.owl = kind === 'owl' ? P.deskModels.owl() : kind === 'plane' ? P.deskModels.plane() : P.deskModels.bird(role); this.owl.hit.userData.msg = LABEL[kind]; this.owl.group.visible = false; this._root.add(this.owl.group); },
+    this.owl = kind === 'owl' ? P.deskModels.owl() : kind === 'plane' ? P.deskModels.plane() : P.deskModels.bird(role); this.owl.hit.userData.msg = I18N.t(LABEL[kind]); this.owl.group.visible = false; this._root.add(this.owl.group); },
   /* 挑一頁：有主問題的頁裡，優先沒看過的 */
   pick(id){ const all = App.catalog.filter(i=>i.question); if(id){ return all.find(i=>i.id===id) || all[0]; } const fresh = all.filter(i=>!App.visited.has(i.id)); const pool = fresh.length ? fresh : all; return pool[Math.floor(Math.random() * pool.length)]; },
   arrive(id, kind){ if(!this._root) return; kind = kind || (id ? 'owl' : pickWeighted()); if(this.state === 'landed') return;
     if(!this.owl || this.kind !== kind || this.state === 'away') this._spawn(kind);
-    this.item = this.pick(id); this.text = SAYINGS[Math.floor(Math.random() * SAYINGS.length)];
+    this.item = this.pick(id); this.text = I18N.t(SAYINGS[Math.floor(Math.random() * SAYINGS.length)]);
     const s = SPOTS[Math.floor(Math.random() * SPOTS.length)]; this._spot = new T.Vector3(s[0], s[1] + (kind === 'plane' ? 0.25 : 0), s[2]);
     const g = this.owl.group; const from = (this.state === 'leaving' || this.state === 'coming') && g.visible ? g.position.clone() : this._spot.clone().add(new T.Vector3(10, 7, -9));
     this._from = from; this._to = this._spot.clone(); this._ctrl = from.clone().lerp(this._to, 0.5).add(new T.Vector3(0, kind === 'plane' ? 1.5 : 3.5, 0)); this._t = 0; this.state = 'coming'; g.visible = true; g.position.copy(from);
@@ -35,8 +35,8 @@ const messenger = {
   /* 對話框：信使是那一頁的主問題；小鳥、紙飛機隨口一句 */
   ask(){ if(this.state !== 'landed') return; const el = document.getElementById('messenger'); if(!el) return;
     if(this.kind === 'owl'){ const it = this.item; if(!it) return; const tab = (App.TABS.find(t=>t.id===it.tab)||{}).label || '';
-      el.innerHTML = `<small>信使帶來一個問題</small><p>${it.question}</p><span class="from">來自「${it.title}」（${tab}）${App.visited.has(it.id) ? '，你看過了' : ''}</span><div class="acts"><a class="btn primary go" href="#${it.id}">前往 →</a><button type="button" class="btn">離開</button></div>`; }
-    else { el.innerHTML = `<small>${this.kind === 'plane' ? '紙飛機上寫著' : '路過的小鳥說'}</small><p class="say">${this.text}</p><div class="acts"><button type="button" class="btn primary">好</button></div>`; }
+      el.innerHTML = `<small>${I18N.t('信使帶來一個問題')}</small><p>${I18N.t(it.question)}</p><span class="from">${I18N.t('來自「')}${I18N.t(it.title)}${I18N.t('」（')}${I18N.t(tab)}${I18N.t('）')}${App.visited.has(it.id) ? I18N.t('，你看過了') : ''}</span><div class="acts"><a class="btn primary go" href="#${it.id}">${I18N.t('前往 →')}</a><button type="button" class="btn">${I18N.t('離開')}</button></div>`; }
+    else { el.innerHTML = `<small>${I18N.t(this.kind === 'plane' ? '紙飛機上寫著' : '路過的小鳥說')}</small><p class="say">${this.text}</p><div class="acts"><button type="button" class="btn primary">${I18N.t('好')}</button></div>`; }
     el.querySelector('button').addEventListener('click', ()=>this.leave()); document.body.classList.add('messenger'); this._dialog = true; (el.querySelector('a.go') || el.querySelector('button')).focus(); },
   _hide(){ const el = document.getElementById('messenger'); if(el){ el.innerHTML = ''; } document.body.classList.remove('messenger'); this._dialog = false; },
   update(dt){ if(!this._root) return; const t0 = performance.now() / 1000;

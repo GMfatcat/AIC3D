@@ -22,15 +22,15 @@
     isOpen(){ return !!(App.home && App.desk && App.desk.focused==='about'); },
     open(){ location.hash='tab=about'; },
     close(){ if(this.isOpen()) location.hash='home'; },
-    html(){ const d=this.data; return `<div class="about-panel"><small class="crumb">關於這個網站</small><h2>${esc(d.title)}</h2>
+    html(){ const d=this.data; return `<div class="about-panel"><small class="crumb">${I18N.t('關於這個網站')}</small><h2>${esc(d.title)}</h2>
         <div class="about-desc">${d.description.map(p=>`<p>${esc(p)}</p>`).join('')}</div>
-        ${d.links.length?`<h3>延伸連結</h3><ul class="about-links">${d.links.map(l=>`<li><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" data-type="${l.type}"><span class="aicon">${svg(l.type)}</span><b>${esc(l.name)}</b><small>${esc(host(l.url)||l.url)}</small></a></li>`).join('')}</ul>`:''}
-        <p class="about-foot">連結清單來自 about.json：直接編輯那個檔就能新增或修改（離線單檔版要重新 build）。</p></div>`; },
+        ${d.links.length?`<h3>${I18N.t('延伸連結')}</h3><ul class="about-links">${d.links.map(l=>`<li><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" data-type="${l.type}"><span class="aicon">${svg(l.type)}</span><b>${esc(l.name)}</b><small>${esc(host(l.url)||l.url)}</small></a></li>`).join('')}</ul>`:''}
+        <p class="about-foot">${I18N.t('連結清單來自 about.json：直接編輯那個檔就能新增或修改（離線單檔版要重新 build）。')}</p></div>`; },
   };
   App.about=about;
   document.addEventListener('DOMContentLoaded',init); if(document.readyState!=='loading') init();
   function init(){ if(about._init) return; about._init=true;
-    const btn=document.createElement('button'); btn.type='button'; btn.className='btn'; btn.id='aboutbtn'; btn.textContent='關於'; btn.addEventListener('click',()=>about.open());
+    const btn=document.createElement('button'); btn.type='button'; btn.className='btn'; btn.id='aboutbtn'; btn.textContent=I18N.t('關於'); btn.addEventListener('click',()=>about.open());
     const top=document.getElementById('top'); top.insertBefore(btn, document.getElementById('tourbtn'));
     /* 靜態伺服器：讀同目錄的 about.json，成功就蓋掉內嵌的那份；file:// 不能 fetch，就用內嵌 */
     if(/^https?:$/.test(location.protocol) && window.fetch){ fetch('about.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{ if(d) about.data=normalize(d); }).catch(()=>{}); } }

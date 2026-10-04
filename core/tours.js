@@ -93,10 +93,10 @@
 
   const bar = document.createElement('div'); bar.id='tourbar'; document.getElementById('stage').appendChild(bar);
   const menu = document.createElement('div'); menu.id='tourmenu';
-  const btn = document.createElement('button'); btn.id='tourbtn'; btn.innerHTML='導覽'+Controls.icon('down').replace('class="icon"','class="icon icon-after"'); btn.className='btn';
+  const btn = document.createElement('button'); btn.id='tourbtn'; btn.innerHTML=I18N.t('導覽')+Controls.icon('down').replace('class="icon"','class="icon icon-after"'); btn.className='btn';
   document.getElementById('top').insertBefore(btn, document.getElementById('progress'));
   document.getElementById('top').appendChild(menu);
-  menu.innerHTML = '<div class="tm-title">挑一條路線，按順序看</div>' + TOURS.map(t=>`<button data-tour="${t.id}"><b>${t.title}</b><span>${t.steps.length} 步 · 約 ${t.minutes} 分鐘</span></button>`).join('');
+  menu.innerHTML = `<div class="tm-title">${I18N.t('挑一條路線，按順序看')}</div>` + TOURS.map(t=>`<button data-tour="${t.id}"><b>${I18N.t(t.title)}</b><span>${t.steps.length} ${I18N.t('步 · 約')} ${t.minutes} ${I18N.t('分鐘')}</span></button>`).join('');
   btn.addEventListener('click',e=>{ e.stopPropagation(); menu.classList.toggle('open'); });
   document.addEventListener('click',()=>menu.classList.remove('open'));
   menu.addEventListener('click',e=>{ const b=e.target.closest('button[data-tour]'); if(!b) return; menu.classList.remove('open'); location.hash=`tour=${b.dataset.tour}&step=1`; });
@@ -106,10 +106,10 @@
     const n=t.steps.length; step=Math.max(1,Math.min(n,step)); const [sid,note]=t.steps[step-1];
     const item=App.catalog.find(i=>i.id===sid);
     bar.classList.add('on');
-    bar.innerHTML=`<div class="tb-head"><span class="tb-title">${t.title}</span><span class="tb-step">${step} / ${n}</span><button class="tb-exit" title="離開導覽">✕</button></div>
-      <div class="tb-note"><b>${item?item.title:sid}</b>　${note}</div>
-      <div class="tb-dots">${t.steps.map((s,i)=>`<i class="${i+1===step?'cur':i+1<step?'done':''}" title="${(App.catalog.find(x=>x.id===s[0])||{}).title||s[0]}"></i>`).join('')}</div>
-      <div class="tb-nav"><button class="btn" ${step===1?'disabled':''} data-go="${step-1}">← 上一步</button><button class="btn primary" data-go="${step+1}" ${step===n?'disabled':''}>${step===n?'完成':'下一步 →'}</button></div>`;
+    bar.innerHTML=`<div class="tb-head"><span class="tb-title">${I18N.t(t.title)}</span><span class="tb-step">${step} / ${n}</span><button class="tb-exit" title="${I18N.t('離開導覽')}">✕</button></div>
+      <div class="tb-note"><b>${item?I18N.t(item.title):sid}</b>　${I18N.t(note)}</div>
+      <div class="tb-dots">${t.steps.map((s,i)=>`<i class="${i+1===step?'cur':i+1<step?'done':''}" title="${I18N.t((App.catalog.find(x=>x.id===s[0])||{}).title||s[0])}"></i>`).join('')}</div>
+      <div class="tb-nav"><button class="btn" ${step===1?'disabled':''} data-go="${step-1}">${I18N.t('← 上一步')}</button><button class="btn primary" data-go="${step+1}" ${step===n?'disabled':''}>${I18N.t(step===n?'完成':'下一步 →')}</button></div>`;
     bar.querySelector('.tb-exit').addEventListener('click',()=>{ location.hash=sid; });
     bar.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{ location.hash=`tour=${t.id}&step=${b.dataset.go}`; }));
     bar.querySelectorAll('.tb-dots i').forEach((d,i)=>d.addEventListener('click',()=>{ location.hash=`tour=${t.id}&step=${i+1}`; }));

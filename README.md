@@ -2,9 +2,10 @@
 
 離線部署：`python build.py` → `dist/`（`index.html` 已內嵌 three.js r128 與 @font-face CSS；`fonts/` 是 Noto Sans TC 400/500/700 + IBM Plex Mono 400/500 的 woff2，約 7 MB，依 unicode-range 分塊只載入用到的）。整個 `dist/` 丟進廠內靜態目錄即可，零外部請求。
 
-Windows 上請用 `python`（`python3` 會被導到 Microsoft Store 捷徑）。整站鎖定深色主題。
+整站鎖定深色主題；介面有繁中 / 英文兩種（場景面板內文與詞彙內容尚未翻譯）。Windows 上請用 `python`（`python3` 會被導到 Microsoft Store 捷徑）。整站鎖定深色主題。
 
 ## 結構
+- `core/i18n.js`、`core/i18n-en.js` 兩種語言：`I18N.t('原文')` 回目前語言的字串（原文即鍵，查不到回原文）；頂欄「EN / 中」切換（記在 localStorage，重新載入）。新字串用 `I18N.t()` 包起來、英文寫進字典即可
 - `core/theme.css` 色票 / 版面
 - `core/primitives.js` 共用 3D 原件（TokenRow、BeamSet、TensorBrick、GPUBox、Loop、Grid1D、State、Tower）
 - `core/controls.js` 控制元件（slider / segmented / buttons / stepper / select / readouts / bar）

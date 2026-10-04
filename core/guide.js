@@ -33,14 +33,14 @@ const intro = {
     const tog=(k,label)=>`<label class="toggle"><input type="checkbox" data-pref="${k}"${p[k]?' checked':''}><span class="sw" aria-hidden="true"></span><span>${label}</span></label>`;
     /* 第一次：有導讀就「開始導讀」當主鍵；重開（已進入）或沒導讀：「進入」當主鍵 */
     const primaryIsGuide = hasGuide && !App.entered;
-    const btns = (back?'<button type="button" class="btn ghost" data-act="back">← 回上一頁</button>':'') + '<span class="sp"></span>'
-      + (primaryIsGuide ? '<button type="button" class="btn" data-act="free">直接操作</button><button type="button" class="btn primary" data-act="guide">開始導讀</button>'
-                        : (hasGuide?'<button type="button" class="btn" data-act="guide">重看導讀</button>':'') + '<button type="button" class="btn primary" data-act="free">進入</button>');
+    const btns = (back?`<button type="button" class="btn ghost" data-act="back">${I18N.t('← 回上一頁')}</button>`:'') + '<span class="sp"></span>'
+      + (primaryIsGuide ? `<button type="button" class="btn" data-act="free">${I18N.t('直接操作')}</button><button type="button" class="btn primary" data-act="guide">${I18N.t('開始導讀')}</button>`
+                        : (hasGuide?`<button type="button" class="btn" data-act="guide">${I18N.t('重看導讀')}</button>`:'') + `<button type="button" class="btn primary" data-act="free">${I18N.t('進入')}</button>`);
     el.innerHTML=`<div class="intro-card" role="dialog" aria-modal="true" aria-labelledby="intro-title">
-      <small class="crumb">${tabLabel(item.tab)} · ${n} / ${sib.length}</small>
-      <h2 id="intro-title">${item.title}</h2><p class="iq">${item.question||''}</p>
-      <dl class="intro-dl"><dt>這頁在看什麼</dt><dd>${App.termify(item.show||'—')}</dd><dt>你會動到什麼</dt><dd>${App.termify(item.interact||'—')}</dd></dl>
-      <div class="intro-toggles">${hasStepper?tog('play','進入後立即播放動畫'):''}${tog('spin','進入後旋轉展示')}</div>
+      <small class="crumb">${I18N.t(tabLabel(item.tab))} · ${n} / ${sib.length}</small>
+      <h2 id="intro-title">${I18N.t(item.title)}</h2><p class="iq">${I18N.t(item.question||'')}</p>
+      <dl class="intro-dl"><dt>${I18N.t('這頁在看什麼')}</dt><dd>${App.termify(I18N.t(item.show)||'—')}</dd><dt>${I18N.t('你會動到什麼')}</dt><dd>${App.termify(I18N.t(item.interact)||'—')}</dd></dl>
+      <div class="intro-toggles">${hasStepper?tog('play',I18N.t('進入後立即播放動畫')):''}${tog('spin',I18N.t('進入後旋轉展示'))}</div>
       <div class="intro-actions">${btns}</div></div>`;
     el.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click',()=>this._act(b.dataset.act)));
     el.querySelectorAll('input[data-pref]').forEach(i=>i.addEventListener('change',()=>App.savePref(item.id,i.dataset.pref,i.checked)));
@@ -65,7 +65,7 @@ const intro = {
   banner(item){ const b=$('introbanner'); b.textContent=item.show||item.question||''; b.classList.add('on'); this._banTimer=setTimeout(()=>{ b.classList.remove('on'); setTimeout(()=>{ if(!b.classList.contains('on')) b.textContent=''; },300); },2500); }, /* 淡出後清空，才不會一直占 info 區的高度 */
   _clearBanner(){ clearTimeout(this._banTimer); const b=$('introbanner'); b.classList.remove('on'); b.textContent=''; },
   /* 標題下的兩個小按鈕：ⓘ 說明、導讀 */
-  actions(item){ const a=$('i-actions'); a.innerHTML=`<button type="button" class="ibtn" data-act="info">ⓘ 說明</button>`+(App.guide.steps.length?`<button type="button" class="ibtn" data-act="guide">${Controls.icon('play')}導讀</button>`:'');
+  actions(item){ const a=$('i-actions'); a.innerHTML=`<button type="button" class="ibtn" data-act="info">${I18N.t('ⓘ 說明')}</button>`+(App.guide.steps.length?`<button type="button" class="ibtn" data-act="guide">${Controls.icon('play')}${I18N.t('導讀')}</button>`:'');
     a.querySelector('[data-act=info]').addEventListener('click',()=>this.open(item,{back:false}));
     const g=a.querySelector('[data-act=guide]'); g && g.addEventListener('click',()=>App.guide.start()); },
 };
@@ -79,7 +79,7 @@ App.intro = intro;
 const bar=document.createElement('div'); bar.id='guidebar'; bar.setAttribute('aria-label','導讀'); $('stage').appendChild(bar);
 const guide = {
   steps:[], active:false, n:0, bar,
-  set(steps, item){ this.steps=steps.map(s=>Object.assign({},s)); if(this.steps.length) this.steps.push({say:'換你試試：'+(item.interact||''), hand:true}); },
+  set(steps, item){ this.steps=steps.map(s=>Object.assign({},s)); if(this.steps.length) this.steps.push({say:I18N.t('換你試試：')+I18N.t(item.interact||''), hand:true}); },
   clear(){ this.stop(true); this.steps=[]; },
   start(){ if(!this.steps.length || this.active) return; this.active=true; document.body.classList.add('guiding'); App.autoSpin=false; this.bar.classList.add('on'); this.n=0; this.render(); /* 先畫出導讀列，重新取景時底部保留帶才量得到它的高度 */ this._refit(); this.go(0); },
   go(n){ n=Math.max(0,Math.min(this.steps.length-1,n)); this.n=n; const s=this.steps[n];
@@ -94,10 +94,10 @@ const guide = {
     const hit=[...root.children].find(e=>!e.classList.contains('scenenav') && e.textContent.includes(text)); /* 面板的任何一塊都能當聚光目標 */
     if(hit){ hit.classList.add('spot'); hit.scrollIntoView({block:'nearest',behavior:Motion.reduce?'auto':'smooth'}); } },
   render(){ const N=this.steps.length, n=this.n, s=this.steps[n];
-    this.bar.innerHTML=`<div class="tb-head"><span class="tb-title">導讀</span><span class="tb-step">${n+1} / ${N}</span><button type="button" class="tb-exit" data-go="skip">跳過 ✕</button></div>
+    this.bar.innerHTML=`<div class="tb-head"><span class="tb-title">${I18N.t('導讀')}</span><span class="tb-step">${n+1} / ${N}</span><button type="button" class="tb-exit" data-go="skip">${I18N.t('跳過 ✕')}</button></div>
       <div class="gb-say">${App.termify(s.say)}</div>
       <div class="tb-dots">${this.steps.map((_,i)=>`<i class="${i===n?'cur':i<n?'done':''}"></i>`).join('')}</div>
-      <div class="tb-nav"><button type="button" class="btn" data-go="prev"${n===0?' disabled':''}>← 上一步</button>${s.hand?'<button type="button" class="btn primary" data-go="done">開始操作</button>':'<button type="button" class="btn primary" data-go="next">下一步 →</button>'}</div>`;
+      <div class="tb-nav"><button type="button" class="btn" data-go="prev"${n===0?' disabled':''}>${I18N.t('← 上一步')}</button>${s.hand?`<button type="button" class="btn primary" data-go="done">${I18N.t('開始操作')}</button>`:`<button type="button" class="btn primary" data-go="next">${I18N.t('下一步 →')}</button>`}</div>`;
     this.bar.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{ const g=b.dataset.go; if(g==='prev') this.go(n-1); else if(g==='next') this.go(n+1); else this.stop(); }));
     this.bar.querySelectorAll('.tb-dots i').forEach((d,i)=>d.addEventListener('click',()=>this.go(i))); },
 };

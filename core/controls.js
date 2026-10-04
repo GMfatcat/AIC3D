@@ -34,7 +34,7 @@ class Controls {
   }
   segmented(label, options, value, onChange){ // options: [{id,label}]
     const w = el('div','ctl'); if(label) w.appendChild(el('label',null,`<span>${label}</span>`));
-    const seg = el('div','seg'); const btns={}; seg.setAttribute('role','group'); seg.setAttribute('aria-label', label || this.lastHeading || '選項');
+    const seg = el('div','seg'); const btns={}; seg.setAttribute('role','group'); seg.setAttribute('aria-label', label || this.lastHeading || I18N.t('選項'));
     options.forEach(o=>{ const b=el('button',null,o.label); b.setAttribute('aria-pressed',String(o.id===value)); b.addEventListener('click',()=>{ set(o.id); onChange && onChange(o.id); }); seg.appendChild(b); btns[o.id]=b; });
     const set = id => { Object.entries(btns).forEach(([k,b])=>b.setAttribute('aria-pressed',String(k===id))); };
     w.appendChild(seg); this.c.appendChild(w); return { set };
@@ -45,14 +45,14 @@ class Controls {
     this.c.appendChild(row); return out;
   }
   /* 面板上的「怎麼玩」三行（長說明拆進導讀步驟之後，面板只留這個） */
-  howto(items){ const tf=window.App&&App.termify?App.termify:x=>x; const d=el('div','howto','<h3>怎麼玩</h3><ul>'+items.map(i=>`<li>${tf(i)}</li>`).join('')+'</ul>'); this.c.appendChild(d); return d; }
+  howto(items){ const tf=window.App&&App.termify?App.termify:x=>x; const d=el('div','howto','<h3>'+I18N.t('怎麼玩')+'</h3><ul>'+items.map(i=>`<li>${tf(i)}</li>`).join('')+'</ul>'); this.c.appendChild(d); return d; }
   /* 進入（按掉進場卡）600ms 後自動播放一輪（先看現象再給控制）；「立即播放」偏好關掉、或走導讀就不播；使用者碰任何控制就停。減少動態偏好時不自動播。 */
   stepper({onStep,onReset,onPlay,interval=700,autoplay=true}){
     let playing=false, timer=null, auto=null, autoplaying=false;
     const row = el('div','btnrow');
-    const bStep=el('button','btn',icon('step')+'單步'), bPlay=el('button','btn primary',icon('play')+'播放'), bReset=el('button','btn',icon('reset')+'重置');
-    const stop=()=>{ playing=false; autoplaying=false; bPlay.innerHTML=icon('play')+'播放'; if(timer){clearInterval(timer);timer=null;} };
-    const start=(isAuto)=>{ playing=true; autoplaying=!!isAuto; bPlay.innerHTML=icon('pause')+'暫停'; timer=setInterval(()=>{ const more=onStep(); if(more===false) stop(); }, interval); this.timers.push(timer); onPlay&&onPlay(); };
+    const bStep=el('button','btn',icon('step')+I18N.t('單步')), bPlay=el('button','btn primary',icon('play')+I18N.t('播放')), bReset=el('button','btn',icon('reset')+I18N.t('重置'));
+    const stop=()=>{ playing=false; autoplaying=false; bPlay.innerHTML=icon('play')+I18N.t('播放'); if(timer){clearInterval(timer);timer=null;} };
+    const start=(isAuto)=>{ playing=true; autoplaying=!!isAuto; bPlay.innerHTML=icon('pause')+I18N.t('暫停'); timer=setInterval(()=>{ const more=onStep(); if(more===false) stop(); }, interval); this.timers.push(timer); onPlay&&onPlay(); };
     bStep.addEventListener('click',()=>{ stop(); onStep(); });
     bPlay.addEventListener('click',()=>{ if(playing){stop();return;} start(false); });
     this.hasStepper=true;

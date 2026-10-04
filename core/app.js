@@ -169,10 +169,10 @@ const App = {
 
   /* ---------- navigation ---------- */
   _nav(){
-    const tabs=document.getElementById('tabs'); tabs.setAttribute('role','tablist'); tabs.setAttribute('aria-label','主題');
+    const tabs=document.getElementById('tabs'); tabs.setAttribute('role','tablist'); tabs.setAttribute('aria-label',I18N.t('主題'));
     // 點分頁：先飛到工作桌上那件物件；物件已經在眼前時再點一次才進第一個場景（數字鍵 1–8 仍直接進場景）
     const goTab=t=>{ if(this.home && this.desk && this.desk.focused===t.id){ const first=catalog.find(i=>i.tab===t.id); location.hash=first?first.id:t.id; return; } location.hash='tab='+t.id; };
-    TABS.forEach(t=>{ const b=document.createElement('button'); b.textContent=t.label; b.setAttribute('role','tab'); b.dataset.tab=t.id; b.addEventListener('click',()=>goTab(t)); tabs.appendChild(b); });
+    TABS.forEach(t=>{ const b=document.createElement('button'); b.textContent=I18N.t(t.label); b.setAttribute('role','tab'); b.dataset.tab=t.id; b.addEventListener('click',()=>goTab(t)); tabs.appendChild(b); });
     // 鍵盤：左右鍵在分頁間移動（WAI-ARIA tabs pattern）
     tabs.addEventListener('keydown',e=>{ if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft') return; const i=TABS.findIndex(t=>t.id===e.target.dataset.tab); if(i<0) return; const n=(i+(e.key==='ArrowRight'?1:-1)+TABS.length)%TABS.length; goTab(TABS[n]); tabs.children[n].focus(); e.preventDefault(); });
   },
@@ -188,7 +188,7 @@ const App = {
     document.querySelectorAll('#tabs button').forEach(b=>{ const on=b.dataset.tab===item.tab; b.setAttribute('aria-selected',String(on)); b.tabIndex=on?0:-1; });
     document.getElementById('progress').textContent=`${catalog.indexOf(item)+1} / ${catalog.length}`; // 目前場景在全站的位置
     const list=document.getElementById('items'); list.innerHTML='';
-    catalog.filter(i=>i.tab===item.tab).forEach((i,n)=>{ const li=document.createElement('li'); if(this.visited.has(i.id)) li.classList.add('visited'); const a=document.createElement('a'); a.href='#'+i.id; a.innerHTML=`<span class="num">${n+1}</span><span class="t">${i.title}</span>`; if(!scenes[i.id]){ li.classList.add('todo'); a.innerHTML+=`<i>規劃中</i>`; } if(i.id===item.id) a.setAttribute('aria-current','page'); li.appendChild(a); list.appendChild(li); });
+    catalog.filter(i=>i.tab===item.tab).forEach((i,n)=>{ const li=document.createElement('li'); if(this.visited.has(i.id)) li.classList.add('visited'); const a=document.createElement('a'); a.href='#'+i.id; a.innerHTML=`<span class="num">${n+1}</span><span class="t">${I18N.t(i.title)}</span>`; if(!scenes[i.id]){ li.classList.add('todo'); a.innerHTML+=`<i>${I18N.t('規劃中')}</i>`; } if(i.id===item.id) a.setAttribute('aria-current','page'); li.appendChild(a); list.appendChild(li); });
     this._go(item);
   },
   /* 交叉淡入：舞台與面板淡出 → 換場景 → 淡入。期間 App.routing 為 true。 */
@@ -205,7 +205,7 @@ const App = {
     document.getElementById('overlay').innerHTML='';
     this.ctrl = new Controls(document.getElementById('ctrl'));
     let overlayHost=document.getElementById('overlay'); if(matchMedia('(max-width:900px)').matches){ overlayHost=document.createElement('div'); overlayHost.className='ovl-dock'; this.ctrl.c.appendChild(overlayHost); } // 窄螢幕：浮動圖卡放進面板，不蓋住舞台
-    document.getElementById('i-title').textContent=item.title; document.getElementById('i-q').textContent=item.question||'';
+    document.getElementById('i-title').textContent=I18N.t(item.title); document.getElementById('i-q').textContent=I18N.t(item.question||'');
     this.canvas.setAttribute('aria-label',`3D 場景：${item.title}。${item.question||''} 文字說明在右側面板。`);
     this.autoSpin = true; this.cam.zoom = 1; this.currentItem=item; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML='';
     const first=!this.visited.has(item.id); this.entered=false; this.enterMode=null; this._enterQ=[]; this.guide && this.guide.clear(); // 進場卡 / 導讀的狀態每頁重來
@@ -219,7 +219,7 @@ const App = {
       guide:(steps)=>this.guide && this.guide.set(steps, item) }; // 頁內導讀的步驟
     this.ctx = ctx;
     const inst = Object.create(def); inst.init(ctx); this.current = inst;
-    document.getElementById('i-q').textContent = def.question || item.question || '';
+    { const q = def.question || item.question || ''; const tq = I18N.t(q); document.getElementById('i-q').textContent = (tq === q && item.question && I18N.lang !== 'zh') ? I18N.t(item.question) : tq; } // 場景自己寫的問句還沒翻譯時，退回目錄那句的翻譯
     this.sceneNav(); this.intro && this.intro.actions(item); // 標題下的「說明 / 導讀」鈕要在取景前放好，info 區高度才算對
     this.root.updateMatrixWorld(true); this.fit();
     if(!this.reduceMotion){ const home=this.cam.dist; this.cam.dist=home*1.12; this._placeCamera(); this._camTween=Motion.tween(this.cam,{dist:home},{ms:700,ease:'out',onUpdate:()=>this._placeCamera()}); } // 從稍遠處緩緩靠近（settle-in）
@@ -230,8 +230,8 @@ const App = {
   /* 面板最底下：上一個 / 下一個場景（跨分頁連續、頭尾相接） */
   sceneNav(){ const item=this.currentItem; if(!item||!this.ctrl) return; const i=catalog.indexOf(item); const prev=catalog[(i-1+catalog.length)%catalog.length], next=catalog[(i+1)%catalog.length];
     const old=this.ctrl.c.querySelector('.scenenav'); if(old) old.remove();
-    const nav=document.createElement('nav'); nav.className='scenenav'; nav.setAttribute('aria-label','上一個 / 下一個場景');
-    nav.innerHTML=`<a href="#${prev.id}" class="prev"><small>← 上一個</small>${prev.title}</a><a href="#${next.id}" class="next"><small>下一個 →</small>${next.title}</a>`; this.ctrl.c.appendChild(nav); },
+    const nav=document.createElement('nav'); nav.className='scenenav'; nav.setAttribute('aria-label',I18N.t('上一個 / 下一個場景'));
+    nav.innerHTML=`<a href="#${prev.id}" class="prev"><small>${I18N.t('← 上一個')}</small>${I18N.t(prev.title)}</a><a href="#${next.id}" class="next"><small>${I18N.t('下一個 →')}</small>${I18N.t(next.title)}</a>`; this.ctrl.c.appendChild(nav); },
   /* 滿版頁：開場頁（沒有 hash 或 #home）與詞彙頁（#glossary、#term=id）。舞台滿版放漂浮的語意色原件當背景 */
   _goFull(kind, arg){ document.querySelectorAll('#tabs button').forEach(b=>{ b.setAttribute('aria-selected','false'); b.tabIndex=-1; }); document.getElementById('items').innerHTML=''; document.getElementById('progress').textContent='';
     if(this.page===kind){ if(kind==='glossary') this.glossary.render(arg); else if(this.desk) this.desk.focus(arg||null); return; } if(this.routing){ this._pendingItem=null; } // 用 show() 同一套交叉淡入；已在桌面就只是飛過去
@@ -261,22 +261,22 @@ const App = {
     if(kind==='home') this.desk.focus(arg||null); else this.desk.focus('glossary', ()=>this.glossary.render(arg));
   },
   _buildLanding(){ let el=document.getElementById('landing'); if(el.dataset.built) return; el.dataset.built='1';
-    const roles=Object.entries(P.ROLE).map(([k,r])=>`<span class="role-chip"><i style="background:${r.base}"></i>${r.label}</span>`).join('');
-    el.innerHTML=`<div class="land-in"><h1>AI 概念 3D 教學</h1><p class="lead">${catalog.length} 個互動 3D 場景，每個只回答一個問題：從 CNN 到 Agent，看懂概念，不追數值。</p>
-      <p class="desk-hint">桌上八件玩具就是八個主題。點一件，鏡頭會飛過去；看過的場景越多，它的顏色就越完整。路線圖上有 ${(this.tours||[]).length} 條導覽路線，字典是詞彙表。</p>
-      <div class="land-acts"><a class="btn browse" href="#${catalog[0].id}">直接瀏覽 ${catalog.length} 個場景 →</a> <a class="btn" href="#tab=tours">導覽路線（${(this.tours||[]).length} 條）</a> <a class="btn" href="#glossary">詞彙表</a></div>
-      <p class="roles-cap">整站只用八種顏色，每種代表一個角色：</p><div class="roles">${roles}</div>
-      <p class="land-foot"><span class="seen btn"></span><button type="button" class="btn">重設看過的紀錄</button></p></div>`;
+    const roles=Object.entries(P.ROLE).map(([k,r])=>`<span class="role-chip"><i style="background:${r.base}"></i>${I18N.t(r.label)}</span>`).join('');
+    el.innerHTML=`<div class="land-in"><h1>${I18N.t('AI 概念 3D 教學')}</h1><p class="lead">${catalog.length}${I18N.t(' 個互動 3D 場景，每個只回答一個問題：從 CNN 到 Agent，看懂概念，不追數值。')}</p>
+      <p class="desk-hint">${I18N.t('桌上八件玩具就是八個主題。點一件，鏡頭會飛過去；看過的場景越多，它的顏色就越完整。路線圖上有')} ${(this.tours||[]).length} ${I18N.t('條導覽路線，字典是詞彙表。')}</p>
+      <div class="land-acts"><a class="btn browse" href="#${catalog[0].id}">${I18N.t('直接瀏覽')} ${catalog.length} ${I18N.t('個場景 →')}</a> <a class="btn" href="#tab=tours">${I18N.t('導覽路線')}${I18N.t('（')}${(this.tours||[]).length}${I18N.t('條）')}</a> <a class="btn" href="#glossary">${I18N.t('詞彙表')}</a></div>
+      <p class="roles-cap">${I18N.t('整站只用八種顏色，每種代表一個角色：')}</p><div class="roles">${roles}</div>
+      <p class="land-foot"><span class="seen btn"></span><button type="button" class="btn">${I18N.t('重設看過的紀錄')}</button></p></div>`;
     el.querySelector('.land-foot button').addEventListener('click',()=>{ this.visited=new Set(); try{ localStorage.removeItem('visited'); localStorage.removeItem('prefs'); }catch(e){} this._landingFoot(); this.desk && this.desk.repaint(); }); },
   /* 開場頁最底下：看過幾個、重設（看過與否只存在這個瀏覽器的 localStorage） */
-  _landingFoot(){ const f=document.querySelector('#landing .land-foot'); if(!f) return; const n=[...this.visited].filter(id=>catalog.some(i=>i.id===id)).length; f.querySelector('.seen').textContent=n?`已看過 ${n} / ${catalog.length} 個場景（記在這個瀏覽器裡）`:'還沒看過任何場景'; f.querySelector('button').style.display=n?'':'none'; },
+  _landingFoot(){ const f=document.querySelector('#landing .land-foot'); if(!f) return; const n=[...this.visited].filter(id=>catalog.some(i=>i.id===id)).length; f.querySelector('.seen').textContent=n?`${I18N.t('已看過')} ${n} / ${catalog.length}${I18N.t(' 個場景（記在這個瀏覽器裡）')}`:I18N.t('還沒看過任何場景'); f.querySelector('button').style.display=n?'':'none'; },
   legend(items){ const l=document.getElementById('legend'); l.innerHTML=''; items.forEach(([color,text])=>{ const s=document.createElement('span'); const hx=P.hex(color); s.innerHTML=`<i style="background:${hx}"></i>${text}`; l.appendChild(s); }); },
   _placeholder(item){
     this.legend([]);
     const g=new T.Mesh(new T.IcosahedronGeometry(2.2,1), P.wire('inactive',0.5)); this.root.add(g);
     this.setCamera({theta:0.5,phi:1.2});
-    this.ctrl.heading('規劃中');
-    this.ctrl.html(`<div class="todo-box"><h3>呈現</h3>${item.show||'—'}<h3>互動</h3>${item.interact||'—'}<h3>回答的問題</h3>${item.question||'—'}</div>`);
+    this.ctrl.heading(I18N.t('規劃中'));
+    this.ctrl.html(`<div class="todo-box"><h3>${I18N.t('呈現')}</h3>${I18N.t(item.show)||'—'}<h3>${I18N.t('互動')}</h3>${I18N.t(item.interact)||'—'}<h3>${I18N.t('回答的問題')}</h3>${I18N.t(item.question)||'—'}</div>`);
     return { update:(dt)=>{ g.rotation.y+=dt*0.2; g.rotation.x+=dt*0.07; } };
   },
 };

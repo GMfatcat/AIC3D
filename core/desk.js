@@ -28,7 +28,7 @@ const desk = {
   parts(id){ return this._st(id).parts.length; },
   painted(id){ return this._st(id).parts.filter(p=>p.k>=1).length; },
   /* 路線圖的項目是十條導覽：走完全部步驟才算看過 */
-  _tourItems(){ return (App.tours||[]).map(t=>{ const first = App.catalog.find(x=>x.id===t.steps[0][0]); return { id:`tour=${t.id}&step=1`, title:t.title, question:`${t.steps.length} 步 · 約 ${t.minutes} 分鐘 · 從「${first ? first.title : t.steps[0][0]}」開始`, done:t.steps.every(s=>App.visited.has(s[0])) }; }); },
+  _tourItems(){ return (App.tours||[]).map(t=>{ const first = App.catalog.find(x=>x.id===t.steps[0][0]); return { id:`tour=${t.id}&step=1`, title:I18N.t(t.title), question:`${t.steps.length} ${I18N.t('步 · 約')} ${t.minutes} ${I18N.t('分鐘 · 從「')}${I18N.t(first ? first.title : t.steps[0][0])}${I18N.t('」開始')}`, done:t.steps.every(s=>App.visited.has(s[0])) }; }); },
 
   build(root){
     this.stations = {}; this.fixtures = {}; this.slots = []; this.focused = null; this._t = 0; this._anims = []; this._wideHits = []; this._first = true; this._sway = 0;
@@ -40,7 +40,7 @@ const desk = {
       const g = new T.Group(); g.position.set(pos[0], 0, pos[1]); root.add(g);
       const model = P.deskModels[kind](n); model.group.position.y = extra.coaster ? 0.1 : 0; g.add(model.group);
       if(extra.coaster){ const coaster = new T.Mesh(new T.CylinderGeometry(2.25, 2.3, 0.1, 40), P.mat('inactive', { glow:0.04 })); coaster.position.y = 0.05; coaster.receiveShadow = true; g.add(coaster); }
-      const label = P.label(name, { size:24 }); label.position.set(0, 0.45, extra.coaster ? 2.5 : model.radius + 0.4); g.add(label); // 名牌：放在物件前方的桌面上，不蓋到後排
+      const label = P.label(I18N.t(name), { size:24 }); label.position.set(0, 0.45, extra.coaster ? 2.5 : model.radius + 0.4); g.add(label); // 名牌：放在物件前方的桌面上，不蓋到後排
       const hr = extra.coaster ? 2.0 : model.radius; const hit = new T.Mesh(new T.CylinderGeometry(hr, hr, model.height + 0.6, 16), P.mat('structure', { opacity:0 })); hit.material.colorWrite = false; hit.material.depthWrite = false; hit.position.y = (model.height + 0.6) / 2; hit.userData.__sh = 1; hit.castShadow = false; hit.userData.st = id; g.add(hit);
       const st = Object.assign({ id, kind, name, model, group:g, label, hit, parts:model.parts, lift:0, open:0, hov:false, noun:'個場景', verb:'已看', enter:'進入場景 →' }, extra);
       // 上一次離開桌面時已經上色的部分直接畫好；這次新看過的等會兒一塊塊補間上色
@@ -48,12 +48,12 @@ const desk = {
       model.parts.forEach(p=>{ p.clay = clayOf(P.C(p.role)); p.col = P.C(p.role); p.k = this._want(st, p, base, known[id] === undefined); this._apply(p); p.mesh.material.envMapIntensity = 0.35; });
       this._wideHits.push(hit); return st; };
     App.TABS.forEach((t, i)=>{ const items = this.scenesIn(t.id);
-      this.stations[t.id] = place(t.id, MODEL[t.id], t.label, POS[i], items.length, { tab:t, coaster:true, items:()=>this.scenesIn(t.id), visited:()=>this.visitedIn(t.id), seenIdx:(k)=>App.visited.has(items[k].id) }); });
+      this.stations[t.id] = place(t.id, MODEL[t.id], t.label, POS[i], items.length, { tab:t, coaster:true, items:()=>this.scenesIn(t.id).map(x=>Object.assign({}, x, { title:I18N.t(x.title), question:I18N.t(x.question) })), visited:()=>this.visitedIn(t.id), seenIdx:(k)=>App.visited.has(items[k].id) }); });
     FIXTURES.forEach(f=>{ const isMap = f.id === 'tours'; const items = isMap ? this._tourItems() : [];
       this.fixtures[f.id] = place(f.id, f.kind, f.name, f.pos, items.length, Object.assign({ coaster:false, items:()=>isMap ? this._tourItems() : [], visited:()=>isMap ? this._tourItems().filter(x=>x.done).length : 1, seenIdx:(k)=>isMap ? this._tourItems()[k].done : true }, f)); });
     this.repaint(true);
-    const describe = (m)=>{ if(m.userData.msg){ return m.userData.msg; } if(m.userData.st !== undefined){ const s = this._st(m.userData.st); const n = s.items().length; return `${s.name}：${NAME[s.kind]}${n ? `（${s.verb} ${s.visited()} / ${n}）` : ''}`; }
-      const st = this._st(this.focused); const it = st && st.items()[m.userData.slot]; return it ? `${m.userData.slot + 1} ${it.title}${st.seenIdx(m.userData.slot) ? '（看過）' : ''}` : '零件'; };
+    const describe = (m)=>{ if(m.userData.msg){ return m.userData.msg; } if(m.userData.st !== undefined){ const s = this._st(m.userData.st); const n = s.items().length; return `${I18N.t(s.name)}：${I18N.t(NAME[s.kind])}${n ? `（${I18N.t(s.verb)} ${s.visited()} / ${n}）` : ''}`; }
+      const st = this._st(this.focused); const it = st && st.items()[m.userData.slot]; return it ? `${m.userData.slot + 1} ${it.title}${st.seenIdx(m.userData.slot) ? I18N.t('（看過）') : ''}` : I18N.t('零件'); };
     this._hover = App.watchHover(this._wideHits, (h)=>this._hoverCb(h), describe);
     this._click = App.clickTarget(this._wideHits, (m)=>{ this._hintDone(); if(m.userData.msg){ this.messenger && this.messenger.ask(); return; } if(m.userData.st !== undefined){ const s = this._st(m.userData.st); if(s.go) s.go(); else location.hash = 'tab=' + s.id; } else { const s = this.slots.find(x=>x.hit === m); if(s) this.select(s); } });
     this._key = (e)=>{ if(e.key==='Escape' && App.home && this.focused && !(App.intro && App.intro.isOpen())){ e.preventDefault(); if(this.selected) this._unselect(true); else location.hash = 'home'; } };
@@ -63,7 +63,7 @@ const desk = {
   /* 第一次進站：桌面下方一句提示，點過任何東西或按 × 就不再出現（記在這個瀏覽器） */
   _hint(){ const el = document.getElementById('deskhint'); if(!el) return; let seen = false; try{ seen = !!localStorage.getItem('deskhint'); }catch(e){}
     if(seen || !App.home){ el.classList.remove('on'); el.innerHTML = ''; return; }
-    el.innerHTML = `<span>桌上的東西都可以點：八件玩具是八個主題，路線圖是導覽，字典是詞彙表。看過的場景越多，玩具的顏色越完整。</span><button type="button" class="btn" aria-label="關閉提示">×</button>`;
+    el.innerHTML = `<span>${I18N.t('桌上的東西都可以點：八件玩具是八個主題，路線圖是導覽，字典是詞彙表。看過的場景越多，玩具的顏色越完整。')}</span><button type="button" class="btn" aria-label="${I18N.t('關閉提示')}">×</button>`;
     el.querySelector('button').addEventListener('click', ()=>this._hintDone()); el.classList.add('on'); },
   _hintDone(){ const el = document.getElementById('deskhint'); if(!el || !el.classList.contains('on')) return; el.classList.remove('on'); el.innerHTML = ''; try{ localStorage.setItem('deskhint', '1'); }catch(e){} },
   dispose(){ removeEventListener('keydown', this._key); this._unselect(); this._decor = []; this._known = {}; this._all().forEach(st=>{ this._known[st.id] = st.visited(); }); this._anims = []; this.slots = []; this.focused = null; this.ready = true; document.body.classList.remove('desk-focus'); this._bar(null); },
@@ -123,7 +123,7 @@ const desk = {
     const r = Math.max(box.max.x - box.min.x, box.max.z - box.min.z) * 0.5 + 0.05;
     slot.ring = new T.Mesh(new T.TorusGeometry(r, 0.035, 8, 48), P.mat('signal', { glow:1.0 })); slot.ring.rotation.x = Math.PI / 2; slot.ring.position.set(bc.x, box.min.y + 0.03, bc.z); App.root.add(slot.ring);
     slot.li.classList.add('current'); slot.node.userData.lift = 1;
-    const card = document.querySelector('#deskbar .dcard'); card.innerHTML = `<b>${slot.n}  ${slot.title}</b><p>${slot.item.question || ''}</p><div class="acts"><a class="btn primary enter" href="#${slot.id}">${st.enter}</a><button type="button" class="btn back">看整件</button></div>`; card.classList.add('on');
+    const card = document.querySelector('#deskbar .dcard'); card.innerHTML = `<b>${slot.n}  ${slot.title}</b><p>${slot.item.question || ''}</p><div class="acts"><a class="btn primary enter" href="#${slot.id}">${I18N.t(st.enter)}</a><button type="button" class="btn back">${I18N.t('看整件')}</button></div>`; card.classList.add('on');
     card.querySelector('.back').addEventListener('click', ()=>this._unselect(true));
     const p = slot.node.getWorldPosition(new T.Vector3()); p.y += 0.35; const dist = Math.max(2.4, (st.model.view && st.model.view.partDist) || st.model.radius * 1.25) * (matchMedia('(max-width:900px)').matches ? 1.6 : 1);
     App.flyTo({ theta: st.cam.theta, phi: (st.model.view && st.model.view.partPhi) || st.cam.phi, dist, target: p }, FLY_MS * 0.7); /* 棋子這種會互相擋的，從高一點的角度看 */
@@ -147,12 +147,12 @@ const desk = {
     for(const st of this._all()){ const on = !this.focused && h === st.hit; if(on === st.hov) continue; st.hov = on; Motion.tween(st, { lift: on ? 1 : 0 }, { ms:260 }); st.label.el.classList.toggle('hot', on); }
     for(const s of this.slots){ const on = s.hit === h; if(on === !!s.on) continue; s.on = on; s.li.classList.toggle('hot', on); s.node.userData.lift = (on || this.selected === s) ? 1 : 0; } },
   _bar(st){ const el = document.getElementById('deskbar'); if(!el) return; if(!st){ el.innerHTML = ''; el.classList.remove('on'); return; }
-    el.innerHTML = st.panel ? `<div class="row"><b>${st.name}</b><button type="button" class="btn">回工作桌</button></div><div class="dpanel">${st.panel()}</div>`
-      : `<div class="row"><b></b><span class="n"></span><button type="button" class="btn">回工作桌</button></div><ol class="dlist" aria-label="這一件上的項目"></ol><div class="dcard"></div><span class="hint">點物件上的零件或清單看那一個 · Esc 退回</span>`;
+    el.innerHTML = st.panel ? `<div class="row"><b>${I18N.t(st.name)}</b><button type="button" class="btn">${I18N.t('回工作桌')}</button></div><div class="dpanel">${st.panel()}</div>`
+      : `<div class="row"><b></b><span class="n"></span><button type="button" class="btn">${I18N.t('回工作桌')}</button></div><ol class="dlist" aria-label="${I18N.t('這一件上的項目')}"></ol><div class="dcard"></div><span class="hint">${I18N.t('點物件上的零件或清單看那一個 · Esc 退回')}</span>`;
     el.querySelector('.row button').addEventListener('click', ()=>{ location.hash = 'home'; }); el.classList.add('on'); this._barUpdate(); },
   _barUpdate(){ const el = document.getElementById('deskbar'); const st = this.focused && this._st(this.focused); if(!el || !st || !el.firstChild || st.panel) return;
     const n = st.items().length, v = st.visited();
-    el.querySelector('b').textContent = st.name; el.querySelector('.n').textContent = `${n} ${st.noun} · ${st.verb} ${v} / ${n}${v >= n ? ' · 全部上色了' : ''}`; },
+    el.querySelector('b').textContent = I18N.t(st.name); el.querySelector('.n').textContent = `${n} ${I18N.t(st.noun)} · ${I18N.t(st.verb)} ${v} / ${n}${v >= n ? I18N.t(' · 全部上色了') : ''}`; },
 
   /* ---------- 每幀：待機微動作、hover 抬起、上色補間、全景時鏡頭慢慢左右擺 ---------- */
   update(dt){ this._t += dt; const t = this._t; const rm = App.reduceMotion;
