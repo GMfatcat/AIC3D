@@ -21,11 +21,9 @@ def test_tabs_are_a_keyboard_tablist(site):
     assert site.ev("document.getElementById('tabs').getAttribute('role')") == "tablist"
     site.page.focus("#tabs button[aria-selected='true']")
     site.page.keyboard.press("ArrowRight")
-    site.page.wait_for_timeout(300)
+    site.page.wait_for_function("!App.routing && App.home && App.desk.focused === 'block'")  # arrow = tab click: fly to the block object on the desk
     assert site.ev("document.querySelector('#tabs button[aria-selected=\"true\"]').dataset.tab") == "block"
-    assert site.ev("document.activeElement.closest('#intro') !== null"), "first visit: focus goes into the intro card"
-    site.ev("App.intro.enter('free')")
-    assert site.ev("document.activeElement.dataset.tab") == "block", "closing the card gives focus back to the tab"
+    assert site.ev("document.activeElement.dataset.tab") == "block", "focus stays on the tab while the camera flies"
 
 
 def test_canvas_and_charts_have_text_alternatives(site):

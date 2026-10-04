@@ -43,7 +43,11 @@ class Site:
         """Navigate to a scene (or tour) by hash and wait for it to mount."""
         self.page.evaluate("h => { location.hash = h; }", hash_)
         if hash_ in ('', 'home'):
-            self.page.wait_for_function("!App.routing && App.home")
+            self.page.wait_for_function("!App.routing && App.home && (!App.desk || App.desk.ready)")
+            self.page.wait_for_timeout(settle)
+            return self
+        if hash_.startswith('tab='):  # the desk hub focused on one tab's object
+            self.page.wait_for_function("t => !App.routing && App.home && App.desk.focused === t && App.desk.ready", arg=hash_[4:])
             self.page.wait_for_timeout(settle)
             return self
         # hashchange is async: wait until the scene for THIS hash is mounted and the crossfade is over

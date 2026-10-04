@@ -170,7 +170,8 @@ const App = {
   /* ---------- navigation ---------- */
   _nav(){
     const tabs=document.getElementById('tabs'); tabs.setAttribute('role','tablist'); tabs.setAttribute('aria-label','主題');
-    const goTab=t=>{ const first=catalog.find(i=>i.tab===t.id); location.hash=first?first.id:t.id; };
+    // 點分頁：先飛到工作桌上那件物件；物件已經在眼前時再點一次才進第一個場景（數字鍵 1–8 仍直接進場景）
+    const goTab=t=>{ if(this.home && this.desk && this.desk.focused===t.id){ const first=catalog.find(i=>i.tab===t.id); location.hash=first?first.id:t.id; return; } location.hash='tab='+t.id; };
     TABS.forEach(t=>{ const b=document.createElement('button'); b.textContent=t.label; b.setAttribute('role','tab'); b.dataset.tab=t.id; b.addEventListener('click',()=>goTab(t)); tabs.appendChild(b); });
     // 鍵盤：左右鍵在分頁間移動（WAI-ARIA tabs pattern）
     tabs.addEventListener('keydown',e=>{ if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft') return; const i=TABS.findIndex(t=>t.id===e.target.dataset.tab); if(i<0) return; const n=(i+(e.key==='ArrowRight'?1:-1)+TABS.length)%TABS.length; goTab(TABS[n]); tabs.children[n].focus(); e.preventDefault(); });
@@ -179,6 +180,7 @@ const App = {
     let id=location.hash.replace('#','') || 'home';
     if(id==='home'){ this._inTour=false; this.hideTour && this.hideTour(); this._goFull('home'); return; }
     { const gm=id.match(/^(glossary|term=([\w-]+))$/); if(gm){ this._inTour=false; this.hideTour && this.hideTour(); this._goFull('glossary', gm[2]||null); return; } } // 詞彙頁
+    { const tb=id.match(/^tab=(\w+)$/); if(tb && TABS.some(t=>t.id===tb[1])){ this._inTour=false; this.hideTour && this.hideTour(); this._goFull('home', tb[1]); return; } } // 工作桌上聚焦一件物件
     const tm=id.match(/^tour=([\w-]+)&step=(\d+)$/);
     if(tm && this.renderTour){ const sid=this.renderTour(tm[1],+tm[2]); if(sid){ id=sid; this._inTour=true; } else { this._inTour=false; } }
     else { this._inTour=false; this.hideTour && this.hideTour(); }
@@ -232,7 +234,7 @@ const App = {
     nav.innerHTML=`<a href="#${prev.id}" class="prev"><small>← 上一個</small>${prev.title}</a><a href="#${next.id}" class="next"><small>下一個 →</small>${next.title}</a>`; this.ctrl.c.appendChild(nav); },
   /* 滿版頁：開場頁（沒有 hash 或 #home）與詞彙頁（#glossary、#term=id）。舞台滿版放漂浮的語意色原件當背景 */
   _goFull(kind, arg){ document.querySelectorAll('#tabs button').forEach(b=>{ b.setAttribute('aria-selected','false'); b.tabIndex=-1; }); document.getElementById('items').innerHTML=''; document.getElementById('progress').textContent='';
-    if(this.page===kind){ if(kind==='glossary') this.glossary.render(arg); return; } if(this.routing){ this._pendingItem=null; } // 用 show() 同一套交叉淡入
+    if(this.page===kind){ if(kind==='glossary') this.glossary.render(arg); else if(this.desk) this.desk.focus(arg||null); return; } if(this.routing){ this._pendingItem=null; } // 用 show() 同一套交叉淡入；已在桌面就只是飛過去
     const go=()=>this._showFull(kind, arg); if(!this.current || this.reduceMotion){ go(); return; }
     this.routing=true; document.body.classList.add('is-switching'); setTimeout(()=>{ go(); requestAnimationFrame(()=>{ document.body.classList.remove('is-switching'); this.routing=false; }); },220); },
   _showFull(kind, arg){
@@ -243,14 +245,13 @@ const App = {
     if(this.intro){ if(this.intro.isOpen()) this.intro.close(); this.intro._clearBanner(); document.getElementById('i-actions').innerHTML=''; } this.guide && this.guide.clear();
     this.currentItem=null; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML=''; this.page=kind; this.home=kind==='home'; document.body.classList.remove('home','glossary'); document.body.classList.add(kind); this._hoverWatch=[]; this._dragTargets=[]; this._clickTargets=[];
     if(kind==='home'){ this._buildLanding(); this._landingFoot(); } else { this.glossary.render(arg); }
-    // 背景：八種語意色的原件在一個球殼上慢慢漂浮
-    const roles=Object.keys(P.ROLE); const items=[]; let seed=3; const rnd=()=>{ seed=(seed*9301+49297)%233280; return seed/233280; };
-    for(let i=0;i<22;i++){ const role=roles[i%roles.length]; const kind=i%3; const geo=kind===0?new T.BoxGeometry(0.7,0.7,0.7):kind===1?new T.SphereGeometry(0.42,24,16):new T.CylinderGeometry(0.22,0.22,1.1,16);
-      const m=new T.Mesh(geo,P.mat(role,{glow:0.35})); const th=rnd()*Math.PI*2, ph=Math.acos(2*rnd()-1), r=3.6+rnd()*2.2; m.position.set(r*Math.sin(ph)*Math.cos(th), (r*Math.cos(ph))*0.6, r*Math.sin(ph)*Math.sin(th)); m.rotation.set(rnd()*3,rnd()*3,rnd()*3);
-      m.userData.bob={y:m.position.y, p:rnd()*6.28, s:0.4+rnd()*0.6}; this.root.add(m); items.push(m); }
-    this.setCamera({theta:0.6,phi:1.25,zoom:1.15}); this.ctx=null; this._resize(); // 舞台變滿版
-    let t=0; this.current={ update:(dt)=>{ if(this.reduceMotion) return; t+=dt; this.root.rotation.y+=dt*0.05; items.forEach(m=>{ const b=m.userData.bob; m.position.y=b.y+Math.sin(t*b.s+b.p)*0.25; m.rotation.x+=dt*0.15; }); }, dispose:()=>{ this.root.rotation.y=0; } };
+    // 背景：工作桌（開場頁的 3D 目錄，也是詞彙頁的背景）
+    this.desk.build(this.root); this.autoSpin=false;
+    this.setCamera({theta:0.3,phi:1.02,zoom:1.0}); this.ctx=null; this._resize(); // 舞台變滿版
+    this.current={ update:(dt)=>this.desk.update(dt), dispose:()=>this.desk.dispose() };
     this.root.updateMatrixWorld(true); this.fit();
+    if(kind==='home' && !matchMedia('(max-width:900px)').matches){ this._pan(230,0); this.camHome.target.copy(this.cam.target); } // 開場文字在左欄：桌子往右讓開
+    this.desk.focus(kind==='home' ? (arg||null) : null);
   },
   _buildLanding(){ let el=document.getElementById('landing'); if(el.dataset.built) return; el.dataset.built='1';
     const roles=Object.entries(P.ROLE).map(([k,r])=>`<span class="role-chip"><i style="background:${r.base}"></i>${r.label}</span>`).join('');
@@ -260,7 +261,7 @@ const App = {
       <h2>挑一條路線，按順序看</h2><div class="tours">${tours}</div>
       <a class="btn browse" href="#${catalog[0].id}">或直接瀏覽 ${catalog.length} 個場景 →</a> <a class="btn" href="#glossary">詞彙表</a>
       <p class="land-foot"><span class="seen btn"></span><button type="button" class="btn">重設看過的紀錄</button></p></div>`;
-    el.querySelector('.land-foot button').addEventListener('click',()=>{ this.visited=new Set(); try{ localStorage.removeItem('visited'); localStorage.removeItem('prefs'); }catch(e){} this._landingFoot(); }); },
+    el.querySelector('.land-foot button').addEventListener('click',()=>{ this.visited=new Set(); try{ localStorage.removeItem('visited'); localStorage.removeItem('prefs'); }catch(e){} this._landingFoot(); this.desk && this.desk.repaint(); }); },
   /* 開場頁最底下：看過幾個、重設（看過與否只存在這個瀏覽器的 localStorage） */
   _landingFoot(){ const f=document.querySelector('#landing .land-foot'); if(!f) return; const n=[...this.visited].filter(id=>catalog.some(i=>i.id===id)).length; f.querySelector('.seen').textContent=n?`已看過 ${n} / ${catalog.length} 個場景（記在這個瀏覽器裡）`:'還沒看過任何場景'; f.querySelector('button').style.display=n?'':'none'; },
   legend(items){ const l=document.getElementById('legend'); l.innerHTML=''; items.forEach(([color,text])=>{ const s=document.createElement('span'); const hx=P.hex(color); s.innerHTML=`<i style="background:${hx}"></i>${text}`; l.appendChild(s); }); },
