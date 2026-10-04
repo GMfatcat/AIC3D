@@ -52,10 +52,10 @@ const desk = {
     FIXTURES.forEach(f=>{ const isMap = f.id === 'tours'; const items = isMap ? this._tourItems() : [];
       this.fixtures[f.id] = place(f.id, f.kind, f.name, f.pos, items.length, Object.assign({ coaster:false, items:()=>isMap ? this._tourItems() : [], visited:()=>isMap ? this._tourItems().filter(x=>x.done).length : 1, seenIdx:(k)=>isMap ? this._tourItems()[k].done : true }, f)); });
     this.repaint(true);
-    const describe = (m)=>{ if(m.userData.st !== undefined){ const s = this._st(m.userData.st); const n = s.items().length; return `${s.name}：${NAME[s.kind]}${n ? `（${s.verb} ${s.visited()} / ${n}）` : ''}`; }
+    const describe = (m)=>{ if(m.userData.msg){ return '信使：牠帶來一個問題，點牠看看'; } if(m.userData.st !== undefined){ const s = this._st(m.userData.st); const n = s.items().length; return `${s.name}：${NAME[s.kind]}${n ? `（${s.verb} ${s.visited()} / ${n}）` : ''}`; }
       const st = this._st(this.focused); const it = st && st.items()[m.userData.slot]; return it ? `${m.userData.slot + 1} ${it.title}${st.seenIdx(m.userData.slot) ? '（看過）' : ''}` : '零件'; };
     this._hover = App.watchHover(this._wideHits, (h)=>this._hoverCb(h), describe);
-    this._click = App.clickTarget(this._wideHits, (m)=>{ this._hintDone(); if(m.userData.st !== undefined){ const s = this._st(m.userData.st); if(s.go) s.go(); else location.hash = 'tab=' + s.id; } else { const s = this.slots.find(x=>x.hit === m); if(s) this.select(s); } });
+    this._click = App.clickTarget(this._wideHits, (m)=>{ this._hintDone(); if(m.userData.msg){ this.messenger && this.messenger.ask(); return; } if(m.userData.st !== undefined){ const s = this._st(m.userData.st); if(s.go) s.go(); else location.hash = 'tab=' + s.id; } else { const s = this.slots.find(x=>x.hit === m); if(s) this.select(s); } });
     this._key = (e)=>{ if(e.key==='Escape' && App.home && this.focused && !(App.intro && App.intro.isOpen())){ e.preventDefault(); if(this.selected) this._unselect(true); else location.hash = 'home'; } };
     addEventListener('keydown', this._key);
     document.body.classList.remove('desk-focus'); this._bar(null); this._hint();
@@ -91,7 +91,7 @@ const desk = {
     document.body.classList.toggle('desk-focus', !!target);
     for(const st of this._all()){ st.label.material.opacity = (!target || st.id === target) ? 1 : 0.25; if(st.id !== target && st.open > 0){ Motion.tween(st, { open:0 }, { ms:300, onUpdate:()=>st.model.open(st.open) }); } }
     const done = ()=>{ this.ready = true; };
-    if(!target){ this._bar(null); this._hover.set(this._wideHits); this._click.set(this._wideHits); const ms = first ? 0 : FLY_MS;
+    if(!target){ this._bar(null); this._setWide(); const ms = first ? 0 : FLY_MS;
       if(App.camHome) App.flyTo(App.camHome, ms); Motion.tween({ t:0 }, { t:1 }, { ms, onDone:done }); return; }
     const st = this._st(target); this._bar(st);
     if(st.panel){ this._hover.set([]); this._click.set([]); } // 面板型：沒有零件可點
@@ -133,6 +133,7 @@ const desk = {
     if(s.ring){ P.drop(s.ring); s.ring = null; }
     const card = document.querySelector('#deskbar .dcard'); if(card){ card.innerHTML = ''; card.classList.remove('on'); }
     if(fly){ const st = this._st(this.focused); this.ready = false; App.flyTo(st.cam, FLY_MS * 0.7); Motion.tween({ t:0 }, { t:1 }, { ms: FLY_MS * 0.7, onDone:()=>{ this.ready = true; } }); } },
+  _setWide(){ const list = this.messenger && this.messenger.hit() ? [...this._wideHits, this.messenger.hit()] : this._wideHits; this._hover.set(list); this._click.set(list); }, // 全景可點的東西：八件玩具、三件固定物、停在桌上的信使
   _clearSlots(){ this._unselect(); this.slots.forEach(s=>{ s.node.userData.lift = 0; }); this.slots = []; },
   _hoverCb(h){
     for(const st of this._all()){ const on = !this.focused && h === st.hit; if(on === st.hov) continue; st.hov = on; Motion.tween(st, { lift: on ? 1 : 0 }, { ms:260 }); st.label.el.classList.toggle('hot', on); }

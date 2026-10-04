@@ -182,5 +182,20 @@ function frame(){
   return { group, parts, slots:[], height:1.3, radius:0.9, view:{ phi:1.25, dist:4.2, ty:0.7, tz:0.1 }, open(){}, idle(){ return 0; } };
 }
 
-Object.assign(P.deskModels, { building, bricks, scale, suitcase, rack, robot, map, book, frame });
+/* ---------- 信使：一隻貓頭鷹，偶爾飛來停在桌上，帶著某一頁的問題 ---------- */
+function owl(){
+  const group = new T.Group(), parts = [];
+  const body = mesh(parts, group, sph(0.34,18,12), 'signal', { pos:[0,0.46,0], scale:[1,1.15,0.9], step:0 });
+  mesh(parts, group, sph(0.22,14,10), 'structure:hot', { pos:[0,0.4,0.2], scale:[1,1.1,0.5], step:0, glow:0.05 }); // 肚子
+  mesh(parts, group, sph(0.3,18,12), 'signal', { pos:[0,0.95,0.02], step:0 }); // 頭
+  [-1,1].forEach(s=>{ mesh(parts, group, sph(0.12,12,8), 'structure:hot', { pos:[s*0.13,0.99,0.24], step:0, glow:0.1 }); mesh(parts, group, sph(0.055,10,8), 'inactive:dim', { pos:[s*0.13,0.99,0.34], step:0, glow:0 });
+    mesh(parts, group, cyl(0.0,0.07,0.16,4), 'signal:dim', { pos:[s*0.16,1.24,0.02], rot:[0,0,s*0.5], step:0 }); }); // 眼睛、耳羽
+  mesh(parts, group, cyl(0.0,0.05,0.14,4), 'alert', { pos:[0,0.9,0.32], rot:[Math.PI/2,0,0], step:0 }); // 嘴
+  const wings = [-1,1].map(s=>{ const g = new T.Group(); g.position.set(s*0.3, 0.6, 0); group.add(g); mesh(parts, g, sph(0.22,12,8), 'signal:dim', { pos:[s*0.16,-0.1,0], scale:[1,1.4,0.45], step:0 }); return g; });
+  mesh(parts, group, sph(0.16,10,8), 'signal:dim', { pos:[0,0.3,-0.3], scale:[1,0.5,1.3], step:0 }); // 尾巴
+  [-1,1].forEach(s=> mesh(parts, group, box(0.14,0.05,0.2), 'alert', { pos:[s*0.12,0.025,0.08], step:0 })); // 腳
+  return { group, parts, slots:[], wings, hit:body, height:1.3, radius:0.5, open(){}, idle(){ return 0; } };
+}
+
+Object.assign(P.deskModels, { building, bricks, scale, suitcase, rack, robot, map, book, frame, owl });
 })();

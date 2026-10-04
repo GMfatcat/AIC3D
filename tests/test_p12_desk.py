@@ -319,3 +319,55 @@ def test_desk_hint_close_button_dismisses_it(fresh):
     fresh.goto("cnn")
     fresh.goto("home")
     assert fresh.ev("getComputedStyle(document.getElementById('deskhint')).display") == "none"
+
+
+# ---------- P13b: the messenger (an owl that brings a question) ----------
+
+def test_messenger_lands_on_the_desk_and_offers_a_scene_question(fresh):
+    m = "App.desk.messenger"
+    assert fresh.ev(m + ".state") in ("away", "coming"), "it shows up on its own after a while"
+    fresh.ev(m + ".arrive('det-seg-metrics')")
+    fresh.page.wait_for_function(m + ".state === 'landed'")
+    assert fresh.ev(m + ".item.id") == "det-seg-metrics"
+    assert fresh.ev("document.body.classList.contains('messenger')") is False, "no dialog until you click it"
+    # the owl is in the keyboard focus list, like everything else on the desk
+    btn = fresh.page.locator("#stage .focuslist button", has_text="信使")
+    assert btn.count() == 1
+    btn.focus(); fresh.page.keyboard.press("Enter")
+    fresh.page.wait_for_function("getComputedStyle(document.getElementById('messenger')).display !== 'none'")
+    text = fresh.ev("document.getElementById('messenger').textContent")
+    q = fresh.ev("App.catalog.find(i => i.id === 'det-seg-metrics').question")
+    assert q in text and "偵測與分割指標" in text
+    assert fresh.ev("document.querySelector('#messenger a.go').getAttribute('href')") == "#det-seg-metrics"
+    fresh.page.locator("#messenger a.go").click()
+    fresh.page.wait_for_function("!App.routing && App.currentItem && App.currentItem.id === 'det-seg-metrics'")
+    fresh.assert_clean()
+
+
+def test_leaving_sends_the_messenger_away(fresh):
+    m = "App.desk.messenger"
+    fresh.ev(m + ".arrive()")
+    fresh.page.wait_for_function(m + ".state === 'landed'")
+    assert fresh.ev(m + ".item.question"), "it always carries a scene's question"
+    fresh.ev(m + ".ask()")
+    fresh.page.wait_for_function("getComputedStyle(document.getElementById('messenger')).display !== 'none'")
+    fresh.page.locator("#messenger button", has_text="離開").click()
+    fresh.page.wait_for_function("getComputedStyle(document.getElementById('messenger')).display === 'none'")
+    fresh.page.wait_for_function(m + ".state === 'leaving' || " + m + ".state === 'away'")
+    fresh.page.wait_for_function(m + ".state === 'away'")
+    assert fresh.page.locator("#stage .focuslist button", has_text="信使").count() == 0
+
+
+def test_messenger_prefers_unvisited_scenes_and_leaves_when_a_toy_is_focused(fresh):
+    m = "App.desk.messenger"
+    fresh.ev("App.visited = new Set(App.catalog.filter(i => i.tab !== 'agent').map(i => i.id))")
+    for _ in range(4):
+        fresh.ev(m + ".arrive()")
+        fresh.page.wait_for_function(m + ".state === 'landed'")
+        assert fresh.ev(m + ".item.tab") == "agent"
+        fresh.ev(m + ".leave()")
+        fresh.page.wait_for_function(m + ".state === 'away'")
+    fresh.ev(m + ".arrive()")
+    fresh.page.wait_for_function(m + ".state === 'landed'")
+    _focus(fresh, "train")
+    fresh.page.wait_for_function(m + ".state === 'away'")
