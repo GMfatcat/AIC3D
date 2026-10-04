@@ -146,7 +146,7 @@ App.termify = function(html, opts={}){
   for(const {t,a,re} of ALIASES){ if(used.has(t.id)) continue;
     for(const node of texts()){ const m=re.exec(node.data); if(!m) continue;
       const start=m.index+m[1].length; const mid=node.splitText(start); mid.splitText(a.length);
-      const link=document.createElement('a'); link.className='term'; link.href='#term='+t.id; link.title=t.short; link.textContent=mid.data; mid.replaceWith(link); used.add(t.id); break; } }
+      const link=document.createElement('a'); link.className='term'; link.href='#term='+t.id; link.title=I18N.t(t.short); link.textContent=mid.data; mid.replaceWith(link); used.add(t.id); break; } }
   return box.innerHTML;
 };
 
@@ -157,18 +157,21 @@ document.addEventListener('click',e=>{ const a=e.target.closest('a.term'); if(a)
 
 /* ---------- 詞彙頁 ---------- */
 const tabLabel = id => (App.TABS.find(x=>x.id===id)||{}).label||'';
+/* 「也寫成」要列的別名：扣掉標題本身；英文頁只列拉丁字母的 */
+const akaOf = t => { const title=I18N.t(t.title).toLowerCase(); return t.aka.filter(a=>a!==t.title && a.toLowerCase()!==title && (I18N.lang==='zh' || !/[一-鿿]/.test(a))); };
 const glossary = {
   terms:T, byId,
   ready:false,
   /* 翻開的書：左頁目錄（分頁為章，+ 展開）與搜尋，右頁是點到的詞；還沒點就是半透明的空頁，後面漂著小東西 */
   render(termId){
     const el=document.getElementById('glossary'); const t=termId?byId[termId]:null;
-    const termHtml = t ? `<section class="gl-term"><small>${I18N.t(tabLabel(t.tab))}</small><h2>${t.title}</h2>${t.aka.filter(a=>a!==t.title).length?`<p class="aka">${I18N.t('也寫成：')}${t.aka.filter(a=>a!==t.title).join('、')}</p>`:''}<p class="short">${t.short}</p><div class="body">${App.termify(t.body,{exclude:t.id})}</div>
+    const akas = t ? akaOf(t) : [];
+    const termHtml = t ? `<section class="gl-term"><small>${I18N.t(tabLabel(t.tab))}</small><h2>${I18N.t(t.title)}</h2>${akas.length?`<p class="aka">${I18N.t('也寫成：')}${akas.join(I18N.t('、'))}</p>`:''}<p class="short">${I18N.t(t.short)}</p><div class="body">${App.termify(I18N.t(t.body),{exclude:t.id})}</div>
         <div class="see">${I18N.t('在這幾頁看得到：')}${t.see.map(id=>{ const it=App.catalog.find(x=>x.id===id); return it?`<a class="chip" href="#${id}">${I18N.t(it.title)}</a>`:''; }).join('')}</div></section>`
       : `<div class="gl-empty"><p>${I18N.t('從左頁的目錄挑一個詞，或直接搜尋。')}</p><small>${T.length}${I18N.t(' 個詞 · 說明文字裡帶虛線的詞也都能點進來')}</small></div>`;
     const groups=App.TABS.map(tab=>({tab, items:T.filter(x=>x.tab===tab.id)})).filter(g=>g.items.length);
     el.innerHTML=`<div class="book"><div class="page left"><div class="gl-head"><button type="button" class="btn" data-act="back">${I18N.t('← 回上一步')}</button><h1>${I18N.t('詞彙表')}</h1></div><input type="search" placeholder="${I18N.t('搜尋詞彙…')}" aria-label="${I18N.t('搜尋詞彙')}">
-      <div class="gl-list">${groups.map(g=>{ const open=!!(t&&t.tab===g.tab.id); return `<section class="gl-sec" data-tab="${g.tab.id}"><h3><button type="button" aria-expanded="${open}"><i>${open?'−':'+'}</i>${I18N.t(g.tab.label)}<span>${g.items.length}</span></button></h3><ul${open?'':' hidden'}>${g.items.map(x=>`<li data-k="${(x.title+' '+x.aka.join(' ')+' '+x.short).toLowerCase()}"${t&&x.id===t.id?' class="cur"':''}><a href="#term=${x.id}"><b>${x.title}</b><span>${x.short}</span></a></li>`).join('')}</ul></section>`; }).join('')}</div></div>
+      <div class="gl-list">${groups.map(g=>{ const open=!!(t&&t.tab===g.tab.id); return `<section class="gl-sec" data-tab="${g.tab.id}"><h3><button type="button" aria-expanded="${open}"><i>${open?'−':'+'}</i>${I18N.t(g.tab.label)}<span>${g.items.length}</span></button></h3><ul${open?'':' hidden'}>${g.items.map(x=>`<li data-k="${[x.title,I18N.t(x.title),...x.aka,x.short,I18N.t(x.short)].join(' ').toLowerCase()}"${t&&x.id===t.id?' class="cur"':''}><a href="#term=${x.id}"><b>${I18N.t(x.title)}</b><span>${I18N.t(x.short)}</span></a></li>`).join('')}</ul></section>`; }).join('')}</div></div>
       <div class="page right${t?'':' empty'}">${termHtml}</div></div>`;
     el.querySelector('[data-act=back]').addEventListener('click',()=>this.back());
     const setOpen=(sec,open)=>{ const b=sec.querySelector('h3 button'); sec.querySelector('ul').hidden=!open; b.setAttribute('aria-expanded',String(open)); b.querySelector('i').textContent=open?'−':'+'; };

@@ -1,10 +1,12 @@
 /* English strings. Keys are the Traditional Chinese source strings (see core/i18n.js).
    Covered so far: UI chrome, tabs, every scene's title / question / what-you-see / what-you-do, tour titles, the desk, visitors.
-   Not yet: text inside scene panels (how-to, readouts, segmented options, guide steps), tour step notes, glossary entries. */
+   Glossary entries live in core/i18n-en-glossary.js.
+   Not yet: text inside scene panels (how-to, readouts, segmented options, guide steps), tour step notes. */
 (function(){
 'use strict';
 Object.assign(I18N.dict.en, {
   // ---- site ----
+  '、':', ',
   'AI 概念 3D 教學':'AI Concepts in 3D', '看懂概念，不追數值':'Understand the idea, not the numbers',
   '基礎架構':'Architectures', '模型積木':'Building blocks', '完整模型':'Full models', '訓練':'Training', '模型評估':'Evaluation', '壓縮與量化':'Compression & quantization', '推論基礎設施':'Inference infra', 'Agent':'Agent',
   '主題':'Topics', '本主題的場景':'Scenes in this topic', '上一個 / 下一個場景':'Previous / next scene', '← 上一個':'← Previous', '下一個 →':'Next →', '規劃中':'planned', '可用鍵盤聚焦的 3D 物件':'3D objects you can focus with the keyboard',
@@ -34,7 +36,7 @@ Object.assign(I18N.dict.en, {
   // ---- controls ----
   '單步':'Step', '播放':'Play', '暫停':'Pause', '重置':'Reset', '怎麼玩':'How to play', '選項':'Options',
   // ---- tours ----
-  '導覽':'Tours', '挑一條路線，按順序看':'Pick a route and follow it in order', '步 · 約 ':'steps · about ', ' 分鐘':' min', '離開導覽':'Leave the tour', '上一步':'Back', '下一步':'Next',
+  '導覽':'Tours', '挑一條路線，按順序看':'Pick a route and follow it in order', '步 · 約 ':'steps · about ', '分鐘':'min', '離開導覽':'Leave the tour', '上一步':'Back', '下一步':'Next',
   '2026 年的模型為什麼長這樣':'Why 2026 models look like this', 'KV cache 一條線：從公式到記憶體':'KV cache in one line: from formula to memory', '量化：從一個 bit 到一個檔案':'Quantization: from one bit to one file', '從預訓練到對齊':'From pretraining to alignment', 'RAG：從向量到答案':'RAG: from vectors to answers', '生成：從噪聲到圖與文':'Generation: from noise to images and text', '評估：數字從哪裡來':'Evaluation: where the numbers come from', 'Agent 怎麼不失控（Pi）':'How an agent stays in control (Pi)', '從影像到文字到向量':'From images to text to vectors', 'GPU 上到底在忙什麼':'What the GPU is actually busy with',
   // ---- about ----
   '關於這個網站':'About this site', '延伸連結':'Links', '連結清單來自 about.json：直接編輯那個檔就能新增或修改（離線單檔版要重新 build）。':'The links come from about.json: edit that file to add or change them (the offline single-file build needs a rebuild).',

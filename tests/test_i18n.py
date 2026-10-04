@@ -123,3 +123,46 @@ def test_phone_top_bar_fits_with_the_language_button(phone_site):
     widths = phone_site.ev("[document.documentElement.scrollWidth, document.getElementById('top').scrollWidth]")
     assert max(widths) <= 390, widths
     assert phone_site.ev("document.getElementById('langbtn').getBoundingClientRect().right") <= 390
+
+
+# ---- glossary entries (second batch) ----
+def _en_keys():
+    txt = EN + (ROOT / "core" / "i18n-en-glossary.js").read_text(encoding="utf-8")
+    return set(re.findall(r"'((?:[^'\\]|\\.)*)':", txt))
+
+
+def test_every_glossary_term_has_english_title_short_and_body():
+    src = (ROOT / "core" / "glossary.js").read_text(encoding="utf-8")
+    keys = _en_keys()
+    cjk = re.compile(r"[一-鿿]")
+    missing = []
+    terms = re.findall(r"\{id:'([\w-]+)', tab:'\w+', title:'([^']*)', aka:\[[^\]]*\], short:'([^']*)', body:'([^']*)'", src)
+    assert len(terms) >= 120, len(terms)
+    for tid, *fields in terms:
+        for f in fields:
+            if cjk.search(f) and f not in keys:
+                missing.append((tid, f[:24]))
+    assert not missing, missing
+
+
+def test_english_glossary_term_toc_search_and_tooltips(en):
+    en.page.evaluate("location.hash = 'term=kv-cache'")
+    en.page.wait_for_function("App.page === 'glossary' && App.glossary.ready && document.querySelector('#glossary .gl-term')")
+    assert en.ev("document.querySelector('#glossary .gl-term h2').textContent") == "KV cache"
+    assert en.ev("document.querySelector('#glossary .gl-term .short').textContent").startswith("Store the K and V")
+    body = en.ev("document.querySelector('#glossary .gl-term .body').textContent")
+    assert "memory" in body and not re.search(r"[一-鿿]", body), body
+    assert "Weights" not in en.ev("document.querySelector('#glossary .gl-term .see').textContent")
+    tip = en.ev("document.querySelector('#glossary .gl-term .body a.term').title")
+    assert not re.search(r"[一-鿿]", tip), tip
+    assert en.ev("document.querySelector('#glossary .gl-list li.cur b').textContent") == "KV cache"
+    cur_short = en.ev("document.querySelector('#glossary .gl-list li.cur span').textContent")
+    assert not re.search(r"[一-鿿]", cur_short), cur_short
+    en.page.evaluate("location.hash = 'term=receptive-field'")
+    en.page.wait_for_function("document.querySelector('#glossary .gl-term h2') && document.querySelector('#glossary .gl-term h2').textContent === 'Receptive field'")
+    aka = en.ev("(document.querySelector('#glossary .gl-term .aka') || {}).textContent || ''")
+    assert not re.search(r"[一-鿿]", aka), aka
+    en.page.fill("#glossary input[type=search]", "receptive")
+    assert en.ev("[...document.querySelectorAll('#glossary .gl-list li')].filter(li => li.style.display !== 'none').map(li => li.querySelector('b').textContent)") == ["Receptive field"]
+    assert en.ev("I18N.missing()") == []
+

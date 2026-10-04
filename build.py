@@ -15,7 +15,7 @@ three = (ROOT / "vendor/three.min.js").read_text(encoding="utf-8")
 fonts = (ROOT / "vendor/fonts.css").read_text(encoding="utf-8")
 about = json.loads((ROOT / "about.json").read_text(encoding="utf-8"))  # validated here so a typo fails the build, not the page
 
-order = ["core/primitives.js", "core/pictures.js", "core/motion.js", "core/i18n.js", "core/i18n-en.js", "core/controls.js", "core/app.js", "core/tours.js", "core/guide.js", "core/glossary.js", "core/about.js", "core/desk-models.js", "core/desk-toys.js", "core/desk.js", "core/desk-messenger.js", "scenes/_catalog.js"]
+order = ["core/primitives.js", "core/pictures.js", "core/motion.js", "core/i18n.js", "core/i18n-en.js", "core/i18n-en-glossary.js", "core/controls.js", "core/app.js", "core/tours.js", "core/guide.js", "core/glossary.js", "core/about.js", "core/desk-models.js", "core/desk-toys.js", "core/desk.js", "core/desk-messenger.js", "scenes/_catalog.js"]
 scenes = sorted(p for p in (ROOT / "scenes").glob("*.js") if p.name != "_catalog.js")
 files = [ROOT / p for p in order] + scenes
 
