@@ -27,7 +27,7 @@
         if(rag&&phase===2) hits.forEach((h,j)=>beams.set(j,new T.Vector3(...q.pos),new T.Vector3(...CH[h][1]),0.6,'flow'));
         P.clear(cards); if(rag&&phase>=3) hits.forEach((h,j)=>{ const m=new T.Mesh(new T.BoxGeometry(3.0,0.42,0.6),P.mat('flow',{glow:0.4})); m.position.set(SX,0.78+j*0.5,0); cards.add(m); const l=P.label(`[${h+1}] ${CH[h][0]}`,{size:12}); l.position.set(0,0,0.35); m.add(l); });
         if(phase>=4){ beams.set(6,new T.Vector3(SX,0.5,0),new T.Vector3(SX,-3.4,0),0.6,'state'); ansL.userData.setText('答：'+(rag?q.ans:q.guess)); } else ansL.userData.setText('');
-        set('phase',phase<0?'—':PH[phase]+(rag||[1,4].includes(phase)?'':'（沒有 RAG，跳過）')); set('hits',rag&&phase>=2?`${hits.length} 段（${hits.map(h=>'['+(h+1)+']').join('')}）`:'0 段'); set('plus',rag&&phase>=3?`約 ${hits.length*60} token`:'0 token'); set('src',phase>=4?(rag?`檢索到的 ${hits.length} 段，可引用`:'模型記憶（可能過時或幻覺）'):'—'); };
+        set('phase',phase<0?'—':PH[phase]+(rag||[1,4].includes(phase)?'':'（沒有 RAG，跳過）')); set('hits',rag&&phase>=2?I18N.f('{v0} 段（{v1}）',{v0:hits.length,v1:hits.map(h=>'['+(h+1)+']').join('')}):'0 段'); set('plus',rag&&phase>=3?I18N.f('約 {v0} token',{v0:hits.length*60}):'0 token'); set('src',phase>=4?(rag?I18N.f('檢索到的 {v0} 段，可引用',{v0:hits.length}):'模型記憶（可能過時或幻覺）'):'—'); };
       const step=()=>{ if(phase>=4) return false; phase++; if(phase===2) hits=retrieve(); paint(); return phase<4; };
       const reset=()=>{ phase=-1; hits=[]; paint(); };
       ctrl.heading('RAG：先查再答');
@@ -36,7 +36,7 @@
       const segM=ctrl.segmented('模式',[{id:'rag',label:'有 RAG'},{id:'none',label:'沒有 RAG'}],mode,id=>{ mode=id; reset(); });
       const stepper=ctrl.stepper({onStep:step,onReset:reset,interval:700});
       const set=ctrl.readouts([{id:'phase',label:'階段'},{id:'hits',label:'檢索到的段落'},{id:'plus',label:'prompt 多了'},{id:'src',label:'答案來源'},{id:'hov',label:'滑到的段落'}]);
-      ctx.app.watchHover(pts.map(p=>p.m),(h,i)=>{ if(i<0){ set('hov','—'); return; } set('hov',`「${pts[i].t}」：與目前問題的相似度 ${sim(pts[i].p).toFixed(2)}`); },(m,i)=>`段落 ${i+1}`);
+      ctx.app.watchHover(pts.map(p=>p.m),(h,i)=>{ if(i<0){ set('hov','—'); return; } set('hov',I18N.f('「{v0}」：與目前問題的相似度 {v1}',{v0:pts[i].t,v1:sim(pts[i].p).toFixed(2)})); },(m,i)=>I18N.f('段落 {v0}',{v0:i+1}));
       ctrl.howto(['單步走切塊嵌入、嵌入查詢、檢索、塞 prompt、生成五步','拉 top-k、換問題；切「沒有 RAG」看答案來源變成模型記憶','滑到任一段讀它和問題的相似度']);
       const setup=o=>{ stepper.stop(); qi=o.q||0; k=o.k||3; mode=o.mode||'rag'; segQ.set(String(qi)); sK.set(k); segM.set(mode); reset(); for(let i=0;i<=(o.phase??-1);i++) step(); };
       ctx.guide([
@@ -57,7 +57,7 @@
       const g=new T.Group(); root.add(g); const pages=[]; const PX=i=>(i-2.5)*2.3;
       PAGES.forEach((p,i)=>{ const card=new T.Group(); card.position.set(PX(i),0,0); g.add(card); const pg=new P.Picture(1.7,2.2,{px:96}); card.add(pg.mesh); const body=pg.mesh; // 頁面縮圖是真的畫出來的
         const edge=new T.LineSegments(new T.EdgesGeometry(new T.PlaneGeometry(1.74,2.24)),new T.LineBasicMaterial({color:P.C('structure'),transparent:true,opacity:0.7})); edge.position.z=0.01; card.add(edge);
-        const l=P.label(`第 ${i+1} 頁 ${p.t}`,{size:14}); l.position.set(0,-1.45,0); card.add(l); const v=P.label('',{size:12}); v.position.set(0,1.45,0); card.add(v); pages.push({card,body,pg,edge,vl:v,key:null,...p}); });
+        const l=P.label(I18N.f('第 {v0} 頁 {v1}',{v0:i+1,v1:p.t}),{size:14}); l.position.set(0,-1.45,0); card.add(l); const v=P.label('',{size:12}); v.position.set(0,1.45,0); card.add(v); pages.push({card,body,pg,edge,vl:v,key:null,...p}); });
       const qCube=new T.Mesh(new T.BoxGeometry(0.6,0.6,0.6),P.mat('signal',{glow:0.5})); qCube.position.set(0,3.6,0); root.add(qCube); const qL=P.label('',{size:18}); qL.position.set(0,4.3,0); root.add(qL);
       const beam=new P.BeamSet(1,{color:'flow',maxR:0.06,minR:0.04}); root.add(beam.group); const lost=P.label('',{size:13,color:P.hex('alert')}); lost.position.set(0,-2.4,0); root.add(lost);
       const paint=()=>{ const vis=mode==='vision'; const q=QS[qi]; const hit=vis?q.vision:q.ocr; qL.userData.setText('問題：'+q.q);
@@ -66,7 +66,7 @@
           p.vl.userData.setText(phase>=0?(vis?'整頁影像 → 多向量':(p.kind==='text'?'OCR 文字 → 1 向量':'OCR 文字（圖表丟失）→ 1 向量')):''); });
         beam.hideAll(); if(phase>=2){ root.updateMatrixWorld(true); beam.set(0,new T.Vector3(0,3.3,0),new T.Vector3(PX(hit),2.0,0),0.7,'flow'); }
         lost.userData.setText(vis?'':'OCR 只留文字：表格的欄位關係、圖表的高低都不見了');
-        set('phase',phase<0?'—':PH[phase]); set('unit',vis?'頁面影像（不經 OCR）':'OCR 後的文字 chunk'); set('vis',vis?'保留（直接看影像）':'OCR 後丟失（只剩文字）'); set('vec',vis?'多向量（每個 patch 一個，ColPali 式）':'每頁 1 個'); set('hit',phase>=2?`第 ${hit+1} 頁（${PAGES[hit].t}）`:'—',phase>=2?(hit===q.vision?'ok':'bad'):''); set('gen',vis?'VLM 直接讀檢索到的頁面影像':'LLM 讀 OCR 文字'); };
+        set('phase',phase<0?'—':PH[phase]); set('unit',vis?'頁面影像（不經 OCR）':'OCR 後的文字 chunk'); set('vis',vis?'保留（直接看影像）':'OCR 後丟失（只剩文字）'); set('vec',vis?'多向量（每個 patch 一個，ColPali 式）':'每頁 1 個'); set('hit',phase>=2?I18N.f('第 {v0} 頁（{v1}）',{v0:hit+1,v1:PAGES[hit].t}):'—',phase>=2?(hit===q.vision?'ok':'bad'):''); set('gen',vis?'VLM 直接讀檢索到的頁面影像':'LLM 讀 OCR 文字'); };
       const step=()=>{ if(phase>=2) return false; phase++; paint(); return phase<2; };
       const reset=()=>{ phase=-1; paint(); };
       ctrl.heading('頁面當影像，還是先 OCR？');
@@ -74,7 +74,7 @@
       const segQ=ctrl.segmented('問題',QS.map((x,i)=>({id:String(i),label:['Q3 營收','市占'][i]})),'0',id=>{ qi=+id; reset(); });
       const stepper=ctrl.stepper({onStep:step,onReset:reset,interval:800});
       const set=ctrl.readouts([{id:'phase',label:'階段'},{id:'unit',label:'索引單位'},{id:'vis',label:'表格與圖表'},{id:'vec',label:'每頁向量數'},{id:'hit',label:'檢索到的頁'},{id:'gen',label:'生成端'},{id:'hov',label:'滑到的頁'}]);
-      ctx.app.watchHover(pages.map(p=>p.body),(h,i)=>{ if(i<0){ set('hov','—'); return; } const p=pages[i]; set('hov',`第 ${i+1} 頁（${p.t}）：${mode==='vision'?'整頁影像切成 patch，每個 patch 一個向量':p.kind==='text'?'OCR 出文字，算 1 個向量':'OCR 只拿到標題文字，圖表內容進不了向量'}`); },(m,i)=>`第 ${i+1} 頁 ${pages[i].t}`);
+      ctx.app.watchHover(pages.map(p=>p.body),(h,i)=>{ if(i<0){ set('hov','—'); return; } const p=pages[i]; set('hov',I18N.f('第 {v0} 頁（{v1}）：{v2}',{v0:i+1,v1:p.t,v2:mode==='vision'?I18N.t('整頁影像切成 patch，每個 patch 一個向量'):p.kind==='text'?I18N.t('OCR 出文字，算 1 個向量'):I18N.t('OCR 只拿到標題文字，圖表內容進不了向量')})); },(m,i)=>I18N.f('第 {v0} 頁 {v1}',{v0:i+1,v1:pages[i].t}));
       ctrl.howto(['單步走嵌入頁面、嵌入查詢、檢索三步，看找到哪一頁','切成 OCR 再比一次：圖表頁褪色、找到的頁不一樣','滑到任一頁看它的向量怎麼來']);
       const setup=o=>{ stepper.stop(); mode=o.mode||'vision'; qi=o.q||0; segM.set(mode); segQ.set(String(qi)); reset(); for(let i=0;i<=(o.phase??-1);i++) step(); };
       ctx.guide([
@@ -98,7 +98,7 @@
       const qPt=new T.Mesh(new T.OctahedronGeometry(0.32,0),P.mat('structure:hot',{glow:0.9})); g.add(qPt); const qL=P.label('',{size:16}); g.add(qL);
       const beams=new P.BeamSet(3,{color:'flow',maxR:0.05,minR:0.03}); root.add(beams.group);
       const tl=P.label('',{size:19}); tl.position.set(0,5.0,0); root.add(tl);
-      const subL=Object.entries(OFF).map(([m,o])=>{ const l=P.label(`${MOD[m].n}的空間`,{size:14}); l.position.set(o[0],1.6,o[2]); l.material.opacity=0; root.add(l); return l; });
+      const subL=Object.entries(OFF).map(([m,o])=>{ const l=P.label(I18N.f('{v0}的空間',{v0:MOD[m].n}),{size:14}); l.position.set(o[0],1.6,o[2]); l.material.opacity=0; root.add(l); return l; });
       const posOf=it=>{ if(model==='one') return it.p; const o=OFF[it.m]; return [it.p[0]*0.45+o[0],it.p[1],it.p[2]*0.45+o[2]]; };
       const paint=()=>{ const one=model==='one'; const q=QS[qt]; tl.userData.setText(one?'一個模型、一個空間：按意思聚在一起':'每個模態各一個模型：四個互不相通的空間'); subL.forEach(l=>l.material.opacity=one?0:1);
         items.forEach(it=>{ const p=posOf(it); Motion.tween(it.mesh.position,{x:p[0],y:p[1],z:p[2]},{ms:500,ease:'inOut'}); Motion.tween(it.l.position,{x:p[0],y:p[1]+0.45,z:p[2]},{ms:500,ease:'inOut'}); });
@@ -106,13 +106,13 @@
         const pool=can?items.filter(it=>one||it.m===q.m):[]; const nn=pool.map(it=>({it,d:dist(it.p,q.pos)})).sort((a,b)=>a.d-b.d).slice(0,3);
         beams.hideAll(); setTimeout(()=>{ if(dead) return; beams.hideAll(); if(!qPt.visible) return; root.updateMatrixWorld(true); nn.forEach((x,j)=>beams.set(j,qPt.position.clone(),x.it.mesh.position.clone(),0.6-j*0.15,'flow')); },520);
         items.forEach(it=>{ const hit=nn.some(x=>x.it===it); it.mesh.material.emissiveIntensity=hit?1.0:0.45; it.mesh.scale.setScalar(hit?1.3:1); });
-        set('q',q.q); set('nn',can?nn.map(x=>`「${x.it.t}」（${MOD[x.it.m].n}）`).join('、'):(q.m==='mix'?'找不到：圖文交錯的查詢沒有對應的單模態索引':'—'),can?'':'bad'); set('dim',`${dim} 維`); set('idx',`${(1e6*dim*2/1e9).toFixed(2)} GB（100 萬筆，bf16）`); set('qual',dim>=2048?'100%（示意）':dim>=1024?'≈ 99%（示意）':dim>=512?'≈ 97%（示意）':'≈ 95%（示意）'); };
+        set('q',q.q); set('nn',can?nn.map(x=>`「${x.it.t}」（${MOD[x.it.m].n}）`).join('、'):(q.m==='mix'?'找不到：圖文交錯的查詢沒有對應的單模態索引':'—'),can?'':'bad'); set('dim',I18N.f('{v0} 維',{v0:dim})); set('idx',I18N.f('{v0} GB（100 萬筆，bf16）',{v0:(1e6*dim*2/1e9).toFixed(2)})); set('qual',dim>=2048?'100%（示意）':dim>=1024?'≈ 99%（示意）':dim>=512?'≈ 97%（示意）':'≈ 95%（示意）'); };
       ctrl.heading('一個模型，嵌入所有模態');
       const segQ=ctrl.segmented('查詢型態',[{id:'text',label:'純文字'},{id:'image',label:'圖片'},{id:'mix',label:'圖 + 文交錯'}],qt,id=>{ qt=id; paint(); });
       const segM=ctrl.segmented('嵌入模型',[{id:'one',label:'一個模型（WeMM）'},{id:'sep',label:'每個模態各一個模型'}],model,id=>{ model=id; paint(); });
       const sD=ctrl.slider('輸出維度',{min:256,max:2048,step:256,value:dim,onChange:v=>{ dim=v; paint(); }});
       const set=ctrl.readouts([{id:'q',label:'查詢'},{id:'nn',label:'最近鄰'},{id:'dim',label:'輸出維度'},{id:'idx',label:'索引大小'},{id:'qual',label:'檢索品質'},{id:'hov',label:'滑到的點'}]);
-      ctx.app.watchHover(items.map(it=>it.mesh),(h,i)=>{ if(i<0){ set('hov','—'); return; } set('hov',`「${items[i].t}」，模態：${MOD[items[i].m].n}`); },(m,i)=>`${items[i].t}（${MOD[items[i].m].n}）`);
+      ctx.app.watchHover(items.map(it=>it.mesh),(h,i)=>{ if(i<0){ set('hov','—'); return; } set('hov',I18N.f('「{v0}」，模態：{v1}',{v0:items[i].t,v1:MOD[items[i].m].n})); },(m,i)=>`${items[i].t}（${MOD[items[i].m].n}）`);
       ctrl.howto(['切查詢型態，看最近鄰是哪種模態','切「每個模態各一個模型」看空間裂成四塊、交錯查詢找不到','拉輸出維度看索引大小縮多少']);
       const setup=o=>{ qt=o.qt||'text'; model=o.model||'one'; dim=o.dim||1024; segQ.set(qt); segM.set(model); sD.set(dim); paint(); };
       ctx.guide([

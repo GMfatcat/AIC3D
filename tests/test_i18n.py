@@ -185,4 +185,63 @@ def test_english_tour_bar_note(en):
     en.goto("tour=kv&step=4")
     en.page.wait_for_function("App.currentItem && App.currentItem.id === 'vllm' && !App.routing")
     assert "Where to put it" in en.ev("document.querySelector('#tourbar .tb-note').textContent")
-    assert not re.search(r"[一-鿿]", en.ev("document.getElementById('tourbar').textContent"))  # panel text itself is the next batch
+    assert not re.search(r"[一-鿿]", en.ev("document.getElementById('tourbar').textContent"))
+
+
+# ---- scene panels (fourth batch): the renderers translate, scenes only mark templated strings with I18N.f ----
+def test_i18n_f_fills_placeholders_after_translating(site):
+    assert site.ev("I18N.f('第 {n} 層輸出', {n: 12})") == "第 12 層輸出"
+
+
+def test_english_scene_panel_labels_legend_and_guide(en):
+    en.goto("residual")
+    en.ev("App.intro.enter('free')")
+    assert en.ev("document.querySelector('#ctrl h2').textContent") == "Skip path"
+    assert en.ev("document.querySelector('#ctrl .howto li').textContent").startswith("Switch to")
+    assert en.ev("[...document.querySelectorAll('#ctrl .seg button')].map(b => b.textContent)") == ["With skip connection", "Without (plain stack)"]
+    assert en.ev("document.querySelector('#ctrl .slider label span').textContent").startswith("Gain of each block")
+    assert en.ev("document.querySelector('#ctrl .readouts dt').textContent") == "Derivative per layer"
+    assert "Signal (thick = large)" in en.ev("document.getElementById('legend').textContent")
+    labels = en.ev("[...document.querySelectorAll('.l3d')].map(l => l.textContent)")
+    assert "Input" in labels and "Layer 12 output" in labels, labels
+    assert en.ev("I18N.f('第 {n} 層輸出', {n: 12})") == "Layer 12 output"
+    en.ev("App.guide.start()")
+    say = en.ev("document.querySelector('#guidebar .gb-say').textContent")
+    assert "x + F(x)" in say and not re.search(r"[一-鿿]", say), say
+    assert en.ev("document.querySelector('#ctrl .spot') && document.querySelector('#ctrl .spot').textContent").startswith("Skip path")
+    assert en.ev("I18N.missing()") == []
+
+
+# ---- every scene, every tab: panel, guide steps, stepper, segmented / select options, hover readouts, keyboard focus list ----
+EXERCISE = """() => {
+  const bs = [...document.querySelectorAll('#ctrl .btnrow .btn')];
+  for (let k = 0; k < 4; k++) bs.filter(b => b.textContent.trim().startsWith('Step')).forEach(b => b.click());
+  document.querySelectorAll('#ctrl .seg button').forEach(b => b.click());
+  document.querySelectorAll('#ctrl select').forEach(s => { [...s.options].forEach(o => { s.value = o.value; s.dispatchEvent(new Event('change')); }); });
+  document.querySelectorAll('#ctrl details').forEach(d => d.open = true);
+  (App._hoverWatch || []).forEach(w => { (w.objects || []).forEach((o, i) => { try { w.cb(o, i); } catch (e) {} }); try { w.cb(null, -1); } catch (e) {} });
+  document.querySelectorAll('#stage .focuslist button').forEach(b => b.dispatchEvent(new Event('focus')));
+}"""
+
+
+@pytest.mark.parametrize("tab", ["arch", "block", "model", "train", "eval", "optimize", "infra", "agent"])
+def test_english_scene_panels_have_no_untranslated_text(en, tab):
+    page = en.page
+    ids = page.evaluate("t => App.catalog.filter(i => i.tab === t && !i.planned).map(i => i.id)", tab)
+    assert ids
+    for sid in ids:
+        page.evaluate("h => { location.hash = h; }", sid)
+        page.wait_for_function("h => App.currentItem && App.currentItem.id === h && !App.routing", arg=sid)
+        en.ev("App.intro.enter('free')"); page.wait_for_timeout(150)
+        n = en.ev("App.guide.steps.length")
+        if n:
+            en.ev("App.guide.start()")
+            for i in range(n):
+                page.evaluate("i => App.guide.go(i)", i)
+            en.ev("App.guide.stop()")
+        page.evaluate(EXERCISE); page.wait_for_timeout(150)
+        missing = en.ev("I18N.missing()")
+        assert missing == [], (sid, missing[:8])
+        for sel in ("#ctrl", "#legend", "#stage .focuslist"):
+            txt = page.evaluate("s => (document.querySelector(s) || {}).textContent || ''", sel)
+            assert not re.search(r"[一-鿿]", txt), (sid, sel, txt[:80])

@@ -10,7 +10,7 @@
       const S=[...Array(NPOS)].map(()=>({y:1,s:Math.max(0.02,Math.min(0.98,0.66+gauss()*0.17))})).concat([...Array(NNEG)].map(()=>({y:0,s:Math.max(0.02,Math.min(0.98,0.34+gauss()*0.17))})));
       let thr=0.5, curve='pr';
       const X=s=>(s-0.5)*10; const g=new T.Group(); g.position.set(-1.5,0,0); root.add(g);
-      const axis=polyline(T,P,[new T.Vector3(-5.2,0,0),new T.Vector3(5.2,0,0)],'structure',0.6); g.add(axis); [0,0.5,1].forEach(v=>{ const l=P.label(`分數 ${v}`,{size:13}); l.position.set(X(v),-1.6,0); g.add(l); });
+      const axis=polyline(T,P,[new T.Vector3(-5.2,0,0),new T.Vector3(5.2,0,0)],'structure',0.6); g.add(axis); [0,0.5,1].forEach(v=>{ const l=P.label(I18N.f('分數 {v0}',{v0:v}),{size:13}); l.position.set(X(v),-1.6,0); g.add(l); });
       const dots=S.map(x=>{ const m=new T.Mesh(new T.SphereGeometry(0.17,14,10),P.mat(x.y?'signal':'inactive',{glow:0.6})); m.position.set(X(x.s),x.y?0.75:-0.75,0); g.add(m); return m; });
       const pl=P.label('真的是正類（20）',{size:14,color:P.hex('signal')}); pl.position.set(-6.4,0.75,0); g.add(pl); const nl=P.label('真的是負類（20）',{size:14}); nl.position.set(-6.4,-0.75,0); g.add(nl);
       const line=new T.Mesh(new T.BoxGeometry(0.06,3.2,0.4),P.mat('alert',{glow:1})); g.add(line); const ll=P.label('',{size:14,color:P.hex('alert')}); ll.position.set(0,2.0,0); g.add(ll);
@@ -20,17 +20,17 @@
       const kg=new T.Group(); kg.position.set(6.2,-2.6,0); root.add(kg); kg.add(box(T,P,2.4,2.0,'structure',0.5)); let curveLine=null; const kmark=new T.Mesh(new T.SphereGeometry(0.12,12,8),P.mat('alert',{glow:1})); kg.add(kmark); const kl=P.label('',{size:13}); kl.position.set(0,1.35,0); kg.add(kl);
       const stats=t=>{ let TP=0,FP=0,FN=0,TN=0; S.forEach(x=>{ const p=x.s>=t; if(p&&x.y) TP++; else if(p) FP++; else if(x.y) FN++; else TN++; }); const pr=TP+FP?TP/(TP+FP):1, rc=TP/(TP+FN), f1=pr+rc?2*pr*rc/(pr+rc):0; return {TP,FP,FN,TN,pr,rc,f1,acc:(TP+TN)/S.length,fpr:FP/(FP+TN)}; };
       const auc=()=>{ let s=0; S.filter(a=>a.y).forEach(a=>S.filter(b=>!b.y).forEach(b=>{ s+=a.s>b.s?1:a.s===b.s?0.5:0; })); return s/(NPOS*NNEG); };
-      const paint=()=>{ const st=stats(thr); line.position.x=X(thr); ll.position.x=X(thr); ll.userData.setText(`門檻 ${thr.toFixed(2)}：右邊判正、左邊判負`);
+      const paint=()=>{ const st=stats(thr); line.position.x=X(thr); ll.position.x=X(thr); ll.userData.setText(I18N.f('門檻 {v0}：右邊判正、左邊判負',{v0:thr.toFixed(2)}));
         dots.forEach((m,i)=>{ const x=S[i]; const p=x.s>=thr; const col=p&&x.y?'flow':p?'alert':x.y?'alert':'inactive'; m.material.color.copy(P.C(col)); m.material.emissive.copy(m.material.color); m.material.emissiveIntensity=p&&x.y?0.9:p?0.8:x.y?0.5:0.3; m.scale.setScalar(x.y&&!p?0.8:1); });
         Object.entries(cells).forEach(([k,c])=>{ c.l.userData.setText(`${k} ${st[k]}`); c.m.material.emissiveIntensity=0.15+st[k]/20; });
         const pts=[]; for(let t=1.0;t>=0;t-=0.02){ const s=stats(t); pts.push(curve==='pr'?new T.Vector3(s.rc*2.4-1.2,s.pr*2.0-1.0,0.05):new T.Vector3(s.fpr*2.4-1.2,s.rc*2.0-1.0,0.05)); }
-        if(curveLine){ kg.remove(curveLine); curveLine.geometry.dispose(); } curveLine=polyline(T,P,pts,'signal'); kg.add(curveLine); kmark.position.copy(curve==='pr'?new T.Vector3(st.rc*2.4-1.2,st.pr*2.0-1.0,0.1):new T.Vector3(st.fpr*2.4-1.2,st.rc*2.0-1.0,0.1)); kl.userData.setText(curve==='pr'?'PR 曲線（x = recall，y = precision）':`ROC 曲線（x = FPR，y = recall），AUC ${auc().toFixed(2)}`);
+        if(curveLine){ kg.remove(curveLine); curveLine.geometry.dispose(); } curveLine=polyline(T,P,pts,'signal'); kg.add(curveLine); kmark.position.copy(curve==='pr'?new T.Vector3(st.rc*2.4-1.2,st.pr*2.0-1.0,0.1):new T.Vector3(st.fpr*2.4-1.2,st.rc*2.0-1.0,0.1)); kl.userData.setText(curve==='pr'?'PR 曲線（x = recall，y = precision）':I18N.f('ROC 曲線（x = FPR，y = recall），AUC {v0}',{v0:auc().toFixed(2)}));
         ['TP','FP','FN','TN'].forEach(k=>set(k,String(st[k]))); set('pr',st.pr.toFixed(2)); set('rc',st.rc.toFixed(2)); set('f1',st.f1.toFixed(2),st.f1>0.8?'ok':''); set('acc',st.acc.toFixed(2)); set('auc',auc().toFixed(2)); };
       ctrl.heading('一條門檻，兩個方向的錯');
       const sT=ctrl.slider('門檻',{min:0,max:1,step:0.05,value:thr,fmt:v=>v.toFixed(2),onChange:v=>{ thr=v; paint(); }});
       const segC=ctrl.segmented('曲線',[{id:'pr',label:'PR 曲線'},{id:'roc',label:'ROC 曲線'}],curve,id=>{ curve=id; paint(); });
       const set=ctrl.readouts([{id:'TP',label:'TP'},{id:'FP',label:'FP'},{id:'FN',label:'FN'},{id:'TN',label:'TN'},{id:'pr',label:'precision'},{id:'rc',label:'recall'},{id:'f1',label:'F1'},{id:'acc',label:'accuracy'},{id:'auc',label:'AUC'},{id:'hov',label:'滑到的樣本'}]);
-      ctx.app.watchHover(dots,(h,i)=>{ if(i<0){ set('hov','—'); return; } const x=S[i]; const p=x.s>=thr; set('hov',`分數 ${x.s.toFixed(2)}，真的是${x.y?'正':'負'}類，判成${p?'正':'負'} → ${p&&x.y?'TP':p?'FP':x.y?'FN':'TN'}`); },(m,i)=>`樣本 ${i+1}`);
+      ctx.app.watchHover(dots,(h,i)=>{ if(i<0){ set('hov','—'); return; } const x=S[i]; const p=x.s>=thr; set('hov',I18N.f('分數 {v0}，真的是{v1}類，判成{v2} → {v3}',{v0:x.s.toFixed(2),v1:x.y?I18N.t('正'):I18N.t('負'),v2:p?I18N.t('正'):I18N.t('負'),v3:p&&x.y?'TP':p?'FP':x.y?'FN':'TN'})); },(m,i)=>I18N.f('樣本 {v0}',{v0:i+1}));
       ctrl.howto(['拉門檻往右：precision 升、recall 降；往左相反','看混淆矩陣四格怎麼互相搬','切 PR / ROC 曲線，門檻掃過一遍就是整條線']);
       const setup=o=>{ thr=o.thr??0.5; curve=o.curve||'pr'; sT.set(thr); segC.set(curve); paint(); };
       ctx.guide([
@@ -55,7 +55,7 @@
       let mode='det', thr=0.5; const SC=0.55; const g=new T.Group(); g.position.set(-W*SC/2,-H*SC/2,0); root.add(g); const sg=new T.Group(); root.add(sg);
       const frame=box(T,P,W*SC,H*SC,'structure',0.6); frame.position.set(W*SC/2,H*SC/2,0); g.add(frame); const il=P.label('影像（12×8 格）',{size:14}); il.position.set(W*SC/2,H*SC+0.5,0); g.add(il);
       const rect=(b,color,opacity)=>{ const e=box(T,P,b[2]*SC,b[3]*SC,color,opacity); e.position.set((b[0]+b[2]/2)*SC,(H-b[1]-b[3]/2)*SC,0.02); g.add(e); return e; };
-      GT.forEach(gt=>{ rect(gt.b,'structure',0.9); const l=P.label(`真：${gt.c}`,{size:12}); l.position.set((gt.b[0]+0.6)*SC,(H-gt.b[1]-0.25)*SC,0.05); g.add(l); });
+      GT.forEach(gt=>{ rect(gt.b,'structure',0.9); const l=P.label(I18N.f('真：{v0}',{v0:gt.c}),{size:12}); l.position.set((gt.b[0]+0.6)*SC,(H-gt.b[1]-0.25)*SC,0.05); g.add(l); });
       const preds=PR.map(p=>{ const e=rect(p.b,'flow',1); const hit=new T.Mesh(new T.PlaneGeometry(p.b[2]*SC,p.b[3]*SC),P.mat('flow',{glow:0.1,opacity:0.12})); hit.position.copy(e.position); hit.position.z=0.03; g.add(hit); const l=P.label('',{size:11}); l.position.set((p.b[0]+p.b[2]/2)*SC,(H-p.b[1]-p.b[3]+0.25)*SC,0.08); g.add(l); return {e,hit,l}; });
       // 分割：12×12 格，GT 遮罩 vs 預測遮罩
       const GM=(r,c)=>((c-5.5)/3.2)**2+((r-5.5)/2.6)**2<=1, PM=(r,c)=>((c-6.6)/3.0)**2+((r-5.0)/2.8)**2<=1; const cells=[]; for(let r=0;r<N;r++) for(let c=0;c<N;c++){ const m=new T.Mesh(new T.BoxGeometry(0.42,0.42,0.2),P.mat('inactive',{glow:0.1})); m.position.set((c-(N-1)/2)*0.46,((N-1)/2-r)*0.46,0); m.userData={r,c}; sg.add(m); cells.push(m); } const sl=P.label('遮罩：青 = 交集，紅 = 漏掉（FN），橘 = 多畫（FP）',{size:14}); sl.position.set(0,3.1,0); sg.add(sl);
@@ -64,8 +64,8 @@
           const tp=m.filter(x=>x.ok).length; set('tp',String(tp)); set('fp',String(PR.length-tp)); set('fn',String(GT.length-tp)); set('apd',ap('狗',thr).toFixed(2)); set('apc',ap('貓',thr).toFixed(2)); set('m50',mAP(0.5).toFixed(2)); set('m5095',mAP5095().toFixed(2)); set('iou','—'); set('dice','—'); }
         else { let I=0,U=0,A=0,B=0; cells.forEach(m=>{ const {r,c}=m.userData; const a=GM(r,c), b=PM(r,c); if(a) A++; if(b) B++; if(a&&b){ I++; U++; } else if(a||b) U++; const col=a&&b?'flow':a?'alert':b?'signal':'inactive'; m.material.color.copy(P.C(col)); m.material.emissive.copy(m.material.color); m.material.emissiveIntensity=a||b?0.8:0.1; });
           set('iou',(I/U).toFixed(2)); set('dice',(2*I/(A+B)).toFixed(2)); set('tp','—'); set('fp','—'); set('fn','—'); set('apd','—'); set('apc','—'); set('m50','—'); set('m5095','—'); }
-        const objs=det?preds.map(o=>o.hit):cells; const cb=(h,i)=>{ if(i<0){ set('hov','—'); return; } if(det){ const p=PR[i]; const x=match(thr).find(q=>q.p===p); set('hov',`預測 #${i+1}（${p.c} ${p.s.toFixed(2)}）：與最近的真框 IoU ${p.iou.toFixed(2)}，門檻 ${thr.toFixed(2)} → ${x.ok?'TP':'FP'}`); } else { const {r,c}=cells[i].userData; const a=GM(r,c), b=PM(r,c); set('hov',`格 (${r+1}, ${c+1})：${a&&b?'交集（都說是）':a?'漏掉（真有、沒畫）':b?'多畫（沒有、畫了）':'背景'}`); } };
-        if(hov) hov.set(objs); else hov=ctx.app.watchHover(objs,cb,(m,i)=>mode==='det'?`預測框 ${i+1}`:`格 ${i+1}`); hov._cb=cb; };
+        const objs=det?preds.map(o=>o.hit):cells; const cb=(h,i)=>{ if(i<0){ set('hov','—'); return; } if(det){ const p=PR[i]; const x=match(thr).find(q=>q.p===p); set('hov',I18N.f('預測 #{v0}（{v1} {v2}）：與最近的真框 IoU {v3}，門檻 {v4} → {v5}',{v0:i+1,v1:p.c,v2:p.s.toFixed(2),v3:p.iou.toFixed(2),v4:thr.toFixed(2),v5:x.ok?'TP':'FP'})); } else { const {r,c}=cells[i].userData; const a=GM(r,c), b=PM(r,c); set('hov',I18N.f('格 ({v0}, {v1})：{v2}',{v0:r+1,v1:c+1,v2:a&&b?I18N.t('交集（都說是）'):a?I18N.t('漏掉（真有、沒畫）'):b?I18N.t('多畫（沒有、畫了）'):I18N.t('背景')})); } };
+        if(hov) hov.set(objs); else hov=ctx.app.watchHover(objs,cb,(m,i)=>mode==='det'?I18N.f('預測框 {v0}',{v0:i+1}):I18N.f('格 {v0}',{v0:i+1})); hov._cb=cb; };
       ctrl.heading('框對框、遮罩對遮罩');
       const segM=ctrl.segmented('任務',[{id:'det',label:'偵測（框）'},{id:'seg',label:'分割（遮罩）'}],mode,id=>{ mode=id; paint(); });
       const sT=ctrl.slider('IoU 門檻',{min:0.3,max:0.95,step:0.05,value:thr,fmt:v=>v.toFixed(2),onChange:v=>{ thr=v; if(mode!=='det'){ mode='det'; segM.set('det'); } paint(); }});
@@ -95,7 +95,7 @@
       const rougeL=c=>{ const l=lcs(REF,c); const p=l/c.length, r=l/REF.length; return p+r?2*p*r/(p+r):0; };
       const chrf=c=>{ const ch=s=>{ const t=s.join(''); const out=[]; for(let i=0;i+2<=t.length;i++) out.push(t.slice(i,i+2)); return out; }; const r=ch(REF), cc=ch(c); const cnt={}; r.forEach(x=>cnt[x]=(cnt[x]||0)+1); let h=0; cc.forEach(x=>{ if(cnt[x]>0){ h++; cnt[x]--; } }); const p=cc.length?h/cc.length:0, rr=r.length?h/r.length:0; return p+rr?2*p*rr/(p+rr):0; };
       const build=()=>{ P.clear(g); const c=CAND[cand]; row=new P.TokenRow(c,{gap:1.0,size:0.55,color:'memory',labelBelow:true,labelSize:15}); row.group.position.set(0,-1.0,0); g.add(row.group); cells=row.cubes;
-        if(hov) hov.set(cells); else hov=ctx.app.watchHover(cells,(h,i)=>{ if(i<0){ set('hov','—'); return; } const c=CAND[cand]; const inRef=REF.includes(c[i]); set('hov',`「${c[i]}」：${inRef?'參考裡有這個詞（1-gram 命中）':'參考裡沒有這個詞'}`); },(m,i)=>`候選第 ${i+1} 個詞`); paint(); };
+        if(hov) hov.set(cells); else hov=ctx.app.watchHover(cells,(h,i)=>{ if(i<0){ set('hov','—'); return; } const c=CAND[cand]; const inRef=REF.includes(c[i]); set('hov',I18N.f('「{v0}」：{v1}',{v0:c[i],v1:inRef?I18N.t('參考裡有這個詞（1-gram 命中）'):I18N.t('參考裡沒有這個詞')})); },(m,i)=>I18N.f('候選第 {v0} 個詞',{v0:i+1})); paint(); };
       const paint=()=>{ const c=CAND[cand]; root.updateMatrixWorld(true); beams.hideAll(); const rG=grams(REF,n), cG=grams(c,n); const used=new Set(); let bi=0;
         c.forEach((t,i)=>row.style(i,{color:'inactive',glow:0.15}));
         cG.forEach((x,i)=>{ const j=rG.findIndex((y,k)=>y===x&&!used.has(k)); if(j<0) return; used.add(j); for(let k=0;k<n;k++){ row.style(i+k,{color:'flow',glow:0.8}); if(k===0&&bi<16){ beams.set(bi++,new T.Vector3(row.x(i)+(n-1)*0.5,-0.7,0),new T.Vector3(ref.x(j)+(n-1)*0.5,1.3,0),0.5,'flow'); } } });

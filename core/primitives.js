@@ -35,12 +35,12 @@ const theme = name => getComputedStyle(document.documentElement).getPropertyValu
 function label(text, opts={}){
   const o = new T.Object3D(); o.isLabel = true;
   const size = opts.size || 20; const tier = opts.tier || (size >= 24 ? 'title' : size >= 19 ? 'axis' : 'value'); // 三個字級層級，CSS 定大小
-  const el = document.createElement('div'); el.className = 'l3d l3d-' + tier; el.textContent = text;
+  const el = document.createElement('div'); el.className = 'l3d l3d-' + tier; el.textContent = I18N.t(text);
   if(opts.color) el.style.color = opts.color;
   o.el = el; o.visible = true;
   // 相容舊介面：label.material.opacity、label.userData.setText、label.scale
   let op = 1; o.material = { get opacity(){ return op; }, set opacity(v){ op = v; el.style.opacity = v; } };
-  o.userData.setText = (t)=>{ el.textContent = t; o._dirty = true; };
+  o.userData.setText = (t)=>{ el.textContent = I18N.t(t); o._dirty = true; };
   (window.App && App.labels) ? App.labels.add(o) : (window.__pendingLabels = (window.__pendingLabels||[]).concat(o));
   return o;
 }

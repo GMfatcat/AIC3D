@@ -152,7 +152,7 @@ const App = {
   hover(objects){ if(this.keyFocus && objects.includes(this.keyFocus)) return this.keyFocus; this.raycaster.setFromCamera(this.pointer,this.camera); const hits=this.raycaster.intersectObjects(objects,false); return hits.length?hits[0].object:null; },
   /* 場景把可 hover 的物件登記進來，就會得到一排視覺上隱藏、但可 Tab 到的按鈕（鍵盤與螢幕閱讀器的路徑） */
   focusTargets(objects, describe){ let list=this._focusList; if(!list){ list=document.createElement('div'); list.className='focuslist'; list.setAttribute('aria-label','可用鍵盤聚焦的 3D 物件'); document.getElementById('stage').appendChild(list); this._focusList=list; }
-    list.innerHTML=''; this.keyFocus=null; objects.forEach((o,i)=>{ const b=document.createElement('button'); b.type='button'; b.textContent=describe?describe(o,i):`物件 ${i+1}`; b.addEventListener('focus',()=>{ this.keyFocus=o; }); b.addEventListener('blur',()=>{ if(this.keyFocus===o) this.keyFocus=null; }); b.addEventListener('click',()=>this._activate(o)); list.appendChild(b); }); },
+    list.innerHTML=''; this.keyFocus=null; objects.forEach((o,i)=>{ const b=document.createElement('button'); b.type='button'; b.textContent=describe?I18N.t(describe(o,i)):I18N.f('物件 {n}',{n:i+1}); b.addEventListener('focus',()=>{ this.keyFocus=o; }); b.addEventListener('blur',()=>{ if(this.keyFocus===o) this.keyFocus=null; }); b.addEventListener('click',()=>this._activate(o)); list.appendChild(b); }); },
   /* 場景不用自己寫 update 也能 hover：每幀檢查一次，物件變了才回呼 cb(obj, index)；同時登記鍵盤聚焦清單 */
   watchHover(objects, cb, describe){ const w={objects, cb, describe, last:null}; this._hoverWatch.push(w); if(describe) this.focusTargets(objects, describe);
     return { set:(objs)=>{ w.objects=objs; w.last=null; if(describe) this.focusTargets(objs, describe); } }; }, // 物件重建後用 set() 換掉
@@ -270,7 +270,7 @@ const App = {
     el.querySelector('.land-foot button').addEventListener('click',()=>{ this.visited=new Set(); try{ localStorage.removeItem('visited'); localStorage.removeItem('prefs'); }catch(e){} this._landingFoot(); this.desk && this.desk.repaint(); }); },
   /* 開場頁最底下：看過幾個、重設（看過與否只存在這個瀏覽器的 localStorage） */
   _landingFoot(){ const f=document.querySelector('#landing .land-foot'); if(!f) return; const n=[...this.visited].filter(id=>catalog.some(i=>i.id===id)).length; f.querySelector('.seen').textContent=n?`${I18N.t('已看過')} ${n} / ${catalog.length}${I18N.t(' 個場景（記在這個瀏覽器裡）')}`:I18N.t('還沒看過任何場景'); f.querySelector('button').style.display=n?'':'none'; },
-  legend(items){ const l=document.getElementById('legend'); l.innerHTML=''; items.forEach(([color,text])=>{ const s=document.createElement('span'); const hx=P.hex(color); s.innerHTML=`<i style="background:${hx}"></i>${text}`; l.appendChild(s); }); },
+  legend(items){ const l=document.getElementById('legend'); l.innerHTML=''; items.forEach(([color,text])=>{ const s=document.createElement('span'); const hx=P.hex(color); s.innerHTML=`<i style="background:${hx}"></i>${I18N.t(text)}`; l.appendChild(s); }); },
   _placeholder(item){
     this.legend([]);
     const g=new T.Mesh(new T.IcosahedronGeometry(2.2,1), P.wire('inactive',0.5)); this.root.add(g);

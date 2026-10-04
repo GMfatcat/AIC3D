@@ -16,12 +16,12 @@
     init(ctx){ const {THREE:T,P,root,ctrl}=ctx; const CAP=64; let keepLast=4, state='before';
       const before=MSGS.map(m=>({...m}));
       const compact=()=>{ const pinned=before.filter(m=>m.k==='sys'); const rest=before.filter(m=>m.k!=='sys'); const keep=rest.slice(-keepLast), old=rest.slice(0,-keepLast);
-        const oldN=old.reduce((s,m)=>s+m.n,0); const sum={k:'summary',n:Math.max(3,Math.round(oldN*0.12)),t:`摘要：${old.length} 段 → 「CI 失敗原因是 TestPortAlloc race，已改 mutex 範圍並測試通過」`}; return {msgs:[...pinned,sum,...keep],dropped:old,oldN,sum}; };
+        const oldN=old.reduce((s,m)=>s+m.n,0); const sum={k:'summary',n:Math.max(3,Math.round(oldN*0.12)),t:I18N.f('摘要：{v0} 段 → 「CI 失敗原因是 TestPortAlloc race，已改 mutex 範圍並測試通過」',{v0:old.length})}; return {msgs:[...pinned,sum,...keep],dropped:old,oldN,sum}; };
       let rows=[]; const draw=()=>{ rows.forEach(r=>P.drop(r.group)); rows=[];
-        const r1=makeRow(ctx,root,before,1.2); rows.push(r1); const l1=P.label(`compact 前：${r1.total} 單位`,{size:20}); l1.position.set(0,2.1,0); r1.group.add(l1);
-        const c=compact(); const r2=makeRow(ctx,root,c.msgs,-1.2); rows.push(r2); const l2=P.label(`compact 後：${r2.total} 單位`,{size:20}); l2.position.set(0,-2.1,0); r2.group.add(l2);
+        const r1=makeRow(ctx,root,before,1.2); rows.push(r1); const l1=P.label(I18N.f('compact 前：{v0} 單位',{v0:r1.total}),{size:20}); l1.position.set(0,2.1,0); r1.group.add(l1);
+        const c=compact(); const r2=makeRow(ctx,root,c.msgs,-1.2); rows.push(r2); const l2=P.label(I18N.f('compact 後：{v0} 單位',{v0:r2.total}),{size:20}); l2.position.set(0,-2.1,0); r2.group.add(l2);
         before.forEach(m=>{ const dropped=c.dropped.includes(m); m.mesh.material.opacity=1; m.mesh.material.transparent=true; if(state==='after'&&dropped){ m.mesh.material.opacity=0.2; } });
-        set('cap',`${r1.total} / ${CAP}`,r1.total>CAP*0.85?'bad':'ok'); set('after',`${r2.total} / ${CAP}`,'ok'); set('ratio',`${c.oldN} → ${c.sum.n}（${Math.round(100*c.sum.n/c.oldN)}%）`); set('kept',`system prompt + 最近 ${keepLast} 段`);
+        set('cap',`${r1.total} / ${CAP}`,r1.total>CAP*0.85?'bad':'ok'); set('after',`${r2.total} / ${CAP}`,'ok'); set('ratio',`${c.oldN} → ${c.sum.n}（${Math.round(100*c.sum.n/c.oldN)}%）`); set('kept',I18N.f('system prompt + 最近 {v0} 段',{v0:keepLast}));
       };
       ctrl.heading('壓縮規則'); const seg=ctrl.segmented(null,[{id:'before',label:'看全部'},{id:'after',label:'標出被壓掉的'}],'before',id=>{state=id;draw();});
       const kSl=ctrl.slider('保留最近幾段原文',{min:2,max:8,value:keepLast,onChange:v=>{keepLast=v;draw();}});

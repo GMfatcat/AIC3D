@@ -37,11 +37,11 @@ App.register({
       const masked = this.mode==='dec' ? (this.nq*this.nk - this.nq*(this.nq+1)/2) : 0;
       set('pairs', `${this.nq*this.nk - masked} / ${this.nq*this.nk}`);
       set('mask', this.mode==='enc'?'無（全部可見）':this.mode==='dec'?'因果：只看自己和左邊':'cross：target 看全部 source');
-      set('hov', this.focus>0 ? `第 ${this.focus} 個「${this.qLabels[this.focus-1]}」：看得到 ${this.weights[this.focus-1].filter(w=>w>0).length} 個 key` : '—');
+      set('hov', this.focus>0 ? I18N.f('第 {v0} 個「{v1}」：看得到 {v2} 個 key',{v0:this.focus,v1:this.qLabels[this.focus-1],v2:this.weights[this.focus-1].filter(w=>w>0).length}) : '—');
     };
     ctrl.heading('Mask 類型');
     const seg=ctrl.segmented(null,[{id:'enc',label:'Encoder-only'},{id:'dec',label:'Decoder-only'},{id:'encdec',label:'Enc-Dec'}],this.mode,(m)=>{ this.mode=m; this.focus=0; slider.set(0); build(); });
-    const slider = this.slider = ctrl.slider('聚焦哪個 query token',{min:0,max:6,value:0,fmt:v=>v===0?'全部':`第 ${v} 個`,onChange:v=>{ this.focus=v; this.draw(); }});
+    const slider = this.slider = ctrl.slider('聚焦哪個 query token',{min:0,max:6,value:0,fmt:v=>v===0?'全部':I18N.f('第 {v0} 個',{v0:v}),onChange:v=>{ this.focus=v; this.draw(); }});
     const set = ctrl.readouts([{id:'mask',label:'Mask'},{id:'pairs',label:'可見的 (q,k) 配對'},{id:'hov',label:'滑到的 query'}]);
     ctrl.howto(['切三種 mask 看連線怎麼變','拉滑桿或滑到上排 token，只看一個 query','讀「可見的 (q,k) 配對」數']);
     const setup=(m,f)=>{ this.mode=m; seg.set(m); this.focus=f; slider.set(f); build(); };

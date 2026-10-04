@@ -45,8 +45,8 @@ App.register({
     const cloud = EmbedCloud.build(ctx, root);
     ctrl.heading('丟一個新詞進去');
     const pick=(i)=>{ const q=EmbedCloud.QUERIES[i]; const pos=new T.Vector3(...q.pos); const nn=cloud.highlight(pos,q.label); seg.set(String(i));
-      nn.forEach((x,k)=>set('n'+(k+1), `${x.p.word}  距離 ${x.d.toFixed(2)}`)); // 最近鄰就是用這個歐氏距離排的，讀數和畫面一致
-      set('where', q.c ? `落在「${{animal:'動物',food:'食物',tech:'技術'}[q.c]}」那一群旁邊` : '同時跟動物和食物有關，落在兩群中間'); };
+      nn.forEach((x,k)=>set('n'+(k+1), I18N.f('{v0}  距離 {v1}',{v0:x.p.word,v1:x.d.toFixed(2)}))); // 最近鄰就是用這個歐氏距離排的，讀數和畫面一致
+      set('where', q.c ? I18N.f('落在「{v0}」那一群旁邊',{v0:{animal:I18N.t('動物'),food:I18N.t('食物'),tech:I18N.t('技術')}[q.c]}) : '同時跟動物和食物有關，落在兩群中間'); };
     const clearAll=()=>{ cloud.clear(); ['n1','n2','n3','where'].forEach(k=>set(k,'—')); seg.set(null); };
     const seg = ctrl.segmented(null, EmbedCloud.QUERIES.map((q,i)=>({id:String(i),label:q.label.replace(/（.*）/,'')})), null, (id)=>pick(+id));
     const set = ctrl.readouts([{id:'where',label:'落點'},{id:'n1',label:'最近鄰 1'},{id:'n2',label:'最近鄰 2'},{id:'n3',label:'最近鄰 3'}]);

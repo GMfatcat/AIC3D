@@ -31,8 +31,8 @@
           else vals=fpValues(f.E,f.M,f.bias,f.maxCode);
           vals=vals.filter(v=>v<=RANGE); const counts=Array(BINS).fill(0); vals.forEach(v=>{ counts[Math.min(BINS-1,Math.floor(v/RANGE*BINS))]++; }); const mxc=Math.max(1,...counts); o.bars.forEach((m,b)=>{ const hgt=0.06+0.9*Math.log(1+counts[b])/Math.log(1+mxc); m.scale.y=hgt; m.position.y=0.05+hgt/2; m.userData.count=counts[b]; });
           const pos=new Float32Array(vals.length*3); vals.forEach((v,i)=>{pos[i*3]=X(v);}); o.pts.geometry.setAttribute('position',new T.BufferAttribute(pos,3)); o.pts.geometry.computeBoundingSphere();
-          const q=snap(vals,x); o.marker.position.x=X(q); o.tgt.position.x=X(x); const rel=Math.abs(q-x)/Math.max(x,1e-9); o.err.userData.setText(`→ ${q.toPrecision(4)}  誤差 ${(rel*100).toFixed(2)}%`); o.err.position.x=X(q);
-          const n1=vals.filter(v=>v>=1&&v<2).length; html.push(`<div class="bitrow"><b>${f.name}</b> <span class="hint">${f.bits}</span><div class="bits">${bits(f, id==='fp4'? q/scale : q).split(' ').map((s,i)=>`<button type="button" class="bitchip ${['sign','exp','man'][i]}" data-fmt="${id}" data-g="${i}" title="點一下翻這組的最低位元，看值跳到哪">${s}</button>`).join(' ')}${id==='fp4'?` <span class="hint">× scale ${scale.toPrecision(3)}</span>`:''}</div><div class="hint">[1, 2) 之間有 ${n1} 個點${id==='fp4'?'（隨 scale 伸縮）':''}</div></div>`); });
+          const q=snap(vals,x); o.marker.position.x=X(q); o.tgt.position.x=X(x); const rel=Math.abs(q-x)/Math.max(x,1e-9); o.err.userData.setText(I18N.f('→ {v0}  誤差 {v1}%',{v0:q.toPrecision(4),v1:(rel*100).toFixed(2)})); o.err.position.x=X(q);
+          const n1=vals.filter(v=>v>=1&&v<2).length; html.push(I18N.f('<div class="bitrow"><b>{v0}</b> <span class="hint">{v1}</span><div class="bits">{v2}{v3}</div><div class="hint">[1, 2) 之間有 {v4} 個點{v5}</div></div>',{v0:f.name,v1:f.bits,v2:bits(f, id==='fp4'? q/scale : q).split(' ').map((s,i)=>I18N.f(I18N.t('<button type="button" class="bitchip {v0}" data-fmt="{v1}" data-g="{v2}" title="點一下翻這組的最低位元，看值跳到哪">{v3}</button>'),{v0:['sign','exp','man'][i],v1:id,v2:i,v3:s})).join(' '),v3:id==='fp4'?` <span class="hint">× scale ${scale.toPrecision(3)}</span>`:'',v4:n1,v5:id==='fp4'?I18N.t('（隨 scale 伸縮）'):''})); });
         bitsEl.innerHTML=html.join(''); };
       ctrl.heading('一個數字、三種格式'); const xSl=ctrl.slider('要表示的值 x',{min:0.01,max:4,step:0.001,value:x,fmt:v=>v.toFixed(3),onChange:v=>{x=v;redraw();}}); // 三位小數：BF16 翻一個 mantissa 位元差 0.008，兩位小數會看不到
       const bmSl=ctrl.slider('NVFP4：這一組 16 個值的最大絕對值',{min:0.25,max:4,step:0.05,value:blockMax,fmt:v=>v.toFixed(2),onChange:v=>{blockMax=v;redraw();}});
@@ -44,7 +44,7 @@
         const q=snap(vals.filter(v=>v<=RANGE),x); const parts=bits(f,id==='fp4'?q/scale:q).split(' '); const gi=+b.dataset.g; parts[gi]=parts[gi].slice(0,-1)+(parts[gi].slice(-1)==='1'?'0':'1');
         const code=parseInt(parts[1],2), m=parseInt(parts[2],2); const v=(code===0?Math.pow(2,1-f.bias)*(m/(1<<f.M)):Math.pow(2,code-f.bias)*(1+m/(1<<f.M)))*scale;
         x=Math.max(0.01,Math.min(RANGE,v)); xSl.set(+x.toFixed(3)); redraw(); });
-      ctx.app.watchHover(allBars,(h,i)=>{ if(i<0){ set('hov','—'); return; } const u=h.userData; const lo=u.bin/BINS*RANGE, hi=(u.bin+1)/BINS*RANGE; set('hov',`${FORMATS[u.fmt].name}：[${lo.toFixed(1)}, ${hi.toFixed(1)}) 有 ${u.count} 個點`); },(m)=>`${FORMATS[m.userData.fmt].name} 區間 ${(m.userData.bin/BINS*RANGE).toFixed(1)}`);
+      ctx.app.watchHover(allBars,(h,i)=>{ if(i<0){ set('hov','—'); return; } const u=h.userData; const lo=u.bin/BINS*RANGE, hi=(u.bin+1)/BINS*RANGE; set('hov',I18N.f('{v0}：[{v1}, {v2}) 有 {v3} 個點',{v0:FORMATS[u.fmt].name,v1:lo.toFixed(1),v2:hi.toFixed(1),v3:u.count})); },(m)=>I18N.f('{v0} 區間 {v1}',{v0:FORMATS[m.userData.fmt].name,v1:(m.userData.bin/BINS*RANGE).toFixed(1)}));
       const set=ctrl.readouts([{id:'hov',label:'滑到的區間'}]);
       ctrl.howto(['拉 x 看三種格式各 snap 到哪、誤差多少','點位元 chip 翻一位，看值跳到哪','拉 NVFP4 的組最大值看格點伸縮']);
       const setup=(xx,bm)=>{ x=xx; blockMax=bm; xSl.set(xx); bmSl.set(bm); redraw(); };
@@ -78,7 +78,7 @@
       ctrl.heading('一欄一欄量化'); const seg=ctrl.segmented(null,[{id:'on',label:'GPTQ：補償'},{id:'off',label:'直接四捨五入'}],'on',id=>{comp=id==='on';reset();});
       const stepper=ctrl.stepper({onStep:doStep,onReset:reset,interval:600});
       const set=ctrl.readouts([{id:'col',label:'已量化的欄'},{id:'err',label:'輸出誤差（這個方法）'},{id:'naive',label:'輸出誤差（直接四捨五入）'},{id:'hov',label:'滑到的權重'}]);
-      ctx.app.watchHover(cells.map(c=>c.m),(h,idx)=>{ if(idx<0){ set('hov','—'); return; } const c=cells[idx]; const done=c.j<col; set('hov',`第 ${c.i+1} 列 第 ${c.j+1} 欄：原 ${W0[c.i][c.j].toFixed(2)} → 補償後 ${W[c.i][c.j].toFixed(2)}${done?`，量化成 ${Q[c.i][c.j].toFixed(2)}`:'（還沒量化）'}`); },(m,idx)=>`第 ${cells[idx].i+1} 列 第 ${cells[idx].j+1} 欄`);
+      ctx.app.watchHover(cells.map(c=>c.m),(h,idx)=>{ if(idx<0){ set('hov','—'); return; } const c=cells[idx]; const done=c.j<col; set('hov',I18N.f('第 {v0} 列 第 {v1} 欄：原 {v2} → 補償後 {v3}{v4}',{v0:c.i+1,v1:c.j+1,v2:W0[c.i][c.j].toFixed(2),v3:W[c.i][c.j].toFixed(2),v4:done?I18N.f(I18N.t('，量化成 {v0}'),{v0:Q[c.i][c.j].toFixed(2)}):I18N.t('（還沒量化）')})); },(m,idx)=>I18N.f('第 {v0} 列 第 {v1} 欄',{v0:cells[idx].i+1,v1:cells[idx].j+1}));
       const bar=ctrl.bar('這個方法'); const bar2=ctrl.bar('直接四捨五入');
       ctrl.howto(['單步看紅波把誤差推到右邊','切「直接四捨五入」比兩條誤差','滑到任一權重看它被補償了多少']);
       const setup=(c,n)=>{ stepper.stop(); comp=c; seg.set(c?'on':'off'); reset(); for(let i=0;i<n;i++) doStep(); waveT=0; wave.material.opacity=0; };
@@ -125,12 +125,12 @@
         const pos=[]; for(let t=0;t<G;t++){ const p=t?tr.path[t-1]:0; for(let s=0;s<tr.k;s++){ pos.push(X(t),Y(val(s,p,tr.k,sigma)),0); } } cand.geometry.setAttribute('position',new T.BufferAttribute(new Float32Array(pos),3)); cand.geometry.computeBoundingSphere();
         const upos=[]; const mx=Math.max(...w.map(Math.abs))||1; for(let t=0;t<G;t++) for(let i=0;i<un.k;i++){ upos.push(X(t),Y(-mx+i*2*mx/(un.k-1)),-1.2); } uniPts.geometry.setAttribute('position',new T.BufferAttribute(new Float32Array(upos),3)); uniPts.geometry.computeBoundingSphere();
         for(let t=0;t<G;t++){ chosen[t].position.set(X(t),Y(tr.qv[t]),0); target[t].position.set(X(t),Y(w[t]),0.25); uniChosen[t].position.set(X(t),Y(un.qv[t]),-1.2); if(t<G-1){ a.copy(chosen[t].position); b.set(X(t+1),Y(tr.qv[t+1]),0); path.set(t,a,b,0.8,'signal'); } }
-        set('k',`${tr.k} 個 / 欄（2^${bpw.toFixed(2)}）`); set('terr',tr.err.toFixed(3)); set('uerr',`${un.err.toFixed(3)}（${un.k} 階，${Math.round(bpw)} bpw）`); set('rot',rotate?`是：最大 |w| ${Math.max(...raw.map(Math.abs)).toFixed(2)} → ${Math.max(...w.map(Math.abs)).toFixed(2)}`:'否（有離群值）');
+        set('k',I18N.f('{v0} 個 / 欄（2^{v1}）',{v0:tr.k,v1:bpw.toFixed(2)})); set('terr',tr.err.toFixed(3)); set('uerr',I18N.f('{v0}（{v1} 階，{v2} bpw）',{v0:un.err.toFixed(3),v1:un.k,v2:Math.round(bpw)})); set('rot',rotate?I18N.f('是：最大 |w| {v0} → {v1}',{v0:Math.max(...raw.map(Math.abs)).toFixed(2),v1:Math.max(...w.map(Math.abs)).toFixed(2)}):'否（有離群值）');
         bar([{frac:Math.min(1,tr.err/0.6),color:'signal'}]); bar2([{frac:Math.min(1,un.err/0.6),color:'flow'}]); };
       ctrl.heading('位元率是連續的'); const bpwSl=ctrl.slider('bpw（每個權重的位元）',{min:1.6,max:5,step:0.05,value:bpw,fmt:v=>v.toFixed(2),onChange:v=>{bpw=v;redraw();}});
       const rotSeg=ctrl.segmented('先做 Hadamard 旋轉',[{id:'on',label:'是'},{id:'off',label:'否'}],'on',id=>{rotate=id==='on';redraw();});
       const set=ctrl.readouts([{id:'k',label:'trellis 每欄狀態數'},{id:'rot',label:'旋轉後離群值'},{id:'terr',label:'EXL3 誤差（RMS）'},{id:'uerr',label:'均勻格點誤差'},{id:'hov',label:'滑到的欄'}]);
-      ctx.app.watchHover(chosen,(h,t)=>{ if(t<0||!lastTr){ set('hov','—'); return; } set('hov',`第 ${t+1} 欄：w ${lastW[t].toFixed(2)} → 選 ${lastTr.qv[t].toFixed(2)}（狀態 ${lastTr.path[t]}），誤差 ${Math.abs(lastW[t]-lastTr.qv[t]).toFixed(3)}`); },(m,t)=>`第 ${t+1} 欄選到的值`);
+      ctx.app.watchHover(chosen,(h,t)=>{ if(t<0||!lastTr){ set('hov','—'); return; } set('hov',I18N.f('第 {v0} 欄：w {v1} → 選 {v2}（狀態 {v3}），誤差 {v4}',{v0:t+1,v1:lastW[t].toFixed(2),v2:lastTr.qv[t].toFixed(2),v3:lastTr.path[t],v4:Math.abs(lastW[t]-lastTr.qv[t]).toFixed(3)})); },(m,t)=>I18N.f('第 {v0} 欄選到的值',{v0:t+1}));
       const bar=ctrl.bar('EXL3'); const bar2=ctrl.bar('均勻格點');
       ctrl.howto(['拉 bpw 到小數，看每欄狀態數與誤差','關掉 Hadamard 旋轉看離群值','比前排 EXL3 與後排均勻格點的誤差條']);
       const setup=(b,r)=>{ bpw=b; rotate=r; bpwSl.set(b); rotSeg.set(r?'on':'off'); redraw(); };

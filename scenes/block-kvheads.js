@@ -29,15 +29,15 @@ App.register({
       root.updateMatrixWorld(true);
       for(let i=0;i<NQ;i++){ a.copy(qs[i].position); a.y-=0.4; if(s.id==='mla'){ b.set(0,-1.4+0.7,0); } else { const g=Math.floor(i/(NQ/s.kv)); b.copy(kvs[g].position).applyMatrix4(kvG.matrixWorld); b.y+=0.4; } beams.set(i,a,b,hov<0?0.6:(i===hov?1.0:0.22),s.id==='mla'?'state':'flow'); qs[i].material.emissiveIntensity=i===hov?0.9:0.4; }
       kvs.forEach((m,gi)=>{ m.material.emissiveIntensity=(hov>=0 && s.kv>0 && gi===Math.floor(hov/(NQ/s.kv)))?0.9:0.4; });
-      set('hov',hov<0?'—':`Q 頭 ${hov+1} → ${s.id==='mla'?'latent c（展開後的第 '+(hov+1)+' 組）':`第 ${Math.floor(hov/(NQ/s.kv))+1} 組 K/V`}`);
+      set('hov',hov<0?'—':I18N.f('Q 頭 {v0} → {v1}',{v0:hov+1,v1:s.id==='mla'?I18N.t('latent c（展開後的第 ')+(hov+1)+I18N.t(' 組）'):I18N.f(I18N.t('第 {v0} 組 K/V'),{v0:Math.floor(hov/(NQ/s.kv))+1})}));
       bar.scale.y=Math.max(0.02,s.cache*4); bar.position.y=0.2-2+bar.scale.y/2; bar.material.color.copy(P.C(s.id==='mla'?'state':'memory')); bar.material.emissive.copy(bar.material.color);
       bv.userData.setText(`${Math.round(s.cache*100)}%`);
-      kl.userData.setText(s.id==='mla'?'latent c（512 維）→ 上投影成 8 組 K/V':`K/V 頭 × ${s.kv}`);
-      const kvDim = s.id==='mla'?512+64:2*s.kv*D; set('kv',s.id==='mla'?'8（展開後）':String(s.kv)); set('dim',`${kvDim} 維`); set('cache',`${Math.round(s.cache*100)}% of MHA`); set('q',s.id==='mqa'?'受限':s.id==='gqa'?'接近 MHA':'完整'); set('how',s.text); };
+      kl.userData.setText(s.id==='mla'?'latent c（512 維）→ 上投影成 8 組 K/V':I18N.f('K/V 頭 × {v0}',{v0:s.kv}));
+      const kvDim = s.id==='mla'?512+64:2*s.kv*D; set('kv',s.id==='mla'?'8（展開後）':String(s.kv)); set('dim',I18N.f('{v0} 維',{v0:kvDim})); set('cache',`${Math.round(s.cache*100)}% of MHA`); set('q',s.id==='mqa'?'受限':s.id==='gqa'?'接近 MHA':'完整'); set('how',s.text); };
     ctrl.heading('一支滑桿從 MHA 拉到 MLA');
     const sl=ctrl.slider('KV 設計',{min:0,max:3,value:0,fmt:v=>STAGES[v].label,onChange:v=>apply(v)});
     const set=ctrl.readouts([{id:'how',label:'做法'},{id:'kv',label:'K/V 頭數'},{id:'dim',label:'每 token 存的維度'},{id:'cache',label:'cache 相對大小'},{id:'q',label:'表達力'},{id:'hov',label:'滑到的頭'}]);
-    ctx.app.watchHover(qs,(h,i)=>{ hov=i; apply(cur); },(m,i)=>`Q 頭 ${i+1}`);
+    ctx.app.watchHover(qs,(h,i)=>{ hov=i; apply(cur); },(m,i)=>I18N.f('Q 頭 {v0}',{v0:i+1}));
     ctrl.howto(['拉滑桿從 MHA 走到 MLA','滑到任一 Q 頭看它用哪組 K/V','看右邊的 cache 柱與「每 token 存的維度」']);
     const go=i=>{ sl.set(i); apply(i); };
     ctx.guide([

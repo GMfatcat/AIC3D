@@ -27,8 +27,8 @@
       const segP=ctrl.segmented('看哪一個',OPT.map(o=>({id:o.id,label:o.name})),pick,id=>{ pick=id; paint(); });
       const sLr=ctrl.slider('learning rate',{min:0.02,max:1,step:0.02,value:lr,fmt:v=>v.toFixed(2),onChange:v=>{ lr=v; reset(); }});
       const stepper=ctrl.stepper({onStep:step,onReset:reset,interval:120});
-      const set=ctrl.readouts([{id:'step',label:'步'},...OPT.map(o=>({id:o.id,label:`${o.name} 的 loss`})),{id:'state',label:'每參數多存'},{id:'note',label:'特點'},{id:'hov',label:'滑到的球'}]);
-      ctx.app.watchHover(OPT.map(o=>balls[o.id].m),(h,i)=>{ if(i<0){ set('hov','—'); return; } const b=balls[OPT[i].id]; set('hov',`${OPT[i].name}：loss ${b.dead?'發散':L(b.x,b.y).toFixed(3)}，位置 (${b.x.toFixed(2)}, ${b.y.toFixed(2)})`); },(m,i)=>OPT[i].name);
+      const set=ctrl.readouts([{id:'step',label:'步'},...OPT.map(o=>({id:o.id,label:I18N.f('{v0} 的 loss',{v0:o.name})})),{id:'state',label:'每參數多存'},{id:'note',label:'特點'},{id:'hov',label:'滑到的球'}]);
+      ctx.app.watchHover(OPT.map(o=>balls[o.id].m),(h,i)=>{ if(i<0){ set('hov','—'); return; } const b=balls[OPT[i].id]; set('hov',I18N.f('{v0}：loss {v1}，位置 ({v2}, {v3})',{v0:OPT[i].name,v1:b.dead?I18N.t('發散'):L(b.x,b.y).toFixed(3),v2:b.x.toFixed(2),v3:b.y.toFixed(2)})); },(m,i)=>OPT[i].name);
       ctrl.howto(['播放看五顆球各自怎麼下山、誰先到谷底','切「看哪一個」讀它多存幾份狀態與特點','把 learning rate 拉到 1 看 SGD 發散']);
       const setup=o=>{ stepper.stop(); pick=o.pick||'adam'; lr=o.lr||0.1; segP.set(pick); sLr.set(lr); reset(); for(let i=0;i<(o.n||0);i++) step(); };
       ctx.guide([
@@ -56,7 +56,7 @@
       // softmax：五根機率柱
       const sg=new T.Group(); sg.position.set(0,-0.5,0); root.add(sg); const sbars=[]; LAB.forEach((t,i)=>{ const m=new T.Mesh(new T.BoxGeometry(0.6,1,0.5),P.mat('signal',{glow:0.5})); m.position.set((i-2)*1.1,0,0); sg.add(m); sbars.push(m); const l=P.label(`${t} ${LOGITS[i]}`,{size:13}); l.position.set((i-2)*1.1,i%2?-0.95:-0.5,0); sg.add(l); }); const sl=P.label('類別與 logit',{size:13}); sl.position.set(0,-1.5,0); sg.add(sl);
       const softmax=()=>{ const z=LOGITS.map(v=>v/temp); const m=Math.max(...z); const e=z.map(v=>Math.exp(v-m)); const s=e.reduce((a,b)=>a+b,0); return e.map(v=>v/s); };
-      const paint=()=>{ const sm=fn==='softmax'; g.visible=!sm; bg.visible=!sm; sg.visible=sm; cl.userData.setText(sm?`softmax（溫度 ${temp.toFixed(1)}）`:`${F[fn].name}：橘 = f(x)，綠 = f′(x)`);
+      const paint=()=>{ const sm=fn==='softmax'; g.visible=!sm; bg.visible=!sm; sg.visible=sm; cl.userData.setText(sm?I18N.f('softmax（溫度 {v0}）',{v0:temp.toFixed(1)}):I18N.f('{v0}：橘 = f(x)，綠 = f′(x)',{v0:F[fn].name}));
         if(!sm){ const pts=[],dp=[]; for(let i=0;i<=80;i++){ const xx=-4+i/10; pts.push(new T.Vector3(xx,Math.max(-2,Math.min(2.5,F[fn].f(xx))),0)); dp.push(new T.Vector3(xx,Math.max(-2,Math.min(2.5,dfn(fn,xx))),0.05)); } curve.geometry.dispose(); curve.geometry=new T.BufferGeometry().setFromPoints(pts); dcurve.geometry.dispose(); dcurve.geometry=new T.BufferGeometry().setFromPoints(dp);
           dots.forEach((m,i)=>{ const xx=-4+i; m.position.set(xx,Math.max(-2,Math.min(2.5,F[fn].f(xx))),0); }); marker.position.set(x,Math.max(-2,Math.min(2.5,F[fn].f(x))),0);
           const d=dfn(fn,x); bars.forEach((m,i)=>{ const on=i<N; m.visible=on; const v=Math.min(1.5,Math.abs(d)**(i+1)); const h=0.03+v*1.6; m.scale.y=h; m.position.y=h/2; m.material.emissiveIntensity=0.15+v*0.6; });
@@ -69,7 +69,7 @@
       const sN=ctrl.slider('層數',{min:1,max:20,step:1,value:N,onChange:v=>{ N=v; if(fn==='softmax'){ fn='relu'; segF.set(fn); } paint(); }});
       const sT=ctrl.slider('溫度',{min:0.2,max:3,step:0.1,value:temp,fmt:v=>v.toFixed(1),onChange:v=>{ temp=v; if(fn!=='softmax'){ fn='softmax'; segF.set(fn); } paint(); }});
       const set=ctrl.readouts([{id:'fn',label:'函數'},{id:'fx',label:'f(x)'},{id:'dfx',label:"f'(x)"},{id:'gN',label:'N 層後的梯度'},{id:'pmax',label:'最大機率'},{id:'note',label:'特點'},{id:'hov',label:'滑到的點'}]);
-      ctx.app.watchHover([...dots,...sbars],(h,i)=>{ if(i<0){ set('hov','—'); return; } if(i<dots.length){ const xx=-4+i; set('hov',`x = ${xx}：f(x) = ${F[fn].f?F[fn].f(xx).toFixed(3):'—'}，f′(x) = ${F[fn].f?dfn(fn,xx).toFixed(3):'—'}`); } else { const p=softmax(); set('hov',`${LAB[i-dots.length]}：logit ${LOGITS[i-dots.length]} → 機率 ${p[i-dots.length].toFixed(3)}`); } },(m,i)=>i<dots.length?`x = ${-4+i}`:LAB[i-dots.length]);
+      ctx.app.watchHover([...dots,...sbars],(h,i)=>{ if(i<0){ set('hov','—'); return; } if(i<dots.length){ const xx=-4+i; set('hov',`x = ${xx}：f(x) = ${F[fn].f?F[fn].f(xx).toFixed(3):'—'}，f′(x) = ${F[fn].f?dfn(fn,xx).toFixed(3):'—'}`); } else { const p=softmax(); set('hov',I18N.f('{v0}：logit {v1} → 機率 {v2}',{v0:LAB[i-dots.length],v1:LOGITS[i-dots.length],v2:p[i-dots.length].toFixed(3)})); } },(m,i)=>i<dots.length?`x = ${-4+i}`:LAB[i-dots.length]);
       ctrl.howto(['切函數看曲線與導數；拉 x 看切線斜率','拉層數看 sigmoid 的梯度幾層就消失、ReLU 撐住','切 softmax 拉溫度看機率集中或攤平']);
       const setup=o=>{ fn=o.fn||'relu'; x=o.x??1; N=o.N||10; temp=o.temp||1; segF.set(fn); sX.set(x); sN.set(N); sT.set(temp); paint(); };
       ctx.guide([

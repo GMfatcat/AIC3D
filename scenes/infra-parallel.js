@@ -11,7 +11,7 @@
     for(let i=0;i<k;i++){
       const g=new P.GPUBox({w:span*0.9,h:3.2,d:2.2,label:`GPU ${i}`,fillColor:'memory'}); g.group.position.x=(i-(k-1)/2)*span; group.add(g.group); gpus.push(g);
       const tp=kind==='tp';
-      const b=new P.TensorBrick(span*0.6, 1.6, tp?Math.min(1.0,2/k):1.0,{color:'state',label:tp?(k>1?`W 的第 ${i+1}/${k} 片`:'W（完整）'):'W（完整）'}); b.group.position.set(g.group.position.x, g.computeY+1.0, 0); group.add(b.group); bricks.push(b);
+      const b=new P.TensorBrick(span*0.6, 1.6, tp?Math.min(1.0,2/k):1.0,{color:'state',label:tp?(k>1?I18N.f('W 的第 {v0}/{v1} 片',{v0:i+1,v1:k}):'W（完整）'):'W（完整）'}); b.group.position.set(g.group.position.x, g.computeY+1.0, 0); group.add(b.group); bricks.push(b);
       g.setFill((tp?GB/k:GB)/80,'memory');
       const r=new P.TokenRow(['','','',''],{color:tp?'signal':BATCH_COLORS[i%8],gap:span*0.18,size:0.22}); r.group.position.set(g.group.position.x,-1.3,0); group.add(r.group);
     }
@@ -33,17 +33,17 @@
     const build=()=>{
       main=buildStage(ctx,stage,kind,k,modelGB());
       const title=P.label(kind==='tp'?'同一批 token 進每顆 GPU，各算自己那片權重':'每顆 GPU 拿不同 batch，權重各自一份',{size:22}); title.position.set(0,-2.4,0); stage.add(title);
-      if(cmp){ other=buildStage(ctx,cmpStage,OTHER[kind],k,modelGB()); const ct=P.label(`對照：${NAME[OTHER[kind]]}（同樣 ${k} 顆、同樣模型）`,{size:22}); cmpStage.traverse(o=>{ if(o.isLabel) o.visible=false; }); /* 後排只留標題，GPU 名稱會和前排疊在一起 */ ct.position.set(0,4.2,0); cmpStage.add(ct); } else { P.clear(cmpStage); other=null; }
+      if(cmp){ other=buildStage(ctx,cmpStage,OTHER[kind],k,modelGB()); const ct=P.label(I18N.f('對照：{v0}（同樣 {v1} 顆、同樣模型）',{v0:NAME[OTHER[kind]],v1:k}),{size:22}); cmpStage.traverse(o=>{ if(o.isLabel) o.visible=false; }); /* 後排只留標題，GPU 名稱會和前排疊在一起 */ ct.position.set(0,4.2,0); cmpStage.add(ct); } else { P.clear(cmpStage); other=null; }
       cmpStage.visible=cmp;
-      const meshes=main.bricks.map(b=>b.mesh); if(hover) hover.set(meshes); else hover=ctx.app.watchHover(meshes,(h,i)=>{ const GB=modelGB(); set('hov',i<0?'—':`GPU ${i}：${kind==='tp'?`權重第 ${i+1}/${k} 片，${(GB/k).toFixed(1)} GB`:`完整權重 ${GB} GB，處理自己的 batch`}`); },(m,i)=>`GPU ${i} 的權重`);
+      const meshes=main.bricks.map(b=>b.mesh); if(hover) hover.set(meshes); else hover=ctx.app.watchHover(meshes,(h,i)=>{ const GB=modelGB(); set('hov',i<0?'—':I18N.f('GPU {v0}：{v1}',{v0:i,v1:kind==='tp'?I18N.f(I18N.t('權重第 {v0}/{v1} 片，{v2} GB'),{v0:i+1,v1:k,v2:(GB/k).toFixed(1)}):I18N.f(I18N.t('完整權重 {v0} GB，處理自己的 batch'),{v0:GB})})); },(m,i)=>I18N.f('GPU {v0} 的權重',{v0:i}));
       redraw();
     };
     const redraw=()=>{
       main.redraw(phase); if(other) other.redraw(phase);
       const GB=modelGB(); const perGpuGB=kind==='tp'?GB/k:GB;
-      set('mem',`${perGpuGB.toFixed(1)} GB / 顆`, perGpuGB>80?'bad':'ok');
-      if(kind==='tp'){ const comm=2*(k-1)/k*ACT_MB; set('comm',k>1?`每層 all-reduce ≈ ${comm.toFixed(0)} MB（activation）`:'無'); set('freq','每一層、每一步（推論也要）'); set('fit',GB/k>80?'放不下':'放得下',GB/k>80?'bad':'ok'); }
-      else { set('comm',k>1?`每個 step all-reduce ${GB.toFixed(0)} GB（梯度）`:'無'); set('freq','每個訓練 step 一次；推論完全不用通訊'); set('fit',GB>80?'放不下（單卡裝不下整個模型）':'放得下',GB>80?'bad':'ok'); }
+      set('mem',I18N.f('{v0} GB / 顆',{v0:perGpuGB.toFixed(1)}), perGpuGB>80?'bad':'ok');
+      if(kind==='tp'){ const comm=2*(k-1)/k*ACT_MB; set('comm',k>1?I18N.f('每層 all-reduce ≈ {v0} MB（activation）',{v0:comm.toFixed(0)}):'無'); set('freq','每一層、每一步（推論也要）'); set('fit',GB/k>80?'放不下':'放得下',GB/k>80?'bad':'ok'); }
+      else { set('comm',k>1?I18N.f('每個 step all-reduce {v0} GB（梯度）',{v0:GB.toFixed(0)}):'無'); set('freq','每個訓練 step 一次；推論完全不用通訊'); set('fit',GB>80?'放不下（單卡裝不下整個模型）':'放得下',GB>80?'bad':'ok'); }
       set('phase',phase===0?'各自計算':'通訊（all-reduce）');
     };
     ctrl.heading(kind==='tp'?'Tensor Parallel：切權重':'Data Parallel：切資料');

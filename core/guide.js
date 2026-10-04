@@ -90,12 +90,12 @@ const guide = {
   stop(silent){ if(!this.active) return; this.active=false; document.body.classList.remove('guiding'); this._spot(null); this.bar.classList.remove('on'); if(!silent) this._refit(); },
   _refit(){ /* 底部多了（或少了）導讀列，重算保留帶但不要跳：fit 完把鏡頭放回原處再飛過去 */
     const c=App.cam; const cur={theta:c.theta,phi:c.phi,dist:c.dist,target:c.target.clone()}; App.fit(); const home=App.camHome; Object.assign(c,{theta:cur.theta,phi:cur.phi,dist:cur.dist}); c.target.copy(cur.target); App.flyTo(home,500); },
-  _spot(text){ const root=App.ctrl && App.ctrl.root; if(!root) return; root.querySelectorAll('.spot').forEach(e=>e.classList.remove('spot')); if(!text) return;
+  _spot(text){ const root=App.ctrl && App.ctrl.root; if(!root) return; root.querySelectorAll('.spot').forEach(e=>e.classList.remove('spot')); if(!text) return; text=I18N.t(text);
     const hit=[...root.children].find(e=>!e.classList.contains('scenenav') && e.textContent.includes(text)); /* 面板的任何一塊都能當聚光目標 */
     if(hit){ hit.classList.add('spot'); hit.scrollIntoView({block:'nearest',behavior:Motion.reduce?'auto':'smooth'}); } },
   render(){ const N=this.steps.length, n=this.n, s=this.steps[n];
     this.bar.innerHTML=`<div class="tb-head"><span class="tb-title">${I18N.t('導讀')}</span><span class="tb-step">${n+1} / ${N}</span><button type="button" class="tb-exit" data-go="skip">${I18N.t('跳過 ✕')}</button></div>
-      <div class="gb-say">${App.termify(s.say)}</div>
+      <div class="gb-say">${App.termify(I18N.t(s.say))}</div>
       <div class="tb-dots">${this.steps.map((_,i)=>`<i class="${i===n?'cur':i<n?'done':''}"></i>`).join('')}</div>
       <div class="tb-nav"><button type="button" class="btn" data-go="prev"${n===0?' disabled':''}>${I18N.t('← 上一步')}</button>${s.hand?`<button type="button" class="btn primary" data-go="done">${I18N.t('開始操作')}</button>`:`<button type="button" class="btn primary" data-go="next">${I18N.t('下一步 →')}</button>`}</div>`;
     this.bar.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{ const g=b.dataset.go; if(g==='prev') this.go(n-1); else if(g==='next') this.go(n+1); else this.stop(); }));

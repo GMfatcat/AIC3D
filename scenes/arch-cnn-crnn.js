@@ -11,14 +11,14 @@
       const outG=new T.Group(); outG.position.set(3.2,0,0); root.add(outG); let outCells=[], outMeshes=[]; const ol=P.label('',{size:20}); ol.position.set(0,2.5,0); outG.add(ol);
       const beams=new P.BeamSet(1,{maxR:0.06,minR:0.04}); root.add(beams.group);
       const outSize=()=>Math.floor((IN-k)/stride)+1;
-      const rebuild=()=>{ outCells.forEach(c=>P.drop(c.m)); outCells=[]; const O=outSize(); for(let i=0;i<O;i++) for(let j=0;j<O;j++){ const m=new T.Mesh(new T.BoxGeometry(cell*0.92,cell*0.92,0.25),P.mat('flow',{glow:0.15,opacity:0.95})); m.position.set((j-(O-1)/2)*cell,((O-1)/2-i)*cell,0); outG.add(m); outCells.push({m,i,j}); } outMeshes=outCells.map(c=>c.m); ctx.app.focusTargets(outMeshes,(m,i)=>`輸出格 第 ${Math.floor(i/O)+1} 列 第 ${i%O+1} 欄`); ol.userData.setText(`輸出 feature map ${O}×${O}`); pos=0; paint(); };
+      const rebuild=()=>{ outCells.forEach(c=>P.drop(c.m)); outCells=[]; const O=outSize(); for(let i=0;i<O;i++) for(let j=0;j<O;j++){ const m=new T.Mesh(new T.BoxGeometry(cell*0.92,cell*0.92,0.25),P.mat('flow',{glow:0.15,opacity:0.95})); m.position.set((j-(O-1)/2)*cell,((O-1)/2-i)*cell,0); outG.add(m); outCells.push({m,i,j}); } outMeshes=outCells.map(c=>c.m); ctx.app.focusTargets(outMeshes,(m,i)=>I18N.f('輸出格 第 {v0} 列 第 {v1} 欄',{v0:Math.floor(i/O)+1,v1:i%O+1})); ol.userData.setText(I18N.f('輸出 feature map {v0}×{v0}',{v0:O})); pos=0; paint(); };
       const paint=()=>{ const O=outSize(); const idx=hoverIdx>=0?hoverIdx:Math.min(pos,O*O-1); const oi=Math.floor(idx/O), oj=idx%O; const r0=oi*stride, c0=oj*stride;
         inCells.forEach(c=>{ const inK=c.i>=r0&&c.i<r0+k&&c.j>=c0&&c.j<c0+k; c.m.material.color.copy(P.C(inK?'signal':'memory')); c.m.material.emissive.copy(c.m.material.color); c.m.material.emissiveIntensity=(inK?0.6:0.1)+c.v*0.5; c.m.position.z=inK?0.2:0; });
         kern.scale.set(k*cell,k*cell,1); kern.position.set((c0+(k-1)/2-(IN-1)/2)*cell,((IN-1)/2-(r0+(k-1)/2))*cell,0.3);
         outCells.forEach(c=>{ const cur=c.i===oi&&c.j===oj; const done=hoverIdx<0&&(c.i*O+c.j)<pos; c.m.material.color.copy(P.C(cur?'signal':done?'flow':'inactive')); c.m.material.emissive.copy(c.m.material.color); c.m.material.emissiveIntensity=cur?0.9:done?0.4:0.08; c.m.position.z=cur?0.2:0; });
         root.updateMatrixWorld(true); const a=kern.position.clone().applyMatrix4(inG.matrixWorld), b=outCells[idx].m.position.clone().applyMatrix4(outG.matrixWorld); beams.set(0,a,b,0.7,'signal');
-        set('hov',hoverIdx<0?'—':`第 ${oi+1} 列 第 ${oj+1} 欄：看輸入第 ${r0+1}–${r0+k} 列、第 ${c0+1}–${c0+k} 欄`);
-        const rf=1+(k-1)*Array.from({length:layers},(_,i)=>stride**i).reduce((a,b)=>a+b,0); set('rf',`${rf}×${rf}（${layers} 層 ${k}×${k}，stride ${stride}）`); set('params',`${k*k} 個（每層、每個通道）`); set('out',`${O}×${O}`); set('cover',`${k*k} / ${IN*IN} 個輸入像素`); };
+        set('hov',hoverIdx<0?'—':I18N.f('第 {v0} 列 第 {v1} 欄：看輸入第 {v2}–{v3} 列、第 {v4}–{v5} 欄',{v0:oi+1,v1:oj+1,v2:r0+1,v3:r0+k,v4:c0+1,v5:c0+k}));
+        const rf=1+(k-1)*Array.from({length:layers},(_,i)=>stride**i).reduce((a,b)=>a+b,0); set('rf',I18N.f('{v0}×{v0}（{v1} 層 {v2}×{v2}，stride {v3}）',{v0:rf,v1:layers,v2:k,v3:stride})); set('params',I18N.f('{v0} 個（每層、每個通道）',{v0:k*k})); set('out',`${O}×${O}`); set('cover',I18N.f('{v0} / {v1} 個輸入像素',{v0:k*k,v1:IN*IN})); };
       ctrl.heading('kernel 滑過去'); ctrl.stepper({onStep:()=>{ const n=outSize()**2; if(pos>=n) return false; pos++; paint(); return pos<n; },onReset:()=>{pos=0;paint();},interval:220});
       const kCtl=ctrl.slider('kernel 大小 k',{min:1,max:5,step:2,value:k,onChange:v=>{k=v;rebuild();}}); const sCtl=ctrl.slider('stride',{min:1,max:2,value:stride,onChange:v=>{stride=v;rebuild();}});
       const lCtl=ctrl.slider('堆幾層（感受野換算）',{min:1,max:6,value:layers,onChange:v=>{layers=v;paint();}});
@@ -54,12 +54,12 @@
         for(let c=0;c<cols;c++){ const x=(c-(cols-1)/2)*w; const m=new T.Mesh(new T.BoxGeometry(w*0.85,0.7,0.5),P.mat('memory',{glow:0.2})); m.position.x=x; colG.add(m); colCells.push(m);
           const r=new T.Mesh(new T.SphereGeometry(Math.min(0.22,w*0.4),12,8),P.mat('state',{glow:0.3})); r.position.x=x; rnnG.add(r); rnnCells.push(r);
           const l=P.label(pred[c],{size:Math.min(26,Math.max(12,w*40)),color:pred[c]===BLANK?P.theme('--fg3'):P.hex('signal')}); l.position.x=x; outG.add(l); outLabels.push(l); }
-        const l1=P.label(`切成 ${cols} 欄 feature（每欄一個向量）`,{size:16}); l1.position.set(-5.2,0,0); colG.add(l1); const l2=P.label('BiLSTM（左右都看）',{size:16}); l2.position.set(-5.2,0,0); rnnG.add(l2); const l3=P.label('CTC 每欄輸出（· = blank）',{size:16}); l3.position.set(-5.2,0,0); outG.add(l3);
-        const fin=P.label(`合併重複、去 blank → 「${collapse(pred)}」`,{size:22,color:P.hex('signal')}); fin.position.set(0,-3.7,0); outG.add(fin);
+        const l1=P.label(I18N.f('切成 {v0} 欄 feature（每欄一個向量）',{v0:cols}),{size:16}); l1.position.set(-5.2,0,0); colG.add(l1); const l2=P.label('BiLSTM（左右都看）',{size:16}); l2.position.set(-5.2,0,0); rnnG.add(l2); const l3=P.label('CTC 每欄輸出（· = blank）',{size:16}); l3.position.set(-5.2,0,0); outG.add(l3);
+        const fin=P.label(I18N.f('合併重複、去 blank → 「{v0}」',{v0:collapse(pred)}),{size:22,color:P.hex('signal')}); fin.position.set(0,-3.7,0); outG.add(fin);
         beams=new P.BeamSet(cols-1,{maxR:0.03,minR:0.02}); root.add(beams.group); root.updateMatrixWorld(true); for(let c=0;c<cols-1;c++) beams.set(c,rnnCells[c].position.clone().add(rnnG.position),rnnCells[c+1].position.clone().add(rnnG.position),0.5,'state');
         step=0; this._cells={colCells,rnnCells,outLabels,cols,pred}; paint(); };
       const paint=()=>{ const {colCells,rnnCells,outLabels,cols,pred}=this._cells; colCells.forEach((m,c)=>{ m.material.emissiveIntensity=c===step-1?0.9:c<step?0.35:0.1; }); rnnCells.forEach((m,c)=>{ m.material.emissiveIntensity=c===step-1?1:c<step?0.4:0.1; }); outLabels.forEach((l,c)=>{ l.material.opacity=c<step?1:0.15; });
-        set('cols',`${cols}（降採樣 ×${down}，再 ×4）`); set('chars',`${TEXT.length} 個字元（${TEXT}）`); set('ratio',`每字約 ${(cols/TEXT.length).toFixed(1)} 欄`); set('out',step?collapse(pred.slice(0,step)):'—'); };
+        set('cols',I18N.f('{v0}（降採樣 ×{v1}，再 ×4）',{v0:cols,v1:down})); set('chars',I18N.f('{v0} 個字元（{v1}）',{v0:TEXT.length,v1:TEXT})); set('ratio',I18N.f('每字約 {v0} 欄',{v0:(cols/TEXT.length).toFixed(1)})); set('out',step?collapse(pred.slice(0,step)):'—'); };
       ctrl.heading('從左到右掃'); const seg=ctrl.segmented('範例影像',SAMPLES.map(s=>({id:s,label:s})),TEXT,id=>{ TEXT=id; drawImg(); rebuild(); });
       const stepper=ctrl.stepper({onStep:()=>{ const n=this._cells.cols; if(step>=n) return false; step++; paint(); return step<n; },onReset:()=>{step=0;paint();},interval:160});
       const downSl=ctrl.slider('CNN 寬度降採樣',{min:2,max:8,step:2,value:down,fmt:v=>'×'+v,onChange:v=>{down=v;rebuild();}});

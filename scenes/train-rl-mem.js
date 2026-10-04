@@ -21,8 +21,8 @@
       const paintChain=()=>{ const x=-1.6+Math.min(2.6,kl*2.2); Motion.tween(pol.group.position,{x},{ms:400}); chain.set(0,new T.Vector3(-3.2,TY+0.6,0),new T.Vector3(x,TY+0.6,0),0.15+beta*0.85,'flow'); chl.position.set((x-3.2)/2,TY-0.5,0); }; // 新模型離原模型越遠 = KL 越大
       const sample=()=>{ R=[];V=[]; for(let k=0;k<n();k++){ const raw=Math.max(0,Math.min(1,q+gauss()*0.25)); R.push(src==='rlvr'?(raw>0.5?1:0):+raw.toFixed(2)); V.push(+Math.max(0,Math.min(1,q+gauss()*0.08)).toFixed(2)); } };
       const advantage=()=>{ const m=R.reduce((a,b)=>a+b,0)/R.length;
-        if(alg==='grpo'){ const sd=Math.sqrt(R.reduce((s,r)=>s+(r-m)**2,0)/R.length)||1; A=R.map(r=>(r-m)/sd); base=`組內平均 ${m.toFixed(2)}（再除以標準差）`; }
-        else if(alg==='ppo'){ A=R.map((r,k)=>r-V[k]); base=`critic 估的值 V ≈ ${V.map(v=>v.toFixed(2)).join(' / ')}`; }
+        if(alg==='grpo'){ const sd=Math.sqrt(R.reduce((s,r)=>s+(r-m)**2,0)/R.length)||1; A=R.map(r=>(r-m)/sd); base=I18N.f('組內平均 {v0}（再除以標準差）',{v0:m.toFixed(2)}); }
+        else if(alg==='ppo'){ A=R.map((r,k)=>r-V[k]); base=I18N.f('critic 估的值 V ≈ {v0}',{v0:V.map(v=>v.toFixed(2)).join(' / ')}); }
         else { const hi=R[0]>=R[1]?0:1; A=R.map((r,k)=>k===hi?1:-1); base='偏好對：chosen 推高、rejected 壓低（沒有獎勵模型）'; } };
       const paintRows=()=>{ rows.forEach((r,k)=>{ const on=k<n(); r.group.visible=on; rbars[k].visible=on&&phase>=1; alabels[k].visible=on&&phase>=2; crit[k].visible=on&&alg==='ppo'&&phase>=2;
         if(!on) return; const len=phase>=0?LEN:0; for(let i=0;i<LEN;i++) r.style(i,{opacity:i<len?1:0});
@@ -44,7 +44,7 @@
       const sB=ctrl.slider('KL 係數 β',{min:0,max:1,step:0.1,value:beta,fmt:v=>v.toFixed(1),onChange:v=>{ beta=v; paintChain(); }});
       const stepper=ctrl.stepper({onStep:half,onReset:reset,interval:550});
       const set=ctrl.readouts([{id:'phase',label:'半步'},{id:'round',label:'回合'},{id:'base',label:'基準'},{id:'reward',label:'平均獎勵'},{id:'kl',label:'與原模型的距離'},{id:'hov',label:'滑到的回答'}]);
-      const hovObjs=rows.flatMap((r,k)=>r.cubes.map(c=>({c,k}))); ctx.app.watchHover(hovObjs.map(o=>o.c),(h,i)=>{ if(i<0){ set('hov','—'); return; } const k=hovObjs[i].k; if(k>=n()||phase<1){ set('hov',`回答 ${k+1}：還沒打分`); return; } set('hov',alg==='dpo'?`回答 ${k+1}：${A.length&&A[k]>0?'chosen（被偏好）':A.length?'rejected':R[k]>=R[1-k]?'被偏好':'沒被偏好'}`:`回答 ${k+1}：獎勵 ${R[k].toFixed(2)}${phase>=2?`，優勢 ${A[k]>=0?'+':''}${A[k].toFixed(2)}`:''}`); },(m,i)=>`回答 ${hovObjs[i].k+1} 的第 ${i%LEN+1} 個 token`);
+      const hovObjs=rows.flatMap((r,k)=>r.cubes.map(c=>({c,k}))); ctx.app.watchHover(hovObjs.map(o=>o.c),(h,i)=>{ if(i<0){ set('hov','—'); return; } const k=hovObjs[i].k; if(k>=n()||phase<1){ set('hov',I18N.f('回答 {v0}：還沒打分',{v0:k+1})); return; } set('hov',alg==='dpo'?I18N.f('回答 {v0}：{v1}',{v0:k+1,v1:A.length&&A[k]>0?I18N.t('chosen（被偏好）'):A.length?'rejected':R[k]>=R[1-k]?I18N.t('被偏好'):I18N.t('沒被偏好')}):I18N.f('回答 {v0}：獎勵 {v1}{v2}',{v0:k+1,v1:R[k].toFixed(2),v2:phase>=2?I18N.f(I18N.t('，優勢 {v0}{v1}'),{v0:A[k]>=0?'+':'',v1:A[k].toFixed(2)}):''})); },(m,i)=>I18N.f('回答 {v0} 的第 {v1} 個 token',{v0:hovObjs[i].k+1,v1:i%LEN+1}));
       ctrl.howto(['單步走生成、打分、算優勢、更新','切 GRPO / PPO / DPO 看基準從哪來、切獎勵來源','拉 KL 係數到 0 與 1 各跑幾回合，比與原模型的距離']);
       const setup=(a,s,b,rounds,h)=>{ stepper.stop(); alg=a; src=s; beta=b; segA.set(a); segS.set(s); sB.set(b); reset(); for(let i=0;i<(rounds-1)*4+h;i++) half(); };
       ctx.guide([
@@ -71,12 +71,12 @@
           const shell=new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(1.4,CEIL*scale,1.1)),new T.LineBasicMaterial({color:P.C(total>CEIL?'alert':'structure'),transparent:true,opacity:0.6})); shell.position.set(X(k),CEIL*scale/2,0); g.add(shell);
           const gl=P.label(`GPU ${k+1}`,{size:17}); gl.position.set(X(k),-0.5,0); g.add(gl); }
         let y=0; BLOCKS.forEach(b=>{ const gb=per[b.id]; const h=Math.max(0.03,gb*scale); const l=P.label(`${b.label} ${fmtGB(gb)}`,{size:16,color:P.hex(b.color)}); l.position.set(X(0)-1.9,y+h/2,0); g.add(l); y+=h+0.04; });
-        const cl=P.label(`${CEIL} GB 天花板`,{size:16,color:P.hex(total>CEIL?'alert':'structure')}); cl.position.set(X(N-1)+1.7,CEIL*scale,0); g.add(cl);
-        const tl=P.label(`每顆 GPU 要放的東西（${SIZE[size]}B 模型，${METHOD[method].label}）`,{size:20}); tl.position.set(0,Math.max(CEIL*scale,total*scale)+0.7,0); g.add(tl);
-        const cb=(h,i)=>{ if(i<0){ set('hov','—'); return; } const {k,b,gb}=info[i]; set('hov',`GPU ${k+1} 的${b.label}：${fmtGB(gb)}${b.id==='a'?'（跟每步 token 數成正比，不會被切）':shard!=='none'&&gb<calc().per[b.id]*N?'（已切成 1/'+N+'）':''}`); };
-        if(hov) hov.set(meshes); else hov=ctx.app.watchHover(meshes,cb,(m,i)=>`GPU ${info[i].k+1} 的${info[i].b.label}`);
+        const cl=P.label(I18N.f('{v0} GB 天花板',{v0:CEIL}),{size:16,color:P.hex(total>CEIL?'alert':'structure')}); cl.position.set(X(N-1)+1.7,CEIL*scale,0); g.add(cl);
+        const tl=P.label(I18N.f('每顆 GPU 要放的東西（{v0}B 模型，{v1}）',{v0:SIZE[size],v1:METHOD[method].label}),{size:20}); tl.position.set(0,Math.max(CEIL*scale,total*scale)+0.7,0); g.add(tl);
+        const cb=(h,i)=>{ if(i<0){ set('hov','—'); return; } const {k,b,gb}=info[i]; set('hov',I18N.f('GPU {v0} 的{v1}：{v2}{v3}',{v0:k+1,v1:b.label,v2:fmtGB(gb),v3:b.id==='a'?I18N.t('（跟每步 token 數成正比，不會被切）'):shard!=='none'&&gb<calc().per[b.id]*N?I18N.t('（已切成 1/')+N+'）':''})); };
+        if(hov) hov.set(meshes); else hov=ctx.app.watchHover(meshes,cb,(m,i)=>I18N.f('GPU {v0} 的{v1}',{v0:info[i].k+1,v1:info[i].b.label}));
         const key=`${N}|${scale.toFixed(4)}`; if(extent && extent!==key){ const c=ctx.app.cam, cur={theta:c.theta,phi:c.phi,dist:c.dist,target:c.target.clone()}; ctx.app.fit(); Object.assign(c,{theta:cur.theta,phi:cur.phi,dist:cur.dist}); c.target.copy(cur.target); ctx.app.flyTo(ctx.app.camHome,500); } extent=key; // 卡數或高度變了就重新取景（飛過去，不要跳）
-        const {bytes}=calc(); set('bytes',`${+bytes.toFixed(2)} B`); set('w',fmtGB(per.w)); set('g',fmtGB(per.g)); set('o',fmtGB(per.o)); set('a',fmtGB(per.a)); set('total',`${fmtGB(total)}${N>1?'（×'+N+' 卡）':''}`,total>CEIL?'bad':'ok'); };
+        const {bytes}=calc(); set('bytes',`${+bytes.toFixed(2)} B`); set('w',fmtGB(per.w)); set('g',fmtGB(per.g)); set('o',fmtGB(per.o)); set('a',fmtGB(per.a)); set('total',I18N.f('{v0}{v1}',{v0:fmtGB(total),v1:N>1?'（×'+N+I18N.t(' 卡）'):''}),total>CEIL?'bad':'ok'); };
       const fmtGB=v=>v>=100?`${Math.round(v)} GB`:v>=10?`${v.toFixed(1)} GB`:`${+v.toFixed(2)} GB`;
       ctrl.heading('一顆 GPU 要放什麼');
       const segM=ctrl.segmented('訓練方式',Object.keys(METHOD).map(id=>({id,label:METHOD[id].label})),method,id=>{ method=id; build(); });

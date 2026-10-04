@@ -22,9 +22,9 @@
       const paint=()=>{ const unit=net==='dit'?0.07:0.08; const q=cfg<2?'弱：不太聽 prompt':cfg<10?'好：聽 prompt 又自然':'過飽和、過度銳利（CFG 太強）';
         lat.forEach((m,i)=>{ const v=Math.max(0,Math.min(1,(Z[i]+1)/2)); tint(P,m,'state',0.1+v*1.0); m.material.color.multiplyScalar(0.35+v*0.65); m.material.emissive.copy(m.material.color); });
         const decoded=phase>=S+1; if(outKey!==decoded){ outKey=decoded; out.draw((g2,w,h,p)=>{ if(decoded){ p.snow(g2,w,h); p.dog(g2,w*0.5,h*0.62,w*0.62); } else p.plain(g2,w,h,P.PIC.lens); }); if(!decoded) out.noise(0.85,5); } // 解碼前只有噪聲，VAE 解碼那一步才變成圖
-        den.layers.forEach(m=>tint(P,m,net==='dit'?'flow':'structure',phase>=1&&phase<=S?0.7:0.25)); dl.userData.setText(`${net==='dit'?'DiT（Transformer）':'U-Net（卷積 + attention）'} × ${S} 步${phase>=1&&phase<=S?`（第 ${phase} 步）`:''}`);
+        den.layers.forEach(m=>tint(P,m,net==='dit'?'flow':'structure',phase>=1&&phase<=S?0.7:0.25)); dl.userData.setText(I18N.f('{v0} × {v1} 步{v2}',{v0:net==='dit'?'DiT（Transformer）':I18N.t('U-Net（卷積 + attention）'),v1:S,v2:phase>=1&&phase<=S?I18N.f(I18N.t('（第 {v0} 步）'),{v0:phase}):''}));
         root.updateMatrixWorld(true); beams.hideAll(); if(phase>=0) beams.set(0,new T.Vector3(-6.4,-1.3,0),new T.Vector3(-2.6,-3.0,0),0.3+Math.min(1,cfg/10)*0.7,'flow'); if(phase>=1&&phase<=S) beams.set(1,new T.Vector3(-1.5,-2.6,0),new T.Vector3(-1.5,-1.0,0),0.6,'state'); if(decoded){ beams.set(2,new T.Vector3(0.4,0.9,0),new T.Vector3(2.6,-1.2,0),0.6,'memory'); beams.set(3,new T.Vector3(4.2,-1.2,0),new T.Vector3(4.8,0.9,0),0.6,'memory'); }
-        set('phase',phase<0?'—':phase===0?'文字編碼':phase<=S?`去噪 ${phase} / ${S}`:'VAE 解碼'); set('net',net==='dit'?'DiT（Transformer 塊）':'U-Net（卷積 + attention）'); set('where','latent 8×8×4：像素 64×64×3 的 1/48，每步便宜 48 倍'); set('time',`${(S*unit).toFixed(1)} 秒（示意，含解碼）`); set('cfg',String(cfg)); set('q',q,cfg>=10||cfg<2?'bad':'ok'); };
+        set('phase',phase<0?'—':phase===0?'文字編碼':phase<=S?I18N.f('去噪 {v0} / {v1}',{v0:phase,v1:S}):'VAE 解碼'); set('net',net==='dit'?'DiT（Transformer 塊）':'U-Net（卷積 + attention）'); set('where','latent 8×8×4：像素 64×64×3 的 1/48，每步便宜 48 倍'); set('time',I18N.f('{v0} 秒（示意，含解碼）',{v0:(S*unit).toFixed(1)})); set('cfg',String(cfg)); set('q',q,cfg>=10||cfg<2?'bad':'ok'); };
       const step=()=>{ if(phase>=S+1) return false; phase++; if(phase>=1&&phase<=S){ const a=1-phase/S; seed=20+phase; Z=Z.map((z,i)=>{ const x0=(TARGET[i]*2-1)+0.9*a*gauss(); return Math.sqrt(1-a*a*0.99)*x0+a*gauss()*0.6; }); } paint(); return phase<S+1; };
       const reset=()=>{ phase=-1; seed=9; Z=TARGET.map(()=>gauss()); paint(); };
       ctrl.heading('文字 → latent 去噪 → 解碼');
@@ -72,8 +72,8 @@
         occ.visible=occluded; occ.position.copy(cellPos(5.5,6.5)); memCubes.forEach((m,i)=>{ m.visible=vid&&i<mem; }); ml.material.opacity=vid?1:0;
         dec.layers.forEach(m=>tint(P,m,unet?'signal':'flow',0.5)); decL.userData.setText(unet?'輕量解碼器 + adapter（可訓練）':'提示編碼器 + 遮罩解碼器'); enc.layers.forEach(m=>tint(P,m,unet?'inactive':'memory',unet?0.15:0.4));
         root.updateMatrixWorld(true); skips.hideAll(); if(unet) enc.layers.forEach((m,i)=>skips.set(i,new T.Vector3(-5.5,-1.8+i*0.44,0),new T.Vector3(5.5,-0.8+Math.min(i,1)*0.44,0),0.4,'flow'));
-        tl.userData.setText(unet?`SAM2-UNet：${task==='camo'?'偽裝物偵測':'醫學影像分割'}（整張圖直接出遮罩）`:vid?`第 ${frame+1} / ${FR} 幀${occluded?'：狗被擋住了':''}`:'一張圖、一個點，出一個遮罩');
-        set('mode',unet?'SAM2-UNet':vid?'SAM2 影片':'SAM2 影像'); set('prompt',unet?'不用提示：整張圖直接出遮罩':mode==='vid'?'第 1 幀點一下，之後靠記憶':prompt==='dog'?'點 × 1（正，在狗身上）':prompt==='ball'?'點 × 1（正，在球上）':'點 × 2（正在狗身上、負在尾巴）'); set('area',`${area} 格`); set('enc',unet?'Hiera（凍結，當 U-Net 的編碼器）':'Hiera（影像編碼器，一張圖只算一次）'); set('mem',vid?`${mem} 幀`:'—'); set('frame',vid?(occluded?`第 ${frame+1} 幀：被遮住，用記憶庫撐住遮罩`:`第 ${frame+1} 幀：記憶注意力把上幾幀的遮罩對過來`):'—'); set('train',unet?'約 8%（adapter + 解碼器；Hiera 凍結）':'100%（SAM2 本身已訓練好，推論不訓練）'); set('task',unet?(task==='camo'?'偽裝物偵測（COD）':'醫學影像（息肉 / 病灶）'):'—'); };
+        tl.userData.setText(unet?I18N.f('SAM2-UNet：{v0}（整張圖直接出遮罩）',{v0:task==='camo'?I18N.t('偽裝物偵測'):I18N.t('醫學影像分割')}):vid?I18N.f('第 {v0} / {v1} 幀{v2}',{v0:frame+1,v1:FR,v2:occluded?I18N.t('：狗被擋住了'):''}):'一張圖、一個點，出一個遮罩');
+        set('mode',unet?'SAM2-UNet':vid?'SAM2 影片':'SAM2 影像'); set('prompt',unet?'不用提示：整張圖直接出遮罩':mode==='vid'?'第 1 幀點一下，之後靠記憶':prompt==='dog'?'點 × 1（正，在狗身上）':prompt==='ball'?'點 × 1（正，在球上）':'點 × 2（正在狗身上、負在尾巴）'); set('area',I18N.f('{v0} 格',{v0:area})); set('enc',unet?'Hiera（凍結，當 U-Net 的編碼器）':'Hiera（影像編碼器，一張圖只算一次）'); set('mem',vid?I18N.f('{v0} 幀',{v0:mem}):'—'); set('frame',vid?(occluded?I18N.f('第 {v0} 幀：被遮住，用記憶庫撐住遮罩',{v0:frame+1}):I18N.f('第 {v0} 幀：記憶注意力把上幾幀的遮罩對過來',{v0:frame+1})):'—'); set('train',unet?'約 8%（adapter + 解碼器；Hiera 凍結）':'100%（SAM2 本身已訓練好，推論不訓練）'); set('task',unet?(task==='camo'?'偽裝物偵測（COD）':'醫學影像（息肉 / 病灶）'):'—'); };
       const step=()=>{ if(mode!=='vid') return false; if(frame>=FR-1) return false; frame++; mem=Math.min(FR,mem+1); paint(); return frame<FR-1; };
       const reset=()=>{ frame=0; mem=mode==='vid'?0:0; paint(); };
       ctrl.heading('點一下，出遮罩');
@@ -82,7 +82,7 @@
       const segT=ctrl.segmented('任務（SAM2-UNet）',[{id:'camo',label:'偽裝物'},{id:'med',label:'醫學'}],task,id=>{ task=id; if(mode!=='unet'){ mode='unet'; segM.set('unet'); } reset(); });
       const stepper=ctrl.stepper({onStep:step,onReset:reset,interval:700});
       const set=ctrl.readouts([{id:'mode',label:'模式'},{id:'prompt',label:'提示'},{id:'area',label:'遮罩面積'},{id:'enc',label:'編碼器'},{id:'mem',label:'記憶庫'},{id:'frame',label:'這一幀'},{id:'train',label:'可訓練參數'},{id:'task',label:'任務'},{id:'hov',label:'滑到的格'}]);
-      ctx.app.watchHover(cells,(h,i)=>{ if(i<0){ set('hov','—'); return; } const {r,c}=cells[i].userData; set('hov',`格 (${r+1}, ${c+1})：${maskFn()(r,c)?'遮罩內':'遮罩外'}`); },m=>`格 (${m.userData.r+1}, ${m.userData.c+1})`);
+      ctx.app.watchHover(cells,(h,i)=>{ if(i<0){ set('hov','—'); return; } const {r,c}=cells[i].userData; set('hov',I18N.f('格 ({v0}, {v1})：{v2}',{v0:r+1,v1:c+1,v2:maskFn()(r,c)?I18N.t('遮罩內'):I18N.t('遮罩外')})); },m=>I18N.f('格 ({v0}, {v1})',{v0:m.userData.r+1,v1:m.userData.c+1}));
       ctrl.howto(['切三種提示看遮罩怎麼變；負點把尾巴剪掉','切影片模式播放：第 4 幀狗被擋住，遮罩靠記憶庫撐著','切 SAM2-UNet：不用提示、編碼器凍結，只練 8% 的參數']);
       const setup=o=>{ stepper.stop(); mode=o.mode||'img'; prompt=o.prompt||'dog'; task=o.task||'camo'; segM.set(mode); segP.set(prompt); segT.set(task); reset(); for(let i=0;i<(o.frame||0);i++) step(); };
       ctx.guide([
@@ -114,8 +114,8 @@
         cells.forEach(m=>{ const {r,c}=m.userData; const o=OBJ.find(o=>o.f(dx)(r,c)); const hit=o&&hits.includes(o); tint(P,m,hit?'flow':'inactive',hit?0.9:0.1,hit?0.55:0.04); }); drawPic();
         OBJ.forEach((o,i)=>{ const hit=hits.includes(o); ids[i].material.opacity=hit?1:0; let sr=0,sc=0,n=0; for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(o.f(dx)(r,c)){ sr+=r; sc+=c; n++; } if(n){ ids[i].position.copy(cellPos(sr/n,sc/n)); ids[i].position.z=0.4; } ids[i].userData.setText(`ID ${o.id}`); });
         pt.visible=cmp==='sam2'; pt.position.copy(cellPos(3,2.5+dx)); const ps=present?0.97:0.03; pres.scale.y=0.05+ps*1.6; pres.position.y=-1.8+pres.scale.y/2; tint(P,pres,present?'signal':'alert',0.8);
-        pl.userData.setText(cmp==='sam2'?'提示：一個點':`提示：「${NAME[concept]}」（文字概念）`); tl.userData.setText(cmp==='sam2'?'SAM2：點哪個出哪個':`SAM3：找出圖裡所有的「${NAME[concept]}」${frame?`（第 ${frame+1} 幀，ID 跟著走）`:''}`);
-        set('concept',cmp==='sam2'?'（SAM2 不吃概念，吃點）':NAME[concept]); set('n',`${hits.length} 個${hits.length?`（ID ${hits.map(h=>h.id).join('、')}）`:''}`,hits.length?'':'bad'); set('pres',present?`是（${ps.toFixed(2)}）`:`否（${ps.toFixed(2)}）：圖裡沒有這個概念，不硬找`); set('track',frame?`${hits.length} 個 ID（第 ${frame+1} 幀，物件移動了遮罩和 ID 還對得上）`:`${hits.length} 個 ID（第 1 幀）`); set('cmp',cmp==='sam2'?'SAM2：一個點只出一個遮罩':'SAM3：一句概念出全部實例 + 追蹤'); };
+        pl.userData.setText(cmp==='sam2'?'提示：一個點':I18N.f('提示：「{v0}」（文字概念）',{v0:NAME[concept]})); tl.userData.setText(cmp==='sam2'?'SAM2：點哪個出哪個':I18N.f('SAM3：找出圖裡所有的「{v0}」{v1}',{v0:NAME[concept],v1:frame?I18N.f(I18N.t('（第 {v0} 幀，ID 跟著走）'),{v0:frame+1}):''}));
+        set('concept',cmp==='sam2'?'（SAM2 不吃概念，吃點）':NAME[concept]); set('n',I18N.f('{v0} 個{v1}',{v0:hits.length,v1:hits.length?`（ID ${hits.map(h=>h.id).join('、')}）`:''}),hits.length?'':'bad'); set('pres',present?I18N.f('是（{v0}）',{v0:ps.toFixed(2)}):I18N.f('否（{v0}）：圖裡沒有這個概念，不硬找',{v0:ps.toFixed(2)})); set('track',frame?I18N.f('{v0} 個 ID（第 {v1} 幀，物件移動了遮罩和 ID 還對得上）',{v0:hits.length,v1:frame+1}):I18N.f('{v0} 個 ID（第 1 幀）',{v0:hits.length})); set('cmp',cmp==='sam2'?'SAM2：一個點只出一個遮罩':'SAM3：一句概念出全部實例 + 追蹤'); };
       const step=()=>{ if(frame>=FR-1) return false; frame++; paint(); return frame<FR-1; };
       const reset=()=>{ frame=0; paint(); };
       ctrl.heading('說出要找什麼，找出全部');
@@ -123,7 +123,7 @@
       const segK=ctrl.segmented('對照',[{id:'sam3',label:'SAM3（概念）'},{id:'sam2',label:'SAM2（點一個）'}],cmp,id=>{ cmp=id; reset(); });
       const stepper=ctrl.stepper({onStep:step,onReset:reset,interval:700});
       const set=ctrl.readouts([{id:'concept',label:'概念'},{id:'n',label:'找到的實例'},{id:'pres',label:'存在'},{id:'track',label:'追蹤中'},{id:'cmp',label:'對照'},{id:'hov',label:'滑到的格'}]);
-      ctx.app.watchHover(cells,(h,i)=>{ if(i<0){ set('hov','—'); return; } const {r,c}=cells[i].userData; const o=OBJ.find(o=>o.f(frame*1.2)(r,c)); set('hov',`格 (${r+1}, ${c+1})：${o?`${NAME[o.k]} ID ${o.id}${found().includes(o)?'（命中）':'（不是目標概念）'}`:'背景'}`); },m=>`格 (${m.userData.r+1}, ${m.userData.c+1})`);
+      ctx.app.watchHover(cells,(h,i)=>{ if(i<0){ set('hov','—'); return; } const {r,c}=cells[i].userData; const o=OBJ.find(o=>o.f(frame*1.2)(r,c)); set('hov',I18N.f('格 ({v0}, {v1})：{v2}',{v0:r+1,v1:c+1,v2:o?I18N.f('{v0} ID {v1}{v2}',{v0:NAME[o.k],v1:o.id,v2:found().includes(o)?I18N.t('（命中）'):I18N.t('（不是目標概念）')}):I18N.t('背景')})); },m=>I18N.f('格 ({v0}, {v1})',{v0:m.userData.r+1,v1:m.userData.c+1}));
       ctrl.howto(['切概念：狗找到 3 隻、貓 1 隻、斑馬 0 隻且存在 token 說否','切 SAM2 對照：一個點只出一個','播放看物件移動時 ID 跟著走']);
       const setup=o=>{ stepper.stop(); concept=o.concept||'dog'; cmp=o.cmp||'sam3'; segC.set(concept); segK.set(cmp); reset(); for(let i=0;i<(o.frame||0);i++) step(); };
       ctx.guide([

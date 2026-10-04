@@ -346,7 +346,7 @@ def test_messenger_lands_on_the_desk_and_offers_a_scene_question(fresh):
 
 def test_leaving_sends_the_messenger_away(fresh):
     m = "App.desk.messenger"
-    fresh.ev(m + ".arrive()")
+    fresh.ev(m + ".arrive(null, 'owl')")  # the owl is the messenger; birds and planes only say a line
     fresh.page.wait_for_function(m + ".state === 'landed'")
     assert fresh.ev(m + ".item.question"), "it always carries a scene's question"
     fresh.ev(m + ".ask()")

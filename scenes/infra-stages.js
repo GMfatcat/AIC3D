@@ -34,19 +34,19 @@ App.register({
     };
     let rowHover=null;
     const buildRow=()=>{ if(row) P.drop(row.group); const n=P_len+G_len; row=new P.TokenRow(Array(n).fill(''),{color:'signal',gap:Math.min(0.5,9/n),size:Math.min(0.32,6/n)}); row.group.position.y=-1.6; root.add(row.group);
-      const desc=i=>i<P_len?`prompt 第 ${i+1} 個 token（prefill 一次算完）`:`生成第 ${i-P_len+1} 個 token（decode 第 ${i-P_len+1} 步，整份權重讀一遍）`;
+      const desc=i=>i<P_len?I18N.f('prompt 第 {v0} 個 token（prefill 一次算完）',{v0:i+1}):I18N.f('生成第 {v0} 個 token（decode 第 {v0} 步，整份權重讀一遍）',{v0:i-P_len+1});
       if(rowHover) rowHover.set(row.cubes); else rowHover=ctx.app.watchHover(row.cubes,(h,i)=>set('hov',i<0?'—':desc(i)),(m,i)=>desc(i)); };
     const redraw=()=>{ const H=HW[hw]; const PARAMS=PARAMS_(), ACT=ACTIVE_(); const bytes=PARAMS*DT[dt].b; const actBytes=ACT*DT[dt].b; /* MoE：記憶體要放全部，每步只讀啟用的專家 */ const fits=bytes<H.mem; const kvBudget=Math.max(0,H.mem-bytes);
       for(let i=0;i<P_len+G_len;i++){ const isP=i<P_len; const lit=isP?t>=1:(i-P_len)<t-1; row.style(i,{color:isP?'signal':'flow',opacity:lit?1:0.15,glow:lit?0.6:0}); }
       gpu.setFill(Math.min(1,bytes/H.mem), fits?'memory':'alert');
       let flops=0,rb=0,phase='等待'; const prefillBytes=isMoE()?Math.min(bytes,actBytes*Math.min(P_len,8)):bytes; // prefill 多 token 會碰到更多專家
-      if(t===1){flops=2*ACT*P_len;rb=prefillBytes;phase=`Prefill：${P_len} token 一次算`;} else if(t>1){flops=2*ACT;rb=actBytes;phase=`Decode 第 ${t-1} 步`;}
+      if(t===1){flops=2*ACT*P_len;rb=prefillBytes;phase=I18N.f('Prefill：{v0} token 一次算',{v0:P_len});} else if(t>1){flops=2*ACT;rb=actBytes;phase=I18N.f('Decode 第 {v0} 步',{v0:t-1});}
       const effBW=fits?H.bw:PCIE; const tC=flops/H.flops, tM=rb/effBW, tot=Math.max(tC,tM); gauges.c(tot?tC/tot:0); gauges.m(tot?tM/tot:0);
       const tps=effBW/actBytes, ttft=2*ACT*P_len/H.flops*1000;
-      set('hw',H.note); set('w',`${fmtB(bytes)}（${MODELS[model].label.split('（')[0]} × ${DT[dt].label}）`); set('act',isMoE()?`${fmtB(actBytes)}（啟用 ${(ACT/1e9).toFixed(0)}B）`:'= 全部（dense）');
-      set('fit',fits?`放得下，剩 ${fmtB(kvBudget)} 給 KV cache`:'放不下：TP 切卡、再量化，或 offload（權重走 PCIe）',fits?'ok':'bad');
+      set('hw',H.note); set('w',`${fmtB(bytes)}（${MODELS[model].label.split('（')[0]} × ${DT[dt].label}）`); set('act',isMoE()?I18N.f('{v0}（啟用 {v1}B）',{v0:fmtB(actBytes),v1:(ACT/1e9).toFixed(0)}):'= 全部（dense）');
+      set('fit',fits?I18N.f('放得下，剩 {v0} 給 KV cache',{v0:fmtB(kvBudget)}):'放不下：TP 切卡、再量化，或 offload（權重走 PCIe）',fits?'ok':'bad');
       set('phase',phase); set('bound',t===0?'—':tC>tM?'compute-bound':'memory-bound',t===0?'':tC>tM?'ok':'bad'); set('time',tot?(tot*1000).toFixed(1)+' ms':'—');
-      set('tps',`≤ ${tps.toFixed(1)} tok/s（${fits?'頻寬':'PCIe'} ÷ ${isMoE()?'啟用':''}權重）`,tps<10?'bad':'ok'); set('ttft',`≥ ${ttft.toFixed(0)} ms（prompt ${P_len} token）`,ttft>500?'bad':'ok');
+      set('tps',I18N.f('≤ {v0} tok/s（{v1} ÷ {v2}權重）',{v0:tps.toFixed(1),v1:fits?I18N.t('頻寬'):'PCIe',v2:isMoE()?I18N.t('啟用'):''}),tps<10?'bad':'ok'); set('ttft',`≥ ${ttft.toFixed(0)} ms（prompt ${P_len} token）`,ttft>500?'bad':'ok');
       bar([{frac:tot?Math.min(1,tC/tot):0,color:'signal'}]); bar2([{frac:tot?Math.min(1,tM/tot):0,color:'state'}]);
     };
     const step=()=>{ if(t>=G_len+1) return false; t++; redraw(); return t<G_len+1; };

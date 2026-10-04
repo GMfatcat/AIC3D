@@ -14,9 +14,9 @@
         nodes.forEach(x=>{ const shared=x.hits>1; x.mesh.material.color.copy(P.C(shared?'flow':'memory')); x.mesh.material.emissive.copy(x.mesh.material.color); x.mesh.material.emissiveIntensity=0.3+Math.min(0.8,x.hits*0.25); });
         hitNodes.forEach(x=>{ x.mesh.material.emissiveIntensity=1.2; });
         layoutTree(); totalCached+=cached; totalNew+=fresh; reqs++; syncHover();
-        set('this',`命中 ${cached} / 新算 ${fresh} token`); set('rate',reqs?`${Math.round(100*totalCached/Math.max(1,totalCached+totalNew))}%`:'—'); set('nodes',String(nodes.length)); set('reqs',String(reqs)); };
+        set('this',I18N.f('命中 {v0} / 新算 {v1} token',{v0:cached,v1:fresh})); set('rate',reqs?`${Math.round(100*totalCached/Math.max(1,totalCached+totalNew))}%`:'—'); set('nodes',String(nodes.length)); set('reqs',String(reqs)); };
       ctrl.heading('丟請求進來'); ctrl.buttons(PROMPTS.map(p=>({label:p.label.replace('system + ',''),onClick:()=>insert(p.path)})));
-      let nodeHover=null; const syncHover=()=>{ const ms=nodes.map(n=>n.mesh); const d=(m)=>{ const n=nodes.find(x=>x.mesh===m); return n?`${SEGS[n.key]}：${TOK[n.key]} token，被 ${n.hits} 個請求用`:''; }; if(nodeHover) nodeHover.set(ms); else nodeHover=ctx.app.watchHover(ms,(h)=>set('hov',h?d(h):'—'),(m)=>d(m)); };
+      let nodeHover=null; const syncHover=()=>{ const ms=nodes.map(n=>n.mesh); const d=(m)=>{ const n=nodes.find(x=>x.mesh===m); return n?I18N.f('{v0}：{v1} token，被 {v2} 個請求用',{v0:SEGS[n.key],v1:TOK[n.key],v2:n.hits}):''; }; if(nodeHover) nodeHover.set(ms); else nodeHover=ctx.app.watchHover(ms,(h)=>set('hov',h?d(h):'—'),(m)=>d(m)); };
       const clearTree=()=>{ nodes.forEach(n=>{P.drop(n.mesh);P.drop(n.label);}); nodes=[]; tree.children={}; totalCached=totalNew=reqs=0; layoutTree(); syncHover(); set('this','—'); set('rate','—'); set('nodes','0'); set('reqs','0'); };
       ctrl.buttons([{label:'清空樹（模擬 LRU 全部淘汰）',onClick:clearTree}]);
       const set=ctrl.readouts([{id:'reqs',label:'請求數'},{id:'nodes',label:'樹節點（KV 片段）'},{id:'this',label:'這個請求'},{id:'rate',label:'累計 prefix 命中率'},{id:'hov',label:'滑到的節點'}]);
@@ -52,13 +52,13 @@
         root.updateMatrixWorld(true); flow.hideAll(); if(!done){ flow.set(0,new T.Vector3(-4.6,0.9,0),smA.position,0.6,'memory'); flow.set(1,new T.Vector3(-0.4,0.9,0),smB.position,0.6,'state'); flow.set(2,regC.position,new T.Vector3(3.8,0.9,0),0.6,'signal'); }
         smA.scale.setScalar(0.6+TS*0.2); smB.scale.setScalar(0.6+TS*0.2);
         const loads=2*TS*TS*totalSteps(), naive=2*M*N*K; const smem=2*TS*TS*2; // bytes@fp16 of two tiles
-        set('step',`${Math.min(step,totalSteps())} / ${totalSteps()}（tile ${ti+1},${tj+1}，k 片 ${kk+1}/${kT}）`); set('loads',`${loads} 個元素（naive ${naive}）`); set('ratio',`${(naive/loads).toFixed(1)}×`); set('smem',`${smem} B（兩塊 ${TS}×${TS} fp16）`); set('reuse',`每個載入元素被用 ${TS} 次`); };
+        set('step',I18N.f('{v0} / {v1}（tile {v2},{v3}，k 片 {v4}/{v5}）',{v0:Math.min(step,totalSteps()),v1:totalSteps(),v2:ti+1,v3:tj+1,v4:kk+1,v5:kT})); set('loads',I18N.f('{v0} 個元素（naive {v1}）',{v0:loads,v1:naive})); set('ratio',`${(naive/loads).toFixed(1)}×`); set('smem',I18N.f('{v0} B（兩塊 {v1}×{v1} fp16）',{v0:smem,v1:TS})); set('reuse',I18N.f('每個載入元素被用 {v0} 次',{v0:TS})); };
       ctrl.heading('一步一個 tile'); const stepper=ctrl.stepper({onStep:()=>{ if(step>=totalSteps()) return false; step++; paint(); return step<totalSteps(); },onReset:()=>{step=0;paint();},interval:350});
       const tsSl=ctrl.slider('tile 大小 T',{min:1,max:8,step:1,value:TS,fmt:v=>v===8?'8（整塊）':`${v}×${v}`,onChange:v=>{TS=v;step=0;paint();}});
       const langSeg=ctrl.segmented('寫法',[{id:'triton',label:'Triton'},{id:'tilelang',label:'TileLang'}],'triton',id=>{lang=id;langNote();});
       const set=ctrl.readouts([{id:'lang',label:'這種寫法'},{id:'step',label:'進度'},{id:'loads',label:'從 HBM 讀取總量'},{id:'ratio',label:'比 naive 省'},{id:'reuse',label:'資料重用'},{id:'smem',label:'shared memory 佔用'},{id:'hov',label:'滑到的格子'}]);
       const langNote=()=>set('lang', lang==='triton'?'Triton：寫一個 tile 的 program，layout 與排程交給編譯器':'TileLang：shared memory、pipeline、layout 都自己控');
-      ctx.app.watchHover(C.cells.map(c=>c.m),(h,idx)=>{ hovC=idx<0?null:C.cells[idx]; if(!hovC){ set('hov','—'); } else { const tpd=tilesPerDim(); set('hov',`C[${hovC.i+1},${hovC.j+1}]：tile（${Math.floor(hovC.i/TS)+1},${Math.floor(hovC.j/TS)+1}）；= A 第 ${hovC.i+1} 列 · B 第 ${hovC.j+1} 欄`); } paint(); },(m,idx)=>`C[${C.cells[idx].i+1},${C.cells[idx].j+1}]`);
+      ctx.app.watchHover(C.cells.map(c=>c.m),(h,idx)=>{ hovC=idx<0?null:C.cells[idx]; if(!hovC){ set('hov','—'); } else { const tpd=tilesPerDim(); set('hov',I18N.f('C[{v0},{v1}]：tile（{v2},{v3}）；= A 第 {v0} 列 · B 第 {v1} 欄',{v0:hovC.i+1,v1:hovC.j+1,v2:Math.floor(hovC.i/TS)+1,v3:Math.floor(hovC.j/TS)+1})); } paint(); },(m,idx)=>`C[${C.cells[idx].i+1},${C.cells[idx].j+1}]`);
       ctrl.howto(['單步看 tile 搬進 shared memory、C 一塊塊算完','拉 tile 大小看 HBM 讀取量與 shared memory 佔用','滑到 C 的任一格看它需要 A 哪列、B 哪欄']);
       const setup=(ts,n,l)=>{ stepper.stop(); TS=ts; tsSl.set(ts); lang=l; langSeg.set(l); step=n; paint(); langNote(); };
       ctx.guide([

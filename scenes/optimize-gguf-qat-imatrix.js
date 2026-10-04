@@ -12,9 +12,9 @@
       const fl=P.label('',{size:22}); fl.position.set(0,2.4,0); root.add(fl);
       const layout=()=>{ const rule=PRESETS[preset].rule; let total=0; const sizes=TENSORS.map(t=>{ const ty=rule(t.kind); const gb=t.p*1e9*TYPES[ty].bpw/8/1e9; total+=gb; return {ty,gb}; });
         let x=-4.1; const W=8.6; bricks.forEach((b,i)=>{ const {ty,gb}=sizes[i]; const w=Math.max(0.08,W*gb/total); b.group.position.x=x+w/2; x+=w; b.mesh.scale.set(w*0.96,2.6,1.4); b.edges.scale.copy(b.mesh.scale); b.color(TYPES[ty].color); b.mesh.userData.ty=ty; b.mesh.userData.gb=gb; });
-        fl.userData.setText(`${PRESETS[preset].label} · 約 ${total.toFixed(1)} GB（27B 參數）`); set('total',total.toFixed(1)+' GB'); set('bpw',(total*8e9/ (TENSORS.reduce((s,t)=>s+t.p,0)*1e9)).toFixed(2)); bar([{frac:Math.min(1,total/54),color:'signal'}]); describe(); };
+        fl.userData.setText(I18N.f('{v0} · 約 {v1} GB（27B 參數）',{v0:PRESETS[preset].label,v1:total.toFixed(1)})); set('total',total.toFixed(1)+' GB'); set('bpw',(total*8e9/ (TENSORS.reduce((s,t)=>s+t.p,0)*1e9)).toFixed(2)); bar([{frac:Math.min(1,total/54),color:'signal'}]); describe(); };
       const describe=()=>{ if(!hovered){ info.innerHTML='<span class="hint">滑鼠移到任一張量磚上看它的量化型別。</span>'; return; } const t=hovered.userData.t, ty=hovered.userData.ty; const T_=TYPES[ty];
-        info.innerHTML=`<b>${t.n}</b> <span class="hint">${t.shape}</span><br>參數 ${t.p.toFixed(2)} B · 型別 <b>${ty}</b>（${T_.bpw} bpw）· ${hovered.userData.gb.toFixed(2)} GB<br><span class="hint">${ty.endsWith('_K')?'K-quant：256 個權重一個 super-block，內有 8 個 32-權重 block，各帶 6-bit scale 與 min；':ty==='Q8_0'?'32 個權重一個 block，一個 fp16 scale；':ty==='F16'?'未量化；':'fp32 原樣存；'}${(t.kind==='attnv'||t.kind==='ffnd'||t.kind==='out')&&preset!=='F16'&&preset!=='Q8_0'?'_M 系列把 attn_v / ffn_down / output 升一級，因為它們對輸出誤差最敏感。':''}</span>`; };
+        info.innerHTML=I18N.f('<b>{v0}</b> <span class="hint">{v1}</span><br>參數 {v2} B · 型別 <b>{v3}</b>（{v4} bpw）· {v5} GB<br><span class="hint">{v6}{v7}</span>',{v0:t.n,v1:t.shape,v2:t.p.toFixed(2),v3:ty,v4:T_.bpw,v5:hovered.userData.gb.toFixed(2),v6:ty.endsWith('_K')?I18N.t('K-quant：256 個權重一個 super-block，內有 8 個 32-權重 block，各帶 6-bit scale 與 min；'):ty==='Q8_0'?I18N.t('32 個權重一個 block，一個 fp16 scale；'):ty==='F16'?I18N.t('未量化；'):I18N.t('fp32 原樣存；'),v7:(t.kind==='attnv'||t.kind==='ffnd'||t.kind==='out')&&preset!=='F16'&&preset!=='Q8_0'?I18N.t('_M 系列把 attn_v / ffn_down / output 升一級，因為它們對輸出誤差最敏感。'):''}); };
       ctrl.heading('選一個常見預設'); const seg=ctrl.segmented(null,Object.entries(PRESETS).map(([id,p])=>({id,label:p.label})),preset,id=>{preset=id;layout();});
       const set=ctrl.readouts([{id:'total',label:'檔案大小'},{id:'bpw',label:'平均 bpw'}]); const bar=ctrl.bar('相對 F16（54 GB）'); const info=ctrl.html('');
       ctrl.howto(['切 F16 到 Q3_K_M 看檔案大小怎麼縮','滑到任一張量磚看它的型別與 bpw','注意 attn_v / ffn_down / output 總是高一級']);
@@ -50,7 +50,7 @@
       const reset=()=>{ W=W0.slice(); stepN=0; paint(); };
       ctrl.heading('用 fake-quant 訓練 40 步'); const stepper=ctrl.stepper({onStep:train,onReset:reset,interval:150});
       const set=ctrl.readouts([{id:'step',label:'訓練步'},{id:'fp',label:'浮點權重的任務誤差'},{id:'q',label:'量化後的任務誤差（QAT）'},{id:'ptq',label:'直接量化原權重（PTQ）'},{id:'dist',label:'權重到格點平均距離'},{id:'hov',label:'滑到的 bin'}]);
-      ctx.app.watchHover(bars,(h,b)=>{ if(b<0){ set('hov','—'); return; } const lo=-1+2*b/BINS, hi=-1+2*(b+1)/BINS; set('hov',`[${lo.toFixed(2)}, ${hi.toFixed(2)})：${lastCounts?lastCounts[b]:0} 個權重`); },(m,b)=>`區間 ${(-1+2*b/BINS).toFixed(2)}`);
+      ctx.app.watchHover(bars,(h,b)=>{ if(b<0){ set('hov','—'); return; } const lo=-1+2*b/BINS, hi=-1+2*(b+1)/BINS; set('hov',I18N.f('[{v0}, {v1})：{v2} 個權重',{v0:lo.toFixed(2),v1:hi.toFixed(2),v2:lastCounts?lastCounts[b]:0})); },(m,b)=>I18N.f('區間 {v0}',{v0:(-1+2*b/BINS).toFixed(2)}));
       const bar=ctrl.bar('QAT'); const bar2=ctrl.bar('PTQ');
       ctrl.howto(['播放 40 步看直方圖往格點聚','比 QAT 與 PTQ 兩條誤差條','滑到任一 bin 看有幾個權重']);
       const setup=n=>{ stepper.stop(); reset(); for(let i=0;i<n;i++) train(); };
@@ -89,7 +89,7 @@
         root.updateMatrixWorld(true); flow.set(0,new T.Vector3(-5.6,0.6,0),new T.Vector3(-4.6,0.6,0),0.7,'flow'); tokens.styleAll({color:'flow',glow:0.5,opacity:ds==='none'?0.2:1}); };
       ctrl.heading('換一組校準資料'); const seg=ctrl.segmented(null,Object.keys(ACT).map(id=>({id,label:LABEL[id]})),ds,id=>{ds=id;paint();});
       const set=ctrl.readouts([{id:'ds',label:'校準資料'},{id:'alloc',label:'精度分配'},{id:'bits',label:'位元預算'},{id:'eimp',label:'重要度加權誤差（有 imatrix）'},{id:'euni',label:'同樣誤差（均勻 4 bit）'},{id:'hov',label:'滑到的權重'}]);
-      ctx.app.watchHover(cells.map(c=>c.m),(h,idx)=>{ if(idx<0||!lastLevels){ set('hov','—'); return; } const c=cells[idx]; const lv=lastLevels[c.j]; const w=W[c.i][c.j]; set('hov',`第 ${c.i+1} 列 第 ${c.j+1} 欄：w ${w.toFixed(2)}，${Math.log2(lv)} bit，重要度 ${ACT[ds][c.j].toFixed(2)}，誤差 ${Math.abs(w-quant(w,lv)).toFixed(3)}`); },(m,idx)=>`第 ${cells[idx].i+1} 列 第 ${cells[idx].j+1} 欄`);
+      ctx.app.watchHover(cells.map(c=>c.m),(h,idx)=>{ if(idx<0||!lastLevels){ set('hov','—'); return; } const c=cells[idx]; const lv=lastLevels[c.j]; const w=W[c.i][c.j]; set('hov',I18N.f('第 {v0} 列 第 {v1} 欄：w {v2}，{v3} bit，重要度 {v4}，誤差 {v5}',{v0:c.i+1,v1:c.j+1,v2:w.toFixed(2),v3:Math.log2(lv),v4:ACT[ds][c.j].toFixed(2),v5:Math.abs(w-quant(w,lv)).toFixed(3)})); },(m,idx)=>I18N.f('第 {v0} 列 第 {v1} 欄',{v0:cells[idx].i+1,v1:cells[idx].j+1}));
       const bar=ctrl.bar('有 imatrix'); const bar2=ctrl.bar('均勻量化');
       ctrl.howto(['切校準資料集看分配怎麼變','比「有 imatrix」與「均勻量化」兩條誤差','滑到任一權重讀它的位元與重要度']);
       const setDs=d=>{ ds=d; seg.set(d); paint(); };

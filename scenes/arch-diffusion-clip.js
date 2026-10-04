@@ -19,7 +19,7 @@
       const paintBars=()=>{ bars.forEach((m,i)=>{ const h=0.05+2.0*ab(i/19*TMAX); m.scale.y=h; m.position.y=-1.0+h/2-1.0; }); const cur=dir==='fwd'?t:(k===0?TMAX:ts(k)); const i=cur/TMAX*19; mark.position.set(SX-1.9+i*0.2,-2.0+0.05+2.0*ab(cur)+0.15,0); };
       const ts=i=>Math.round(TMAX*(1-i/S)); // 反向第 i 步後所在的 t
       const paint=()=>{ cells.forEach((m,i)=>{ const v=Math.max(0,Math.min(1,(X[i]+1)/2)); m.material.emissiveIntensity=0.05+v*1.1; m.material.color.copy(P.C('signal')).multiplyScalar(0.25+v*0.75); m.material.emissive.copy(m.material.color); });
-        const cur=dir==='fwd'?t:(k===0?TMAX:ts(k)); const a=ab(cur); tl.userData.setText(dir==='fwd'?`x_t（t = ${t}）`:`反向取樣：第 ${k} / ${S} 步（t = ${cur}）`);
+        const cur=dir==='fwd'?t:(k===0?TMAX:ts(k)); const a=ab(cur); tl.userData.setText(dir==='fwd'?`x_t（t = ${t}）`:I18N.f('反向取樣：第 {v0} / {v1} 步（t = {v2}）',{v0:k,v1:S,v2:cur}));
         set('t',String(cur)); set('abar',a.toFixed(3)); set('snr',(a/(1-a+1e-6)).toFixed(2)); const e=mse(); set('mse',e.toFixed(2),e<0.05?'ok':e>0.5?'bad':''); set('S',String(S)); set('k',`${k} / ${S}`); paintBars(); };
       const forward=()=>{ const a=ab(t); X=X0.map((v,i)=>Math.sqrt(a)*v+Math.sqrt(1-a)*EPS[i]); paint(); };
       const revStep=()=>{ if(k>=S) return false; const tcur=k===0?TMAX:ts(k), tnext=ts(k+1); const a=ab(tcur), a2=ab(tnext); seed=17+k;
@@ -34,7 +34,7 @@
       const sS=ctrl.slider('取樣步數',{min:4,max:50,step:2,value:S,onChange:v=>{ S=v; if(dir==='fwd'){ dir='rev'; segD.set('rev'); } reset(); }});
       const stepper=ctrl.stepper({onStep:step,onReset:reset,interval:250});
       const set=ctrl.readouts([{id:'t',label:'t'},{id:'abar',label:'ᾱ_t'},{id:'snr',label:'訊噪比'},{id:'mse',label:'與原圖的誤差'},{id:'S',label:'取樣步數'},{id:'k',label:'已走'},{id:'hov',label:'滑到的像素'}]);
-      ctx.app.watchHover(cells,(h,i)=>{ if(i<0){ set('hov','—'); return; } set('hov',`第 ${Math.floor(i/N)+1} 列 第 ${i%N+1} 欄：亮度 ${((X[i]+1)/2).toFixed(2)}（原圖 ${((X0[i]+1)/2).toFixed(2)}）`); },(m,i)=>`像素 ${i+1}`);
+      ctx.app.watchHover(cells,(h,i)=>{ if(i<0){ set('hov','—'); return; } set('hov',I18N.f('第 {v0} 列 第 {v1} 欄：亮度 {v2}（原圖 {v3}）',{v0:Math.floor(i/N)+1,v1:i%N+1,v2:((X[i]+1)/2).toFixed(2),v3:((X0[i]+1)/2).toFixed(2)})); },(m,i)=>I18N.f('像素 {v0}',{v0:i+1}));
       ctrl.howto(['拉 t 看原圖一步步變成純噪聲、切排程比曲線','切反向去噪，播放看噪聲一步步變回圖','把取樣步數拉到 4 看少走幾步還行不行']);
       const setup=o=>{ stepper.stop(); dir=o.dir||'fwd'; sched=o.sched||'linear'; S=o.S||20; t=o.t||0; segD.set(dir); segS.set(sched); sS.set(S); sT.set(t); reset(); for(let i=0;i<(o.k||0);i++) revStep(); };
       ctx.guide([
@@ -59,8 +59,8 @@
       const paint=()=>{ root.updateMatrixWorld(true); beams.hideAll();
         TOK.forEach((t,i)=>{ const on=filled.includes(i); const fresh=last.includes(i); row.style(i,{color:on?(fresh?'signal:hot':'signal'):'inactive',glow:on?(fresh?1.0:0.5):0.15}); labels[i].userData.setText(on?t:'▢'); labels[i].material.opacity=on?1:0.5;
           if(fresh) beams.set(i,new T.Vector3(0,-2.2,0),new T.Vector3(row.x(i),-0.35,0),0.6,'flow'); });
-        const md=mode==='md'; tl.userData.setText(md?`遮罩擴散：第 ${k} / ${S} 步，每步平行填最有把握的幾個`:`自回歸：第 ${k} / ${L} 步，一次一個、從左到右`);
-        set('mode',md?'遮罩擴散（平行）':'自回歸（逐字）'); set('k',md?`${k} / ${S}`:`${k} / ${L}`); set('last',`${last.length} 個`); set('done',`${filled.length} / ${L}`); set('par',md?'可以：一步填多個，低信心的下一步還能改':'不能：一次一個，吐出去就改不了'); };
+        const md=mode==='md'; tl.userData.setText(md?I18N.f('遮罩擴散：第 {v0} / {v1} 步，每步平行填最有把握的幾個',{v0:k,v1:S}):I18N.f('自回歸：第 {v0} / {v1} 步，一次一個、從左到右',{v0:k,v1:L}));
+        set('mode',md?'遮罩擴散（平行）':'自回歸（逐字）'); set('k',md?`${k} / ${S}`:`${k} / ${L}`); set('last',I18N.f('{v0} 個',{v0:last.length})); set('done',`${filled.length} / ${L}`); set('par',md?'可以：一步填多個，低信心的下一步還能改':'不能：一次一個，吐出去就改不了'); };
       const step=()=>{ if(mode==='md'){ if(k>=S) return false; const left=TOK.map((t,i)=>i).filter(i=>!filled.includes(i)); const n=Math.ceil(left.length/(S-k)); last=left.sort((a,b)=>CONF[b]-CONF[a]).slice(0,n); filled=filled.concat(last); k++; paint(); return k<S; }
         if(k>=L) return false; last=[k]; filled.push(k); k++; paint(); return k<L; };
       const reset=()=>{ k=0; filled=[]; last=[]; paint(); };
@@ -69,7 +69,7 @@
       const sS=ctrl.slider('去噪步數',{min:2,max:12,step:1,value:S,onChange:v=>{ S=v; if(mode!=='md'){ mode='md'; segM.set('md'); } reset(); }});
       const stepper=ctrl.stepper({onStep:step,onReset:reset,interval:600});
       const set=ctrl.readouts([{id:'mode',label:'方式'},{id:'k',label:'步'},{id:'last',label:'這一步填了'},{id:'done',label:'已確定'},{id:'par',label:'可平行 / 可回頭改'},{id:'hov',label:'滑到的 token'}]);
-      ctx.app.watchHover(row.cubes,(h,i)=>{ if(i<0){ set('hov','—'); return; } set('hov',`位置 ${i+1} 的 token「${TOK[i]}」：模型信心 ${CONF[i].toFixed(2)}${filled.includes(i)?'（已確定）':'（還是遮罩）'}`); },(m,i)=>`位置 ${i+1} 的 token`);
+      ctx.app.watchHover(row.cubes,(h,i)=>{ if(i<0){ set('hov','—'); return; } set('hov',I18N.f('位置 {v0} 的 token「{v1}」：模型信心 {v2}{v3}',{v0:i+1,v1:TOK[i],v2:CONF[i].toFixed(2),v3:filled.includes(i)?I18N.t('（已確定）'):I18N.t('（還是遮罩）')})); },(m,i)=>I18N.f('位置 {v0} 的 token',{v0:i+1}));
       ctrl.howto(['切遮罩擴散，單步看每步平行填哪幾個','切自回歸比一比：12 個 token 要 12 步','拉去噪步數看步數少到幾步還湊得出整句']);
       const setup=o=>{ stepper.stop(); mode=o.mode||'md'; S=o.S||6; segM.set(mode); sS.set(S); reset(); for(let i=0;i<(o.k||0);i++) step(); };
       ctx.guide([
@@ -89,14 +89,14 @@
       const sim=(i,j)=>{ const p=stepN/MAXSTEP; const diag=i===j; return diag?BASE[i][j]+(0.92-BASE[i][j])*p:BASE[i][j]*(1-p*0.7); };
       const g=new T.Group(); root.add(g); let cells=[], hov=null; const S=0.7;
       const build=()=>{ P.clear(g); cells=[]; const off=(N-1)/2*S;
-        for(let i=0;i<N;i++){ const im=new P.Picture(0.62,0.62,{px:64,draw:(g2,w,h,p)=>{ p.plain(g2,w,h); p[SPR[NAMES[i]]](g2,w/2,h/2,w*0.8); }}); im.mesh.position.set(-off-1.3,off-i*S,0); g.add(im.mesh); const il=P.label(`圖：${NAMES[i]}`,{size:15}); il.position.set(-off-2.4,off-i*S,0); g.add(il);
-          const tx=new T.Mesh(new T.BoxGeometry(0.6,0.6,0.6),P.mat('flow',{glow:0.5})); tx.position.set(-off+i*S,off+1.3,0); g.add(tx); const tl=P.label(`「一張${NAMES[i]}的照片」`,{size:13}); tl.position.set(-off+i*S,off+(i%2?2.5:1.95),0); g.add(tl); } // 文字標籤兩排交錯，才不會疊成樓梯
+        for(let i=0;i<N;i++){ const im=new P.Picture(0.62,0.62,{px:64,draw:(g2,w,h,p)=>{ p.plain(g2,w,h); p[SPR[NAMES[i]]](g2,w/2,h/2,w*0.8); }}); im.mesh.position.set(-off-1.3,off-i*S,0); g.add(im.mesh); const il=P.label(I18N.f('圖：{v0}',{v0:NAMES[i]}),{size:15}); il.position.set(-off-2.4,off-i*S,0); g.add(il);
+          const tx=new T.Mesh(new T.BoxGeometry(0.6,0.6,0.6),P.mat('flow',{glow:0.5})); tx.position.set(-off+i*S,off+1.3,0); g.add(tx); const tl=P.label(I18N.f('「一張{v0}的照片」',{v0:NAMES[i]}),{size:13}); tl.position.set(-off+i*S,off+(i%2?2.5:1.95),0); g.add(tl); } // 文字標籤兩排交錯，才不會疊成樓梯
         for(let i=0;i<N;i++) for(let j=0;j<N;j++){ const m=new T.Mesh(new T.BoxGeometry(S*0.85,S*0.85,0.3),P.mat('memory',{glow:0.2})); m.position.set(-off+j*S,off-i*S,0); m.userData={i,j}; g.add(m); cells.push(m); }
         const hl=P.label('圖 × 字的相似度矩陣（對角線 = 配對）',{size:17}); hl.position.set(0,-off-1.0,0); g.add(hl);
-        if(hov) hov.set(cells); else hov=ctx.app.watchHover(cells,(h,k)=>{ if(k<0){ set('hov','—'); return; } const {i,j}=cells[k].userData; set('hov',`圖「${NAMES[i]}」× 字「一張${NAMES[j]}的照片」：相似度 ${sim(i,j).toFixed(2)}${i===j?'（配對）':'（負樣本）'}`); },m=>`圖 ${NAMES[m.userData.i]} × 字 ${NAMES[m.userData.j]}`); paint(); };
+        if(hov) hov.set(cells); else hov=ctx.app.watchHover(cells,(h,k)=>{ if(k<0){ set('hov','—'); return; } const {i,j}=cells[k].userData; set('hov',I18N.f('圖「{v0}」× 字「一張{v1}的照片」：相似度 {v2}{v3}',{v0:NAMES[i],v1:NAMES[j],v2:sim(i,j).toFixed(2),v3:i===j?I18N.t('（配對）'):I18N.t('（負樣本）')})); },m=>I18N.f('圖 {v0} × 字 {v1}',{v0:NAMES[m.userData.i],v1:NAMES[m.userData.j]})); paint(); };
       const paint=()=>{ let d=0; const zs=mode==='zs'; cells.forEach(m=>{ const {i,j}=m.userData; const s=sim(i,j); m.material.emissiveIntensity=0.05+s*1.2; m.material.color.copy(P.C(i===j?'signal':'memory')).multiplyScalar(0.3+s*0.7); m.material.emissive.copy(m.material.color); m.material.transparent=true; m.material.opacity=zs&&i!==0?0.25:1; if(i===j) d+=s; }); // zero-shot 只看第一列：一張狗的圖對每句 prompt
         const diag=d/N; const z=zeroShot(); set('mode',mode==='train'?'對比訓練':'zero-shot 分類'); set('step',String(stepN)); set('diag',diag.toFixed(2),diag>0.8?'ok':''); set('neg',`${N*N-N}（N² − N）`); set('zs',z); };
-      const zeroShot=()=>{ const q=0; const logits=[]; for(let j=0;j<Math.min(N,4);j++) logits.push(sim(q,j)/tau); const m=Math.max(...logits); const e=logits.map(v=>Math.exp(v-m)); const s=e.reduce((a,b)=>a+b,0); const p=e.map(v=>v/s); const best=p.indexOf(Math.max(...p)); return `圖「${NAMES[q]}」→ ${NAMES[best]} ${(p[best]*100).toFixed(0)}%（其餘 ${p.map((v,j)=>j===best?null:`${NAMES[j]} ${(v*100).toFixed(0)}%`).filter(Boolean).join('、')}）`; };
+      const zeroShot=()=>{ const q=0; const logits=[]; for(let j=0;j<Math.min(N,4);j++) logits.push(sim(q,j)/tau); const m=Math.max(...logits); const e=logits.map(v=>Math.exp(v-m)); const s=e.reduce((a,b)=>a+b,0); const p=e.map(v=>v/s); const best=p.indexOf(Math.max(...p)); return I18N.f('圖「{v0}」→ {v1} {v2}%（其餘 {v3}）',{v0:NAMES[q],v1:NAMES[best],v2:(p[best]*100).toFixed(0),v3:p.map((v,j)=>j===best?null:`${I18N.t(NAMES[j])} ${(v*100).toFixed(0)}%`).filter(Boolean).join(I18N.t('、'))}); };
       const step=()=>{ if(stepN>=MAXSTEP) return false; stepN++; paint(); return stepN<MAXSTEP; };
       const reset=()=>{ stepN=0; paint(); };
       ctrl.heading('把圖和字拉到同一個空間');

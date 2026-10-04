@@ -37,14 +37,14 @@ App.register({
     const CAP=40; let i=0, chunks=[], compactions=0; const COLORS=['signal','state','flow','memory'];
     const ctxBar=ctrl.html('','ctxbar'); const log=ctrl.html('','log');
     const total=()=>chunks.reduce((n,c)=>n+c.size,0);
-    const render=()=>{ ctxBar.innerHTML=''; const tot=total(); chunks.forEach(c=>{ const el=h('i'); el.style.width=(100*c.size/CAP)+'%'; el.style.background=c.summary?'var(--structure)':`var(--${COLORS[c.node]})`; el.title=c.text; ctxBar.appendChild(el); });
+    const render=()=>{ ctxBar.innerHTML=''; const tot=total(); chunks.forEach(c=>{ const el=h('i'); el.style.width=(100*c.size/CAP)+'%'; el.style.background=c.summary?'var(--structure)':`var(--${COLORS[c.node]})`; el.title=I18N.t(c.text); ctxBar.appendChild(el); });
       set('ctx',`${tot} / ${CAP}`,tot>CAP*0.85?'bad':'ok'); set('turns',String(i)); set('comp',String(compactions)); };
     const END='（腳本結束，按重置）';
-    const step=()=>{ if(i>=SCRIPT.length){ if(!log.textContent.endsWith(END)) log.textContent+='\n'+END; return false; }
+    const step=()=>{ if(i>=SCRIPT.length){ if(!log.textContent.endsWith(I18N.t(END))) log.textContent+='\n'+I18N.t(END); return false; }
       const s=SCRIPT[i]; const c={node:s.node,size:s.size,text:s.text}; chunks.push(c); const target=loop.target+((s.node-loop.target%4+4)%4||4); addCube(c,target); loop.go(target); i++;
-      const lines=log.textContent?log.textContent.split('\n'):[]; lines.push(s.text); log.textContent=lines.slice(-6).join('\n'); log.scrollTop=1e6;
+      const lines=log.textContent?log.textContent.split('\n'):[]; lines.push(I18N.t(s.text)); log.textContent=lines.slice(-6).join('\n'); log.scrollTop=1e6;
       if(total()>CAP*0.85){ // compact: everything except the last 3 chunks -> one summary chunk
-        const keep=chunks.slice(-3), old=chunks.slice(0,-3); if(old.length>2){ const sz=Math.max(2,Math.round(old.reduce((n,c)=>n+c.size,0)*0.15)); chunks=[{node:0,size:sz,summary:true,text:`摘要（${old.length} 段壓成 ${sz}）`},...keep]; compactions++; squash(old); log.textContent+=`\n[compact] ${old.length} 段舊訊息 → ${sz} 單位摘要`; } }
+        const keep=chunks.slice(-3), old=chunks.slice(0,-3); if(old.length>2){ const sz=Math.max(2,Math.round(old.reduce((n,c)=>n+c.size,0)*0.15)); chunks=[{node:0,size:sz,summary:true,text:I18N.f('摘要（{v0} 段壓成 {v1}）',{v0:old.length,v1:sz})},...keep]; compactions++; squash(old); log.textContent+=I18N.f('\n[compact] {v0} 段舊訊息 → {v1} 單位摘要',{v0:old.length,v1:sz}); } }
       render(); return true; };
     const reset=()=>{ i=0; chunks.forEach(c=>c.mesh&&P.drop(c.mesh)); chunks=[]; compactions=0; if(disc){ P.drop(disc); disc=null; loop.group.children.filter(o=>o.isLabel&&o.el.textContent==='compact 後的摘要').forEach(o=>P.drop(o)); } loop.setT(0); log.textContent=''; render(); };
     ctrl.heading('Pi 修一個 CI 失敗');

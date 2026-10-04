@@ -31,7 +31,7 @@ App.register({
       for(let i=0;i<c.gen.length;i++) genRow.style(i,{opacity:i<t?1:0.12,glow:i===t-1?0.9:0.3});
       R.updateMatrixWorld(true); slotObjs.forEach((so,i)=>{ const p=soft(so.s.p); so.bars.forEach((m,j)=>{ m.scale.y=Math.max(0.03,p[j]*1.6); m.position.y=m.scale.y/2+0.05; m.material.emissiveIntensity=0.2+p[j]*1.2; }); const a=new T.Vector3(0,1.35,0), b=so.g.position.clone(); b.y+=1.2; beams.set(i,a,b,0.5,'state'); });
       const ent=slotObjs.map(so=>{ const p=soft(so.s.p); return -p.reduce((s,v)=>s+(v>0?v*Math.log2(v):0),0); });
-      set('left',`${t} / ${c.gen.length} 個 token，${t} 次 forward`); set('right','1 次 forward（唯讀），4 個答案 + 機率'); set('ent',ent.map(e=>e.toFixed(2)).join(' / ')+' bit'); set('answers',slotObjs.map(so=>{ const p=soft(so.s.p); return so.s.opts[p.indexOf(Math.max(...p))]+` ${(Math.max(...p)*100).toFixed(0)}%`; }).join('，')); };
+      set('left',I18N.f('{v0} / {v1} 個 token，{v0} 次 forward',{v0:t,v1:c.gen.length})); set('right','1 次 forward（唯讀），4 個答案 + 機率'); set('ent',ent.map(e=>e.toFixed(2)).join(' / ')+' bit'); set('answers',slotObjs.map(so=>{ const p=soft(so.s.p); return so.s.opts[p.indexOf(Math.max(...p))]+` ${(Math.max(...p)*100).toFixed(0)}%`; }).join('，')); };
     ctrl.heading('同一個 state，兩種問法'); const seg=ctrl.segmented(null,CASES.map((c,i)=>({id:String(i),label:c.label})),'0',id=>{ci=+id;custom=null;ta.value='';build();});
     const ta=ctrl.textarea('或自己打一段 state（關鍵字示意）',{placeholder:'例：客戶 投訴 被 扣款 兩次 很 生氣',rows:2,onInput:v=>{ if(!v.trim()){ custom=null; seg.set(String(ci)); } else { custom=fromText(v); seg.set(null); } build(); }});
     const stepper=ctrl.stepper({onStep:()=>{ const c=cur(); if(t>=c.gen.length) return false; t++; redraw(); return t<c.gen.length; },onReset:()=>{t=0;redraw();},interval:450});

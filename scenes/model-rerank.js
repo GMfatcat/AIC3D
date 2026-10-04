@@ -21,16 +21,16 @@
         docs.forEach((d,i)=>{ const m=new T.Mesh(new T.BoxGeometry(3.6,0.6,0.5),P.mat('memory',{glow:0.3})); m.position.set(LX,slotY(i),0); g.add(m); cards.push(m); d.mesh=m;
           const tl=P.label(d.t,{size:14}); tl.position.set(0,0,0.3); m.add(tl); d.label=tl;
           const b=new T.Mesh(new T.BoxGeometry(1,0.18,0.3),P.mat('memory',{glow:0.5})); b.scale.x=d.bi*2.2; b.position.set(LX+1.8+d.bi*1.1,slotY(i),0); g.add(b); d.bar=b; });
-        if(hov) hov.set(cards); else hov=ctx.app.watchHover(cards,(h,i)=>{ if(i<0){ set('hov','—'); return; } const d=docs[i]; set('hov',`「${d.t}」：bi-encoder ${d.bi.toFixed(2)}（第 ${d.i+1} 名）${d.done?`，cross-encoder ${d.cross.toFixed(2)}`:i<k?'，cross-encoder 還沒打分':'，不在 top-k，不重排'}`); },(m,i)=>`候選 ${i+1}`);
+        if(hov) hov.set(cards); else hov=ctx.app.watchHover(cards,(h,i)=>{ if(i<0){ set('hov','—'); return; } const d=docs[i]; set('hov',I18N.f('「{v0}」：bi-encoder {v1}（第 {v2} 名）{v3}',{v0:d.t,v1:d.bi.toFixed(2),v2:d.i+1,v3:d.done?`，cross-encoder ${d.cross.toFixed(2)}`:i<k?I18N.t('，cross-encoder 還沒打分'):I18N.t('，不在 top-k，不重排')})); },(m,i)=>I18N.f('候選 {v0}',{v0:i+1}));
         beam.hideAll(); layout(); };
       const layout=()=>{ // 已打分的依 cross 分數排進右欄；沒打分的留在左欄（top-k 之外的變暗）
         const ranked=docs.filter(d=>d.done).sort((a,b)=>b.cross-a.cross);
         docs.forEach((d,i)=>{ const inK=i<k; d.mesh.material.opacity=inK?1:0.35; d.mesh.material.transparent=true; d.bar.material.opacity=inK?1:0.35; d.bar.material.transparent=true; d.label.material.opacity=inK?1:0.5;
           const r=ranked.indexOf(d); if(r>=0){ Motion.tween(d.mesh.position,{x:RX,y:slotY(r)},{ms:500,ease:'inOut'}); d.mesh.material.color.copy(P.C(d.cross>0.5?'signal':'inactive')); d.mesh.material.emissive.copy(d.mesh.material.color); d.bar.visible=false; }
           else { Motion.tween(d.mesh.position,{x:LX,y:slotY(i)},{ms:500,ease:'inOut'}); d.mesh.material.color.copy(P.C('memory')); d.mesh.material.emissive.copy(d.mesh.material.color); d.bar.visible=true; } });
-        set('q',Q[qi].q); set('first',docs[0].t); set('top',ranked.length?ranked[0].t:'—'); set('n',`${scored} / ${k}`); set('cost',`${k} 次（每對一次，不能預先算）`); set('bicost','1 次（文件向量事先算好）'); };
+        set('q',Q[qi].q); set('first',docs[0].t); set('top',ranked.length?ranked[0].t:'—'); set('n',`${scored} / ${k}`); set('cost',I18N.f('{v0} 次（每對一次，不能預先算）',{v0:k})); set('bicost','1 次（文件向量事先算好）'); };
       const step=()=>{ if(scored>=k) return false; const d=docs[scored]; scored++; d.done=true;
-        root.updateMatrixWorld(true); beam.set(0,new T.Vector3(LX,TOP+1.2,0),new T.Vector3(0,-2.4,0),0.6,'signal'); beam.set(1,d.mesh.position.clone(),new T.Vector3(0,-2.4,0),0.6,'flow'); scoreL.userData.setText(`分數 ${d.cross.toFixed(2)}`);
+        root.updateMatrixWorld(true); beam.set(0,new T.Vector3(LX,TOP+1.2,0),new T.Vector3(0,-2.4,0),0.6,'signal'); beam.set(1,d.mesh.position.clone(),new T.Vector3(0,-2.4,0),0.6,'flow'); scoreL.userData.setText(I18N.f('分數 {v0}',{v0:d.cross.toFixed(2)}));
         setTimeout(()=>{ beam.hideAll(); layout(); },350); layout(); return scored<k; };
       const reset=()=>{ scored=0; docs.forEach(d=>{ d.done=false; }); beam.hideAll(); scoreL.userData.setText(''); layout(); };
       ctrl.heading('先粗篩，再精排');

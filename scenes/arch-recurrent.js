@@ -21,7 +21,7 @@
     init(ctx){ const {P,root,ctrl}=ctx; const tl=timeline(ctx,root); let src=0, w=0.7, gate=false;
       const eff=()=>gate?1-(1-w)*0.15:w; // LSTM / GRU 的閘門讓有效增益貼近 1：每步只漏掉 15% 的「遺忘」
       const redraw=()=>{ for(let t=0;t<N;t++){ const inf=t<src?0:Math.pow(eff(),t-src); tl.states[t].set(inf); tl.states[t].mesh.material.color.copy(P.C(t<src?'inactive':'state')); tl.states[t].mesh.material.emissive.copy(tl.states[t].mesh.material.color); tl.row.style(t,{color:t===src?'signal':'memory',glow:t===src?0.8:0.2}); }
-        set('last',Math.pow(eff(),N-1-src).toFixed(3)); set('half',`${Math.ceil(Math.log(0.5)/Math.log(eff()))} 步`); };
+        set('last',Math.pow(eff(),N-1-src).toFixed(3)); set('half',I18N.f('{v0} 步',{v0:Math.ceil(Math.log(0.5)/Math.log(eff()))})); };
       ctrl.heading('追蹤一個 token 的影響');
       const seg=ctrl.segmented(null,[{id:'rnn',label:'RNN'},{id:'lstm',label:'LSTM（閘門）'}],'rnn',id=>{gate=id==='lstm';redraw();});
       const trackSl=ctrl.slider('追蹤哪個 token',{min:0,max:N-1,value:0,fmt:v=>WORDS[v],onChange:v=>{src=v;redraw();}});
@@ -85,9 +85,9 @@
       const redraw=()=>{ const infer=mode==='infer'; tl.states.forEach((st,i)=>{ st.group.visible=infer; st.set(i<=t? (i===t?1:0.35):0.05); }); tl.arrows.group.visible=tl.up.group.visible=tl.label.visible=infer; grid.visible=!infer;
         tl.row.styleAll({color:'memory',glow:0.2,opacity:1}); if(infer){ for(let i=0;i<N;i++) tl.row.style(i,{opacity:i<=t?1:0.25,color:i===t?'signal':'memory',glow:i===t?0.8:0.2}); }
         cells.forEach(c=>{ const w=c.ch?wFast:wSlow; const v=c.s===c.tt?1:Math.pow(w,c.tt-c.s); c.m.material.emissiveIntensity=0.1+v*1.3; c.m.material.opacity=0.2+v*0.8; });
-        set('mode',infer?`推論：第 ${t+1} 步，只讀前一步狀態`:'訓練：整句一次算'); set('mem',infer?'O(1)（固定大小狀態）':'O(T) 中間值'); set('cost',infer?'每 token O(1)':'可用矩陣乘法 / WKV kernel 平行'); };
+        set('mode',infer?I18N.f('推論：第 {v0} 步，只讀前一步狀態',{v0:t+1}):'訓練：整句一次算'); set('mem',infer?'O(1)（固定大小狀態）':'O(T) 中間值'); set('cost',infer?'每 token O(1)':'可用矩陣乘法 / WKV kernel 平行'); };
       ctrl.heading('同一組權重、兩種算法'); const modeSeg=ctrl.segmented(null,[{id:'infer',label:'推論：遞迴'},{id:'train',label:'訓練：平行展開'}],'infer',id=>{mode=id;redraw();});
-      let stepper=null; ctx.app.watchHover(tl.row.cubes,(h,i)=>{ if(i>=0 && mode==='infer'){ stepper&&stepper.stop(); t=i; redraw(); } },(c,i)=>`跳到第 ${i+1} 步「${WORDS[i]}」`); // 手動跳步時停掉播放
+      let stepper=null; ctx.app.watchHover(tl.row.cubes,(h,i)=>{ if(i>=0 && mode==='infer'){ stepper&&stepper.stop(); t=i; redraw(); } },(c,i)=>I18N.f('跳到第 {v0} 步「{v1}」',{v0:i+1,v1:WORDS[i]})); // 手動跳步時停掉播放
       stepper=ctrl.stepper({onStep:()=>{ if(mode!=='infer') return false; if(t>=N-1) return false; t++; redraw(); return t<N-1; },onReset:()=>{t=0;redraw();},interval:600});
       const slowSl=ctrl.slider('慢通道衰減 w',{min:0.6,max:0.99,step:0.01,value:wSlow,fmt:v=>v.toFixed(2),onChange:v=>{wSlow=v;redraw();}});
       const fastSl=ctrl.slider('快通道衰減 w',{min:0.05,max:0.7,step:0.01,value:wFast,fmt:v=>v.toFixed(2),onChange:v=>{wFast=v;redraw();}});
@@ -120,13 +120,13 @@
       const matvec=(M,v)=>M.map(r=>r.reduce((s,a,j)=>s+a*v[j],0));
       const step=()=>{ if(t>=N) return false; const k=K[t], v=V[t];
         if(phase===0){ // 1) 遺忘閘 + 擦除：S ← αS − β(αS k)kᵀ
-          const Sk=matvec(S,k); for(let i=0;i<D;i++) for(let j=0;j<D;j++) S[i][j]=alpha*S[i][j]-beta*alpha*Sk[i]*k[j]; paint(RED,0.5); phase=1; set('phase',`t=${t+1}「${WORDS[t]}」：α 遺忘 + 沿 kₜ 方向擦掉舊值`); row.styleAll({color:'memory',glow:0.2}); row.style(t,{color:'signal',glow:0.9}); return true; }
+          const Sk=matvec(S,k); for(let i=0;i<D;i++) for(let j=0;j<D;j++) S[i][j]=alpha*S[i][j]-beta*alpha*Sk[i]*k[j]; paint(RED,0.5); phase=1; set('phase',I18N.f('t={v0}「{v1}」：α 遺忘 + 沿 kₜ 方向擦掉舊值',{v0:t+1,v1:WORDS[t]})); row.styleAll({color:'memory',glow:0.2}); row.style(t,{color:'signal',glow:0.9}); return true; }
         else { // 2) 寫入：S ← S + β v kᵀ
-          for(let i=0;i<D;i++) for(let j=0;j<D;j++) S[i][j]+=beta*v[i]*k[j]; paint(TEAL,0.5); phase=0; set('phase',`t=${t+1}「${WORDS[t]}」：寫入 β·vₜkₜᵀ`); t++; return t<N; } };
+          for(let i=0;i<D;i++) for(let j=0;j<D;j++) S[i][j]+=beta*v[i]*k[j]; paint(TEAL,0.5); phase=0; set('phase',I18N.f('t={v0}「{v1}」：寫入 β·vₜkₜᵀ',{v0:t+1,v1:WORDS[t]})); t++; return t<N; } };
       const reset=()=>{ S=Array.from({length:D},()=>Array(D).fill(0)); t=0; phase=0; paint(); set('phase','—'); row.styleAll({color:'memory',glow:0.2}); };
       ctrl.heading('一步拆成兩個半步'); const stepper=ctrl.stepper({onStep:step,onReset:reset,interval:700});
       const replay=(n=t*2+phase)=>{ reset(); for(let i=0;i<n;i++) step(); }; // 參數一改就用新參數重走到目前這一步
-      ctx.app.watchHover(row.cubes,(h,i)=>{ if(i>=0){ stepper.stop(); replay((i+1)*2); } },(c,i)=>`跳到 t=${i+1}「${WORDS[i]}」寫入後`); // 手動跳步時停掉播放
+      ctx.app.watchHover(row.cubes,(h,i)=>{ if(i>=0){ stepper.stop(); replay((i+1)*2); } },(c,i)=>I18N.f('跳到 t={v0}「{v1}」寫入後',{v0:i+1,v1:WORDS[i]})); // 手動跳步時停掉播放
       const betaSl=ctrl.slider('β 寫入強度（也是擦除強度）',{min:0,max:1,step:0.05,value:beta,fmt:v=>v.toFixed(2),onChange:v=>{beta=v;replay();}});
       const alphaSl=ctrl.slider('α 遺忘閘（整體衰減）',{min:0.5,max:1,step:0.01,value:alpha,fmt:v=>v.toFixed(2),onChange:v=>{alpha=v;replay();}});
       const set=ctrl.readouts([{id:'phase',label:'目前半步'},{id:'energy',label:'‖S‖（狀態總量）'}]);

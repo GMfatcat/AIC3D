@@ -9,6 +9,8 @@ const I18N = {
   t(s){ if(lang === 'zh' || s == null) return s; const d = I18N.dict[lang]; const v = d && d[s]; return v != null ? v : s; },
   set(l){ if(!LANGS.includes(l) || l === lang) return; try{ localStorage.setItem('lang', l); }catch(e){} location.reload(); },
   toggle(){ I18N.set(lang === 'zh' ? 'en' : 'zh'); },
+  /* 帶空格的句子：I18N.f('第 {n} 層輸出', {n:12}) → 先翻模板再填值（英文字典的值也要留著 {n}） */
+  f(tpl, vars){ return String(I18N.t(tpl)).replace(/\{(\w+)\}/g, (m, k)=>{ if(!vars || !(k in vars)) return m; const v = vars[k]; return typeof v === 'string' ? I18N.t(v) : v; }); }, /* 字串參數也翻（token 名、層種類這類資料字串） */
   /* 字典裡找不到的句子：開發時用來列出還沒翻的（I18N.missing()） */
   missing(){ return Object.keys(I18N._miss || {}); },
 };

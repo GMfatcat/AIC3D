@@ -40,7 +40,7 @@
       const sB=ctrl.slider('batch 大小',{min:1,max:32,step:1,value:batch,onChange:v=>{batch=v;}});
       const set=ctrl.readouts([{id:'phase',label:'半步'},{id:'step',label:'訓練步'},{id:'loss',label:'平均 loss'},{id:'pc',label:'正確 token 的平均機率'},{id:'hov',label:'滑到的柱'}]);
       const bar=ctrl.bar('loss');
-      ctx.app.watchHover(bars,(h,k)=>{ if(k<0){ set('hov','—'); return; } const {i,v}=meta[k]; set('hov',`位置 ${i+1}（輸入「${SENT[i]}」）預測「${VOCAB[v]}」：p = ${P_[i][v].toFixed(2)}${v===i?'（正確答案）':''}`); },(m,k)=>`位置 ${meta[k].i+1} 候選「${VOCAB[meta[k].v]}」`);
+      ctx.app.watchHover(bars,(h,k)=>{ if(k<0){ set('hov','—'); return; } const {i,v}=meta[k]; set('hov',I18N.f('位置 {v0}（輸入「{v1}」）預測「{v2}」：p = {v3}{v4}',{v0:i+1,v1:SENT[i],v2:VOCAB[v],v3:P_[i][v].toFixed(2),v4:v===i?I18N.t('（正確答案）'):''})); },(m,k)=>I18N.f('位置 {v0} 候選「{v1}」',{v0:meta[k].i+1,v1:VOCAB[meta[k].v]}));
       ctrl.howto(['單步走前向、算 loss、反向、更新四個半步','拉 learning rate 比 loss 掉多快、把 batch 縮到 1 看曲線抖','滑到任一柱讀它的機率']);
       const setup=(n,h,l,b)=>{ stepper.stop(); lr=l??0.5; batch=b??8; sLr.set(lr); sB.set(batch); reset(); for(let i=0;i<n*4+h;i++) half(); };
       ctx.guide([
@@ -69,14 +69,14 @@
         bracket=new T.Mesh(new T.BoxGeometry(x1-x0,0.06,0.5),P.mat('signal',{glow:0.7})); bracket.position.set((x0+x1)/2,-1.95,0); g.add(bracket);
         const bl=P.label('算 loss 的範圍',{size:16}); bl.position.set((x0+x1)/2,-2.3,0); g.add(bl); bracket.userData.label=bl; bracket.userData.x=[x0,x1];
         const tl=P.label('loss（每個 token：−log p）',{size:19}); tl.position.set(0,2.6,0); g.add(tl);
-        if(hov) hov.set(row.cubes); else hov=ctx.app.watchHover(row.cubes,(h,i)=>{ if(i<0){ set('hov','—'); return; } set('hov',`「${toks[i].t}」${ROLE[toks[i].r]}，loss ${L[i].toFixed(2)}${trained(i)?'':'（不算）'}`); },(m,i)=>`token「${toks[i].t}」`); };
+        if(hov) hov.set(row.cubes); else hov=ctx.app.watchHover(row.cubes,(h,i)=>{ if(i<0){ set('hov','—'); return; } set('hov',I18N.f('「{v0}」{v1}，loss {v2}{v3}',{v0:toks[i].t,v1:ROLE[toks[i].r],v2:L[i].toFixed(2),v3:trained(i)?'':I18N.t('（不算）')})); },(m,i)=>`token「${toks[i].t}」`); };
       const trained=i=>mode==='all'||toks[i].r==='a';
       const paint=()=>{ const nTr=toks.filter((k,i)=>trained(i)).length, nA=toks.filter(k=>k.r==='a').length; const k=0.2*nA/Math.max(nA,nTr); // 算進 loss 的 token 越多，每個分到的「學習」越少
         L=L0.map((l0,i)=>trained(i)?0.15+(l0-0.15)*Math.exp(-k*stepN):l0);
         toks.forEach((tk,i)=>{ const on=trained(i); row.style(i,{color:tk.r==='a'?'signal':tk.r==='t'?'structure':on?'memory':'inactive',glow:on?0.5:0.15}); const m=lossBars[i]; const h=on?0.05+L[i]*0.7:0.03; Motion.tween(m.scale,{y:h},{ms:300}); Motion.tween(m.position,{y:0.15+h/2},{ms:300}); m.material.opacity=on?1:0.15; m.material.transparent=true; });
         const [x0,x1]=bracket.userData.x; const all=mode==='all'; const bx0=all?row.x(0)-0.5:x0, bx1=all?row.x(toks.length-1)+0.5:x1; bracket.scale.x=(bx1-bx0)/(x1-x0); bracket.position.x=(bx0+bx1)/2; bracket.userData.label.position.x=(bx0+bx1)/2;
         const nQ=toks.filter(k=>k.r==='q').length, nT=toks.filter(k=>k.r==='t').length; const aL=L.filter((l,i)=>toks[i].r==='a'); const mA=aL.reduce((a,b)=>a+b,0)/aL.length;
-        set('src',all?`全部 ${toks.length} 個 token（含問題 ${nQ} 個、模板 ${nT} 個）`:`回答 ${nA} 個 token（問題段 ${nQ} 個不算）`); set('n',`${toks.length} 個`); set('aloss',mA.toFixed(2),mA<0.6?'ok':''); set('step',String(stepN)); };
+        set('src',all?I18N.f('全部 {v0} 個 token（含問題 {v1} 個、模板 {v2} 個）',{v0:toks.length,v1:nQ,v2:nT}):I18N.f('回答 {v0} 個 token（問題段 {v1} 個不算）',{v0:nA,v1:nQ})); set('n',I18N.f('{v0} 個',{v0:toks.length})); set('aloss',mA.toFixed(2),mA<0.6?'ok':''); set('step',String(stepN)); };
       const step=()=>{ if(stepN>=MAXSTEP) return false; stepN++; paint(); return stepN<MAXSTEP; };
       const reset=()=>{ stepN=0; paint(); };
       ctrl.heading('同一座塔，換資料');

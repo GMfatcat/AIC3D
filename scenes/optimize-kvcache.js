@@ -23,7 +23,7 @@ App.register({
       gpu.setFill(useCache?t/MAXT:0.02, 'memory');
       paintFlash();
       set('t',String(t)); set('cache',useCache?fmtB(perTokB*t):'0（不存）');
-      set('step',useCache?'1 個 token 的 K/V':`${t} 個 token 的 K/V（重算）`); set('total',useCache?`∝ ${t}`:`∝ ${t*(t+1)/2}（二次成長）`);
+      set('step',useCache?'1 個 token 的 K/V':I18N.f('{v0} 個 token 的 K/V（重算）',{v0:t})); set('total',useCache?`∝ ${t}`:I18N.f('∝ {v0}（二次成長）',{v0:t*(t+1)/2}));
       set('big',fmtB(perTokB*ctxSl.value*1024));
     };
     const step=()=>{ if(t>=MAXT) return false; t++; flash=1; redraw(); return t<MAXT; };
@@ -33,7 +33,7 @@ App.register({
     const ctxSl=ctrl.slider('換算：真實 context 長度（k tokens）',{min:1,max:128,value:8,fmt:v=>v+'k',onChange:()=>redraw()});
     const set=ctrl.readouts([{id:'t',label:'已生成 token'},{id:'step',label:'這一步要算'},{id:'total',label:'累計計算量'},{id:'cache',label:'cache 佔用（示意 24 token）'},{id:'big',label:'真實 context 下的 cache'},{id:'hov',label:'滑到的 K/V 片'}]);
     const slabMeshes=[...slabs.map(p=>p[0]),...slabs.map(p=>p[1])]; // 先 K 列再 V 列
-    ctx.app.watchHover(slabMeshes,(h,idx)=>{ if(idx<0){ set('hov','—'); return; } const i=idx%MAXT; set('hov',`token ${i+1}「${WORDS[i]}」的 ${idx<MAXT?'K':'V'}：${fmtB(perTokB/2)}（${MODEL.layers} 層 × ${MODEL.kvHeads} 頭 × ${MODEL.dim} 維 × ${MODEL.bytes} B）`); },(m,idx)=>`token「${WORDS[idx%MAXT]}」的 ${idx<MAXT?'K':'V'} 片`);
+    ctx.app.watchHover(slabMeshes,(h,idx)=>{ if(idx<0){ set('hov','—'); return; } const i=idx%MAXT; set('hov',I18N.f('token {v0}「{v1}」的 {v2}：{v3}（{v4} 層 × {v5} 頭 × {v6} 維 × {v7} B）',{v0:i+1,v1:WORDS[i],v2:idx<MAXT?'K':'V',v3:fmtB(perTokB/2),v4:MODEL.layers,v5:MODEL.kvHeads,v6:MODEL.dim,v7:MODEL.bytes})); },(m,idx)=>I18N.f('token「{v0}」的 {v1} 片',{v0:WORDS[idx%MAXT],v1:idx<MAXT?'K':'V'}));
     ctrl.howto(['單步看 K/V 片一片片堆進 GPU','切「沒有 cache」看紅色的重算連線','拉真實 context 長度換算 GB']);
     const setup=(c,n,k)=>{ stepper.stop(); useCache=c; seg.set(c?'on':'off'); t=n; flash=c?0:1; ctxSl.set(k); redraw(); };
     ctx.guide([

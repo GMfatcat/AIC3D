@@ -8,7 +8,7 @@ App.register({
     let sel=4, relevant=true, budget=0.5;
     // tower
     const tower=new P.Tower(Array.from({length:L},(_,i)=>({type:i%2?'ffn':'attn'})),{w:2.0,d:1.3,h:0.34,label:'Transformer 層'}); tower.group.position.set(-4.5,-2.4,0); root.add(tower.group);
-    const gateLayers=[2,8]; const gates=gateLayers.map(li=>{ const m=new T.Mesh(new T.TorusGeometry(0.42,0.08,8,32),P.mat('signal',{glow:0.6})); m.position.set(-4.5+1.5,-2.4+li*0.44+0.17,0); m.rotation.y=Math.PI/2; root.add(m); const l=P.label(`閘門（第 ${li+1} 層）`,{size:16}); l.position.set(-4.5+1.5,-2.4+li*0.44+0.75,0); root.add(l); return m; });
+    const gateLayers=[2,8]; const gates=gateLayers.map(li=>{ const m=new T.Mesh(new T.TorusGeometry(0.42,0.08,8,32),P.mat('signal',{glow:0.6})); m.position.set(-4.5+1.5,-2.4+li*0.44+0.17,0); m.rotation.y=Math.PI/2; root.add(m); const l=P.label(I18N.f('閘門（第 {v0} 層）',{v0:li+1}),{size:16}); l.position.set(-4.5+1.5,-2.4+li*0.44+0.75,0); root.add(l); return m; });
     // memory wall
     const wall=new T.Group(); wall.position.set(3.2,0.6,0); root.add(wall); const cells=[]; const cg=new T.BoxGeometry(0.46,0.46,0.25);
     for(let r=0;r<WR;r++) for(let c=0;c<WC;c++){ const m=new T.Mesh(cg,P.mat('inactive',{glow:0.08,opacity:0.85})); m.position.set((c-(WC-1)/2)*0.52,((WR-1)/2-r)*0.52,0); wall.add(m); cells.push(m); }
@@ -20,13 +20,13 @@ App.register({
     const a=new T.Vector3(), b=new T.Vector3();
     const redraw=()=>{ cells.forEach(c=>{ c.material.color.copy(P.C('inactive')); c.material.emissive.copy(c.material.color); c.material.emissiveIntensity=0.08; c.scale.setScalar(1); });
       row.styleAll({color:'memory',glow:0.2,opacity:1}); root.updateMatrixWorld(true); hashBeams.hideAll(); flyBeams.hideAll();
-      const grams=[]; if(sel>=1) grams.push({n:2,s:WORDS[sel-1]+WORDS[sel],idx:[sel-1,sel],color:'flow'}); if(sel>=2) grams.push({n:3,s:WORDS[sel-2]+WORDS[sel-1]+WORDS[sel],idx:[sel-2,sel-1,sel],color:'state'});
+      const grams=[]; const J=I18N.lang==='en'?' ':''; const W=i=>I18N.t(WORDS[i]); if(sel>=1) grams.push({n:2,s:W(sel-1)+J+W(sel),idx:[sel-1,sel],color:'flow'}); if(sel>=2) grams.push({n:3,s:W(sel-2)+J+W(sel-1)+J+W(sel),idx:[sel-2,sel-1,sel],color:'state'}); /* 英文模式 n-gram 用空格接 */
       grams.forEach(g=>g.idx.forEach(i=>row.style(i,{color:'signal',glow:0.7})));
       let k=0; const hits=[]; grams.forEach((g,gi)=>{ for(let h=0;h<HEADS;h++){ const ci=hash(g.s,h+gi*7); const cell=cells[ci]; cell.material.color.copy(P.C(g.color)); cell.material.emissive.copy(cell.material.color); cell.material.emissiveIntensity=0.9; cell.scale.setScalar(1.25); hits.push(cell);
         row.pos(sel,a); a.y+=0.25; b.copy(cell.position).applyMatrix4(wall.matrixWorld); b.z+=0.15; hashBeams.set(k,a,b,0.5,g.color);
         if(relevant){ const gIdx=k%2; const gt=gates[gIdx].position.clone(); gt.x+=0.1; flyBeams.set(k,b,gt,0.6,'signal'); } k++; } });
       gates.forEach(g=>{ g.material.color.copy(P.C(relevant?'signal':'alert')); g.material.emissive.copy(g.material.color); g.scale.setScalar(relevant?1.15:0.8); });
-      set('gram',grams.map(g=>`${g.n}-gram「${g.s}」`).join(' / ')||'（第一個 token 沒有前文）'); set('lookup',`${grams.length*HEADS} 次雜湊查表，O(1)`); set('gate',relevant?'開：注入殘差流':'關：丟棄（情境不符）');
+      set('gram',grams.map(g=>`${g.n}-gram「${g.s}」`).join(' / ')||'（第一個 token 沒有前文）'); set('lookup',I18N.f('{v0} 次雜湊查表，O(1)',{v0:grams.length*HEADS})); set('gate',relevant?'開：注入殘差流':'關：丟棄（情境不符）');
       const moe=1-budget, eng=budget; const loss=lossOf(eng); set('mix',`MoE ${Math.round(moe*100)}% / Engram ${Math.round(eng*100)}%`); set('loss',loss.toFixed(3)+'（示意）'); drawU(); };
     // U curve overlay
     const wrap=h('div','ovl-card'); wrap.innerHTML='<div class="hint">固定總參數：MoE 專家 ↔ Engram 記憶的分配</div><canvas width="236" height="100" role="img" aria-label="U 形曲線：參數全給 MoE 或全給 Engram 時 loss 都高，最低點在 Engram 約 45%；目前分配的 loss 見右側讀數"></canvas>'; overlay.appendChild(wrap); const cv=wrap.querySelector('canvas'), cg2=cv.getContext('2d');

@@ -26,12 +26,12 @@ App.register({
       for(let i=0;i<WORDS.length;i++){ row.pos(qi,a); a.y+=0.3; row.pos(i,b); b.y+=1.7; beams.set(i,a,b,w[i]*2.2,'signal'); wLabels[i].userData.setText(w[i].toFixed(2)); karrows[i].children.forEach(c=>c.material.emissiveIntensity=0.2+w[i]*1.5); vbars[i].material.emissiveIntensity=0.15+w[i]*1.6; row.style(i,{glow:i===qi?0.8:0.2,color:i===qi?'signal':'memory'}); }
       const o=w.reduce((s,wi,i)=>s+wi*VALS[i],0); out.scale.y=o; out.position.y=-1.4-o/2;
       const top=w.map((v,i)=>[v,i]).sort((x,y)=>y[0]-x[0]);
-      set('logit',`${logits[top[0][1]].toFixed(1)}（最大）… ${logits[top[top.length-1][1]].toFixed(1)}（最小）`); set('top',`${WORDS[top[0][1]]} ${(top[0][0]*100).toFixed(0)}%`); set('ent',(-w.reduce((s,v)=>s+(v>0?v*Math.log2(v):0),0)).toFixed(2)+' bit');
+      set('logit',I18N.f('{v0}（最大）… {v1}（最小）',{v0:logits[top[0][1]].toFixed(1),v1:logits[top[top.length-1][1]].toFixed(1)})); set('top',`${WORDS[top[0][1]]} ${(top[0][0]*100).toFixed(0)}%`); set('ent',(-w.reduce((s,v)=>s+(v>0?v*Math.log2(v):0),0)).toFixed(2)+' bit');
     };
     ctrl.heading('調 Query 看權重怎麼變');
     const qiSl=ctrl.slider('哪個 token 當 Query',{min:0,max:WORDS.length-1,value:qi,fmt:v=>WORDS[v],onChange:v=>{qi=v;redraw();}});
     const angSl=ctrl.slider('Query 向量方向',{min:-3.1,max:3.1,step:0.05,value:qAng,fmt:v=>v.toFixed(2)+' rad',onChange:v=>{qAng=v;redraw();}});
-    ctx.app.watchHover(row.cubes,(h,i)=>{ if(i>=0){ qi=i; qiSl.set(i); redraw(); } },(c,i)=>`把「${WORDS[i]}」當 Query`); // 滑過 token 就把它當 Query
+    ctx.app.watchHover(row.cubes,(h,i)=>{ if(i>=0){ qi=i; qiSl.set(i); redraw(); } },(c,i)=>I18N.f('把「{v0}」當 Query',{v0:WORDS[i]})); // 滑過 token 就把它當 Query
     const base=new T.Vector3(); ctx.app.dragTarget(qarrow.children,(pt)=>{ qarrow.getWorldPosition(base); qAng=Math.max(-3.1,Math.min(3.1,Math.atan2(pt.x-base.x,pt.y-base.y))); angSl.set(qAng); redraw(); }); // 直接拖 Q 箭頭改方向
     const scSl=ctrl.slider('縮放 1/√d（溫度）',{min:0.2,max:3,step:0.1,value:1,fmt:v=>'×'+v.toFixed(1),onChange:v=>{scale=v;redraw();}});
     const set=ctrl.readouts([{id:'logit',label:'Q·K 分數'},{id:'top',label:'最大權重'},{id:'ent',label:'分佈熵（越小越集中）'}]);

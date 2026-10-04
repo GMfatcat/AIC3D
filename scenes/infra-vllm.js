@@ -26,23 +26,23 @@ App.register({
       logicMeshes.forEach(m=>P.drop(m)); logicMeshes=[];
       phys.forEach(p=>{ const c=p.refs===0?'inactive':p.shared?'structure':p.owner; p.mesh.material.color.copy(P.C(c)); p.mesh.material.emissive.copy(P.C(c)); p.mesh.material.emissiveIntensity=p.refs===0?0.05:0.45; p.mesh.material.opacity=p.refs===0?0.5:1; p.mesh.scale.y=p.refs===0?1:1+0.25*p.refs; });
       beams.hideAll(); root.updateMatrixWorld(true); let bi=0;
-      seqs.forEach((s,si)=>{ const y=2.0-si*0.95; const lab=P.label(`請求 ${s.id} · ${s.len} block`,{size:18}); lab.position.set(-3.2,y,0); logicG.add(lab); logicMeshes.push(lab);
+      seqs.forEach((s,si)=>{ const y=2.0-si*0.95; const lab=P.label(I18N.f('請求 {v0} · {v1} block',{v0:s.id,v1:s.len}),{size:18}); lab.position.set(-3.2,y,0); logicG.add(lab); logicMeshes.push(lab);
         s.pages.forEach((f,bi2)=>{ const shared=phys[f].shared; const m=new T.Mesh(new T.BoxGeometry(0.34,0.34,0.34),P.mat(shared?'structure':s.color,{glow:0.4})); m.position.set(-2.2+bi2*0.4,y,0); logicG.add(m); logicMeshes.push(m);
           if(bi<beams.meshes.length){ a.copy(m.position).applyMatrix4(logicG.matrixWorld); b.copy(phys[f].mesh.position).applyMatrix4(physG.matrixWorld); b.y+=0.2; beams.set(bi++,a,b,0.35,shared?'structure':s.color); } });
       });
       const used=phys.filter(p=>p.refs>0).length; const tokens=seqs.reduce((n,s)=>n+s.len,0);
       set('used',`${used} / ${NP}`); set('frag','0（任何空 page 都能用）');
-      const contig=seqs.length*MAXLEN; set('contig',`${Math.min(contig,NP)} / ${NP}${contig>NP?'（放不下）':''}`);
+      const contig=seqs.length*MAXLEN; set('contig',I18N.f('{v0} / {v1}{v2}',{v0:Math.min(contig,NP),v1:NP,v2:contig>NP?I18N.t('（放不下）'):''}));
       bar([{frac:used/NP,color:'flow'},{frac:Math.max(0,Math.min(1,contig/NP)-used/NP),color:'alert'}]);
-      ctx.legend([['inactive','空 page'],['structure','共享 page（多個請求引用）'],...seqs.map(s=>[s.color,`請求 ${s.id} 的 block / page / 對應線`])]);
-      set('shared', prefixPages?`${prefixPages.length} page × ${seqs.filter(s=>s.pages.some(f=>prefixPages.includes(f))).length} 個請求`:'—');
+      ctx.legend([['inactive','空 page'],['structure','共享 page（多個請求引用）'],...seqs.map(s=>[s.color,I18N.f('請求 {v0} 的 block / page / 對應線',{v0:s.id})])]);
+      set('shared', prefixPages?I18N.f('{v0} page × {v1} 個請求',{v0:prefixPages.length,v1:seqs.filter(s=>s.pages.some(f=>prefixPages.includes(f))).length}):'—');
     };
     ctrl.heading('請求進出'); const msgEl=ctrl.html('','hint'); let msgTimer=null; const msg=t=>{msgEl.textContent=t; clearTimeout(msgTimer); msgTimer=setTimeout(()=>{if(msgEl.textContent===t)msgEl.textContent='';},3500);}; ctx.onDispose(()=>clearTimeout(msgTimer));
     const clearAll=()=>{ phys.forEach(p=>{p.refs=0;p.owner=null;p.shared=false;}); prefixPages=null; seqs=[]; redraw(); };
     ctrl.buttons([{label:'新增請求',onClick:addSeq,primary:true},{label:'全部生成一步',onClick:grow},{label:'結束一個請求',onClick:endSeq},{label:'全部清空',onClick:clearAll}]);
     const seg=ctrl.segmented('新請求的 system prompt',[{id:'no',label:'各自存一份'},{id:'yes',label:'共享 prefix page'}],'no',id=>{ share=id==='yes'; const n=seqs.length; clearAll(); for(let i=0;i<n;i++) addSeq(); }); // 切換就用新政策重放目前的請求
     const set=ctrl.readouts([{id:'used',label:'已用 page'},{id:'frag',label:'碎片浪費'},{id:'contig',label:'若改用連續預留'},{id:'shared',label:'共享的 prefix'},{id:'hov',label:'滑到的 page'}]);
-    ctx.app.watchHover(phys.map(p=>p.mesh),(h,i)=>{ if(i<0){ set('hov','—'); return; } const p=phys[i]; const s=seqs.find(x=>x.color===p.owner); set('hov',`page ${i+1}：${p.refs===0?'空，任何請求都能拿':p.shared?`共享 prefix（${p.refs} 個請求引用）`:`請求 ${s?s.id:'?'} 的第 ${s?s.pages.indexOf(i)+1:'?'} 塊`}`); },(m,i)=>`物理 page ${i+1}`);
+    ctx.app.watchHover(phys.map(p=>p.mesh),(h,i)=>{ if(i<0){ set('hov','—'); return; } const p=phys[i]; const s=seqs.find(x=>x.color===p.owner); set('hov',I18N.f('page {v0}：{v1}',{v0:i+1,v1:p.refs===0?I18N.t('空，任何請求都能拿'):p.shared?I18N.f(I18N.t('共享 prefix（{v0} 個請求引用）'),{v0:p.refs}):I18N.f(I18N.t('請求 {v0} 的第 {v1} 塊'),{v0:s?s.id:'?',v1:s?s.pages.indexOf(i)+1:'?'})})); },(m,i)=>I18N.f('物理 page {v0}',{v0:i+1}));
     const bar=ctrl.bar('紅色 = 連續預留會多佔的空間');
     ctrl.howto(['新增幾個請求、全部生成一步，看 page 被拿走','結束一個請求看 page 立刻回收','切「共享 prefix page」看灰色共享頁']);
     const setup=(sh,n,g)=>{ share=sh; seg.set(sh?'yes':'no'); clearAll(); for(let i=0;i<n;i++) addSeq(); if(g) grow(); };

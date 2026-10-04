@@ -9,7 +9,7 @@
     const {THREE:T,P,root,ctrl,overlay}=ctx; const L=spec.layers.length; const h=Math.min(0.34, 14/L), gap=h*0.28; const W=2.6, D=1.7;
     const tower=new T.Group(); tower.position.set(-2.2,-(L*(h+gap))/2,0); root.add(tower); const meshes=[];
     spec.layers.forEach((ly,i)=>{ const t=TYPE[ly]; const m=new T.Mesh(new T.BoxGeometry(W,h,D),P.mat(t.color,{glow:0.2,opacity:0.95})); m.position.y=i*(h+gap); m.userData={i,type:ly}; tower.add(m); meshes.push(m); });
-    ctx.app.focusTargets(meshes,m=>`第 ${m.userData.i+1} 層：${TYPE[m.userData.type].label}（Enter 跳到該場景）`);
+    ctx.app.focusTargets(meshes,m=>I18N.f('第 {v0} 層：{v1}（Enter 跳到該場景）',{v0:m.userData.i+1,v1:TYPE[m.userData.type].label}));
     ctx.app.clickTarget(meshes,m=>{ location.hash=TYPE[m.userData.type].link; }); // 點層直接跳到對應場景
     const tl=P.label(spec.title,{size:24}); tl.position.set(0,L*(h+gap)+0.6,0); tower.add(tl);
     if(spec.mhc){ for(let s=0;s<4;s++){ const tube=new T.Mesh(new T.CylinderGeometry(0.04,0.04,L*(h+gap),8),P.mat('signal',{glow:0.4,opacity:0.7})); tube.position.set(-W/2-0.35,L*(h+gap)/2-h/2,(s-1.5)*0.35); tower.add(tube); } const ml=P.label('mHC ×4 殘差流',{size:15}); ml.position.set(-W/2-0.35,-0.6,0); tower.add(ml); }
@@ -18,10 +18,10 @@
     // expert grid (if MoE)
     let experts=null, expCells=[]; if(spec.experts){ experts=new T.Group(); experts.position.set(2.8,0,0); root.add(experts); const n=spec.expertsShown||64, cols=Math.ceil(Math.sqrt(n)); const cs=Math.min(0.32,4.2/cols);
       for(let i=0;i<n;i++){ const m=new T.Mesh(new T.BoxGeometry(cs*0.85,cs*0.85,0.2),P.mat('moe',{glow:0.08,opacity:0.8})); m.position.set((i%cols-(cols-1)/2)*cs,((cols-1)/2-Math.floor(i/cols))*cs,0); experts.add(m); expCells.push(m); }
-      const el=P.label(`${spec.experts} 個專家（示意 ${n} 格）· 每 token 用 top-${spec.topk}${spec.shared?' + 1 共享':''}`,{size:16}); el.position.set(0,(cols/2)*cs+0.5,0); experts.add(el); }
+      const el=P.label(I18N.f('{v0} 個專家（示意 {v1} 格）· 每 token 用 top-{v2}{v3}',{v0:spec.experts,v1:n,v2:spec.topk,v3:spec.shared?I18N.t(' + 1 共享'):''}),{size:16}); el.position.set(0,(cols/2)*cs+0.5,0); experts.add(el); }
     // controls
     ctrl.heading('組成'); const counts={}; spec.layers.forEach(l=>counts[l]=(counts[l]||0)+1);
-    const el=window.h; /* blueprint 裡的 h 是層高，DOM helper 要用 window.h */ const comp=ctrl.html('','complist'); Object.entries(counts).forEach(([k,v])=>{ const row=el('div'); const sw=el('i'); sw.style.background=P.css(TYPE[k].color); const name=el('span'); name.append(sw, TYPE[k].label); row.append(name, el('span','n',`${v} 層`)); comp.appendChild(row); });
+    const el=window.h; /* blueprint 裡的 h 是層高，DOM helper 要用 window.h */ const comp=ctrl.html('','complist'); Object.entries(counts).forEach(([k,v])=>{ const row=el('div'); const sw=el('i'); sw.style.background=P.css(TYPE[k].color); const name=el('span'); name.append(sw, I18N.t(TYPE[k].label)); row.append(name, el('span','n',I18N.f('{v0} 層',{v0:v}))); comp.appendChild(row); });
     const set=ctrl.readouts(spec.stats.map(([id,label])=>({id,label}))); spec.stats.forEach(([id,label,val])=>set(id,val));
     const hoverInfo=ctrl.html('<span class="hint">滑到任一層看它是什麼；點它直接跳到對應場景。</span>');
     const extra=spec.extraControls?spec.extraControls(ctrl,set,ctx,spec):null;
@@ -33,13 +33,13 @@
     // 第 li 層亮哪幾個專家由層數決定（種子 = 層數），同一層每次看到的都一樣
     const highlightLayer=li=>{ lastExp=li; eseed=(li+1)*7919; expCells.forEach(c=>{c.material.emissiveIntensity=0.08;c.scale.setScalar(1);}); const k=Math.min(spec.topk,expCells.length); const used=new Set(); while(used.size<k){ used.add(Math.floor(erand()*expCells.length)); } used.forEach(i=>{expCells[i].material.emissiveIntensity=1;expCells[i].scale.setScalar(1.25);}); return [...used].sort((a,b)=>a-b); };
     /* 導讀步驟用：釘住某一層（像 hover 一樣亮、面板寫它是什麼、MoE 層順便亮專家） */
-    const pin=li=>{ pinned=li; if(li<0){ hoverInfo.innerHTML='<span class="hint">滑到任一層看它是什麼；點它直接跳到對應場景。</span>'; return; } const t=TYPE[spec.layers[li]]; hoverInfo.innerHTML=`第 ${li+1} 層：<b>${t.label}</b>`; if(experts && isMoeLayer(li)) highlightLayer(li); };
+    const pin=li=>{ pinned=li; if(li<0){ hoverInfo.innerHTML='<span class="hint">滑到任一層看它是什麼；點它直接跳到對應場景。</span>'; return; } const t=TYPE[spec.layers[li]]; hoverInfo.innerHTML=I18N.f('第 {v0} 層：<b>{v1}</b>',{v0:li+1,v1:t.label}); if(experts && isMoeLayer(li)) highlightLayer(li); };
     if(spec.guide) ctx.guide(spec.guide({pin}, extra));
     return { highlightLayer, dispose(){ P.drop(tower); if(experts) P.drop(experts); },
       update(dt){ if(ctx.reduceMotion){ const park=Math.max(0,spec.layers.findIndex((ly,i)=>spec.isMoe?spec.isMoe(i,ly):(ly==='moe'||ly==='hash'))); ty=0.5+(park+0.5)*(h+gap); } else ty=(ty+dt*(spec.speed||2.5))%(L*(h+gap)+1); tok.position.y=ty-0.5; const li=Math.min(L-1,Math.max(0,Math.floor((ty-0.5)/(h+gap))));
         meshes.forEach((m,i)=>{ m.material.emissiveIntensity = (i===li?0.9:0.2) + ((m===hovered||i===pinned)?0.5:0); });
         if(experts && isMoeLayer(li) && li!==lastExp) highlightLayer(li);
-        const hv=ctx.app.hover(meshes); if(hv!==hovered){ hovered=hv; if(hv){ const t=TYPE[hv.userData.type]; const target=ctx.app.catalog.find(x=>x.id===t.link); hoverInfo.innerHTML=`第 ${hv.userData.i+1} 層：<b>${t.label}</b> `; const go=window.h('button','btn sm',`看「${target?target.title:t.link}」→`); go.addEventListener('click',()=>{ location.hash=t.link; }); hoverInfo.appendChild(go); } } } };
+        const hv=ctx.app.hover(meshes); if(hv!==hovered){ hovered=hv; if(hv){ const t=TYPE[hv.userData.type]; const target=ctx.app.catalog.find(x=>x.id===t.link); hoverInfo.innerHTML=I18N.f('第 {v0} 層：<b>{v1}</b> ',{v0:hv.userData.i+1,v1:t.label}); const go=window.h('button','btn sm',I18N.f('看「{v0}」→',{v0:target?target.title:t.link})); go.addEventListener('click',()=>{ location.hash=t.link; }); hoverInfo.appendChild(go); } } } };
   }
   const rep=(pattern,times)=>Array.from({length:times},()=>pattern).flat();
   let dsVariant='flash';
@@ -63,7 +63,7 @@
       this._inner=blueprint(ctx,{title:'GLM-5.3-Flash（320B / 18B active，多模態）',layers,mhc:true,experts:288,topk:8,shared:true,expertsShown:64,isMoe:i=>i>=3, // 前 3 層 dense FFN，第 4 層起 MoE
         stats:[['total','總參數','320B'],['active','每 token 啟用','18B'],['layers','層數','45（34 KDA + 11 DSA）'],['pattern','排列','3 層 KDA → 1 層 DSA，重複 11 次'],['moe','MoE','第 4 層起 288 路由 top-8 + 1 共享；前 3 層 dense'],['kv','KV','DSA 層共用 512 維 latent（MLA 式）'],['vision','視覺','24 層 ViT encoder → 4096 維'],['mtp','投機','內建 MTP draft 層']],
         extraControls:(c,set,ctx3,spec3)=>{ const HW={h100:{label:'H100',bw:3.9e12},spark:{label:'DGX Spark',bw:273e9}}; let hw='h100'; const ACTIVE_GB=18; // 18B active × FP8
-          const paint=()=>{ const tps=HW[hw].bw/(ACTIVE_GB*1e9); setG('tps',`≤ ${tps.toFixed(0)} tok/s（${HW[hw].label}：頻寬 ÷ 每步要讀的 ${ACTIVE_GB} GB 啟用權重）`); spec3.speed=Math.max(1.2,Math.min(6,tps/40)); };
+          const paint=()=>{ const tps=HW[hw].bw/(ACTIVE_GB*1e9); setG('tps',I18N.f('≤ {v0} tok/s（{v1}：頻寬 ÷ 每步要讀的 {v2} GB 啟用權重）',{v0:tps.toFixed(0),v1:HW[hw].label,v2:ACTIVE_GB})); spec3.speed=Math.max(1.2,Math.min(6,tps/40)); };
           const hwSeg=c.segmented('硬體（看 decode 速度）',Object.entries(HW).map(([id,h])=>({id,label:h.label})),hw,id=>{hw=id;paint();});
           const setG=c.readouts([{id:'tps',label:'decode 上限（單 stream）'}]); paint(); return {setHW:id=>{ hw=id; hwSeg.set(id); paint(); }}; },
         howto:['滑到任一層看它是什麼，點它跳場景','切 H100 / DGX Spark 看 decode 上限與 token 速度','看右邊專家格：288 選 8'],
@@ -84,7 +84,7 @@
           const ans=[]; for(let i=0;i<3;i++){ const m=new T.Mesh(new T.BoxGeometry(0.3,0.3,0.3),P.mat('signal',{glow:0.6})); m.position.y=i*0.42; col.add(m); ans.push(m); }
           const tl=P.label('答案 token',{size:16}); col.add(tl); const kl=P.label('<think> 推理 token（也要 decode、也佔 context）',{size:16}); kl.visible=false; col.add(kl);
           const paint=()=>{ thinks.forEach((m,i)=>{ m.visible=thinking&&i<budget; }); const n=thinking?budget:0; ans.forEach((m,i)=>{ m.position.y=(n+i)*0.42; }); tl.position.set(0,(n+3)*0.42+0.3,0); kl.visible=thinking; kl.position.set(0,-0.5,0);
-            set('think',thinking?`開：先產生 ${budget} 個 <think> token（示意），答案延遲約 +${budget}× decode`:'關'); bSl.disable(!thinking); tnote.style.display=thinking?'':'none'; };
+            set('think',thinking?I18N.f('開：先產生 {v0} 個 <think> token（示意），答案延遲約 +{v0}× decode',{v0:budget}):'關'); bSl.disable(!thinking); tnote.style.display=thinking?'':'none'; };
           const tseg=c.segmented('thinking 模式',[{id:'off',label:'關'},{id:'on',label:'開'}],'off',id=>{ thinking=id==='on'; paint(); });
           const bSl=c.slider('thinking budget（<think> token 數）',{min:1,max:MAXB,value:budget,onChange:v=>{budget=v;paint();}});
           const tnote=c.html('<span class="hint">thinking 開啟時，模型先在 &lt;think&gt; 裡自言自語（這段也要 decode、也佔 context），再給答案。budget 就是限制這段的長度。</span>'); paint(); return {setThinking:(on,b)=>{ thinking=on; tseg.set(on?'on':'off'); if(b){ budget=b; bSl.set(b); } paint(); }}; },
