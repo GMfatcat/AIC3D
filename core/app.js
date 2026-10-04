@@ -235,8 +235,15 @@ const App = {
   /* 滿版頁：開場頁（沒有 hash 或 #home）與詞彙頁（#glossary、#term=id）。舞台滿版放漂浮的語意色原件當背景 */
   _goFull(kind, arg){ document.querySelectorAll('#tabs button').forEach(b=>{ b.setAttribute('aria-selected','false'); b.tabIndex=-1; }); document.getElementById('items').innerHTML=''; document.getElementById('progress').textContent='';
     if(this.page===kind){ if(kind==='glossary') this.glossary.render(arg); else if(this.desk) this.desk.focus(arg||null); return; } if(this.routing){ this._pendingItem=null; } // 用 show() 同一套交叉淡入；已在桌面就只是飛過去
+    if(this.desk && (this.page==='home'||this.page==='glossary')){ this._switchDesk(kind, arg); return; } // 開場頁 ↔ 詞彙頁都在工作桌上：不重建、不淡出，鏡頭直接飛
     const go=()=>this._showFull(kind, arg); if(!this.current || this.reduceMotion){ go(); return; }
     this.routing=true; document.body.classList.add('is-switching'); setTimeout(()=>{ go(); requestAnimationFrame(()=>{ document.body.classList.remove('is-switching'); this.routing=false; }); },220); },
+  _switchDesk(kind, arg){
+    this.page=kind; this.home=kind==='home'; document.body.classList.remove('home','glossary'); document.body.classList.add(kind);
+    if(this.intro && this.intro.isOpen()) this.intro.close();
+    this.glossary.ready=false; document.body.classList.remove('book-open'); document.getElementById('glossary').innerHTML='';
+    if(kind==='home'){ this._landingFoot(); this.desk.focus(arg||null); } else { this.desk.focus('glossary', ()=>this.glossary.render(arg)); }
+  },
   _showFull(kind, arg){
     if(this.current){ this.current.dispose && this.current.dispose(); this.ctrl && this.ctrl.dispose(); }
     (this._disposers||[]).forEach(fn=>{ try{ fn(); }catch(e){ console.error(e); } }); this._disposers=[];

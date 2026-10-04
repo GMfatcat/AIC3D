@@ -52,7 +52,7 @@ const desk = {
     FIXTURES.forEach(f=>{ const isMap = f.id === 'tours'; const items = isMap ? this._tourItems() : [];
       this.fixtures[f.id] = place(f.id, f.kind, f.name, f.pos, items.length, Object.assign({ coaster:false, items:()=>isMap ? this._tourItems() : [], visited:()=>isMap ? this._tourItems().filter(x=>x.done).length : 1, seenIdx:(k)=>isMap ? this._tourItems()[k].done : true }, f)); });
     this.repaint(true);
-    const describe = (m)=>{ if(m.userData.msg){ return '信使：牠帶來一個問題，點牠看看'; } if(m.userData.st !== undefined){ const s = this._st(m.userData.st); const n = s.items().length; return `${s.name}：${NAME[s.kind]}${n ? `（${s.verb} ${s.visited()} / ${n}）` : ''}`; }
+    const describe = (m)=>{ if(m.userData.msg){ return m.userData.msg; } if(m.userData.st !== undefined){ const s = this._st(m.userData.st); const n = s.items().length; return `${s.name}：${NAME[s.kind]}${n ? `（${s.verb} ${s.visited()} / ${n}）` : ''}`; }
       const st = this._st(this.focused); const it = st && st.items()[m.userData.slot]; return it ? `${m.userData.slot + 1} ${it.title}${st.seenIdx(m.userData.slot) ? '（看過）' : ''}` : '零件'; };
     this._hover = App.watchHover(this._wideHits, (h)=>this._hoverCb(h), describe);
     this._click = App.clickTarget(this._wideHits, (m)=>{ this._hintDone(); if(m.userData.msg){ this.messenger && this.messenger.ask(); return; } if(m.userData.st !== undefined){ const s = this._st(m.userData.st); if(s.go) s.go(); else location.hash = 'tab=' + s.id; } else { const s = this.slots.find(x=>x.hit === m); if(s) this.select(s); } });

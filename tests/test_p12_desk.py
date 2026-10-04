@@ -371,3 +371,37 @@ def test_messenger_prefers_unvisited_scenes_and_leaves_when_a_toy_is_focused(fre
     fresh.page.wait_for_function(m + ".state === 'landed'")
     _focus(fresh, "train")
     fresh.page.wait_for_function(m + ".state === 'away'")
+
+
+@pytest.mark.parametrize("kind", ["bird", "plane"])
+def test_birds_and_paper_planes_just_say_something(fresh, kind):
+    m = "App.desk.messenger"
+    fresh.ev(m + ".arrive(null, '%s')" % kind)
+    fresh.page.wait_for_function(m + ".state === 'landed'")
+    assert fresh.ev(m + ".kind") == kind
+    assert fresh.ev(m + ".text") in fresh.ev(m + ".sayings")
+    label = fresh.page.locator("#stage .focuslist button", has_text="小鳥" if kind == "bird" else "紙飛機")
+    assert label.count() == 1
+    fresh.ev(m + ".ask()")
+    fresh.page.wait_for_function("getComputedStyle(document.getElementById('messenger')).display !== 'none'")
+    assert fresh.ev("document.querySelector('#messenger p.say').textContent") == fresh.ev(m + ".text")
+    assert fresh.ev("!document.querySelector('#messenger a.go')"), "no scene to go to: just a line"
+    fresh.page.locator("#messenger button", has_text="好").click()
+    fresh.page.wait_for_function(m + ".state === 'away'")
+    fresh.assert_clean()
+
+
+def test_visitor_kinds_are_mixed_and_birds_come_in_colours(fresh):
+    m = "App.desk.messenger"
+    kinds, roles = set(), set()
+    for _ in range(6):
+        fresh.ev(m + ".arrive()")
+        fresh.page.wait_for_function(m + ".state === 'landed'")
+        kinds.add(fresh.ev(m + ".kind"))
+        if fresh.ev(m + ".kind") == "bird":
+            roles.add(fresh.ev(m + ".owl.parts[0].role"))
+        fresh.ev(m + ".leave()")
+        fresh.page.wait_for_function(m + ".state === 'away'")
+    assert kinds <= {"owl", "bird", "plane"}
+    fresh.ev(m + ".arrive(null, 'bird')"); fresh.page.wait_for_function(m + ".state === 'landed'")
+    assert fresh.ev(m + ".owl.parts[0].role") in ("memory", "alert", "flow", "moe")

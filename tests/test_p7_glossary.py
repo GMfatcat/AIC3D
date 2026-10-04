@@ -18,6 +18,17 @@ def raw(browser, dist_url):
     ctx.close()
 
 
+@pytest.fixture
+def fresh_home(browser, dist_url):
+    ctx = browser.new_context(viewport={"width": 1400, "height": 860})
+    page = ctx.new_page()
+    s = Site(page)
+    page.goto(dist_url)
+    page.wait_for_function("window.App && !App.routing && App.home && App.desk.ready")
+    yield s
+    ctx.close()
+
+
 def _goto_scene(s, hash_, settle=300):
     s.page.evaluate("h => { location.hash = h; }", hash_)
     s.page.wait_for_function("h => App.currentItem && !App.routing && App.currentItem.id === h", arg=hash_)
@@ -199,3 +210,18 @@ def test_book_pages_stack_on_a_phone(phone_site):
     r = phone_site.ev("(() => { const l = document.querySelector('#glossary .page.left').getBoundingClientRect(), rr = document.querySelector('#glossary .page.right').getBoundingClientRect(); return { lw: l.width, rw: rr.width, below: rr.top >= l.bottom - 1 }; })()")
     assert r["lw"] > 300 and r["rw"] > 300 and r["below"], r
     assert phone_site.ev("document.documentElement.scrollWidth") <= 390
+
+
+def test_opening_the_book_from_the_desk_does_not_rebuild_or_fade_the_desk(fresh_home):
+    s = fresh_home
+    before = s.ev("App.desk._st('glossary').group.uuid")
+    s.ev("window.__sw = false; new MutationObserver(() => { if (document.body.classList.contains('is-switching')) window.__sw = true; }).observe(document.body, { attributes: true, attributeFilter: ['class'] })")
+    s.page.locator("#top button", has_text="詞彙").click()
+    s.page.wait_for_function("App.page === 'glossary' && App.glossary.ready")
+    assert s.ev("App.desk._st('glossary').group.uuid") == before, "same desk, the camera just flew over"
+    assert s.ev("window.__sw") is False, "no cross-fade between two desk pages"
+    s.page.locator("#glossary button", has_text="回上一步").click()
+    s.page.wait_for_function("!App.routing && App.home && App.desk.focused === null && App.desk.ready")
+    assert s.ev("App.desk._st('glossary').group.uuid") == before
+    assert s.ev("window.__sw") is False
+    assert s.ev("getComputedStyle(document.querySelector('#landing .land-in')).visibility") == "visible"

@@ -200,5 +200,27 @@ function owl(){
   return { group, parts, slots:[], wings, hit:body, height:1.3, radius:0.5, open(){}, idle(){ return 0; } };
 }
 
-Object.assign(P.deskModels, { building, bricks, scale, suitcase, rack, robot, map, book, frame, owl });
+/* ---------- 路過的小鳥（顏色可選）與紙飛機：飛來停一下，點了說一句話 ---------- */
+function bird(role='memory'){
+  const group = new T.Group(), parts = [];
+  const body = mesh(parts, group, sph(0.26,16,12), role, { pos:[0,0.34,0], scale:[1,0.9,1.25], step:0 });
+  mesh(parts, group, sph(0.16,12,10), 'structure:hot', { pos:[0,0.3,0.14], scale:[1,0.8,0.8], step:0, glow:0.05 }); // 肚子
+  mesh(parts, group, sph(0.19,16,12), role, { pos:[0,0.64,0.14], step:0 }); // 頭
+  [-1,1].forEach(s=> mesh(parts, group, sph(0.035,8,6), 'inactive:dim', { pos:[s*0.08,0.68,0.3], step:0, glow:0 }));
+  mesh(parts, group, cyl(0.0,0.05,0.16,4), 'signal', { pos:[0,0.62,0.36], rot:[Math.PI/2,0,0], step:0 }); // 嘴
+  const wings = [-1,1].map(s=>{ const g = new T.Group(); g.position.set(s*0.2, 0.42, 0); group.add(g); mesh(parts, g, sph(0.2,12,8), role+':dim', { pos:[s*0.16,0,0], scale:[1.3,0.3,0.8], step:0 }); return g; });
+  mesh(parts, group, sph(0.12,10,8), role+':dim', { pos:[0,0.3,-0.3], scale:[1,0.3,1.4], step:0 }); // 尾
+  [-1,1].forEach(s=> mesh(parts, group, box(0.08,0.04,0.14), 'signal', { pos:[s*0.08,0.02,0.06], step:0 })); // 腳
+  return { group, parts, slots:[], wings, hit:body, height:0.85, radius:0.4, open(){}, idle(){ return 0; } };
+}
+function plane(){
+  const group = new T.Group(), parts = []; const tri = (pts)=>{ const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pts.flat(), 3)); g.computeVertexNormals(); return g; };
+  const mat = P.mat('structure:hot', { glow:0.08, extra:{ side:T.DoubleSide } });
+  [[[0,0,0.7],[-0.55,0,-0.45],[0,0,-0.3]], [[0,0,0.7],[0,0,-0.3],[0.55,0,-0.45]], [[0,0,0.7],[0,-0.22,-0.3],[0,0,-0.3]]].forEach(pts=>{ const mm = new T.Mesh(tri(pts), mat.clone()); group.add(mm); parts.push({ mesh:mm, role:'structure:hot', step:0 }); });
+  const hit = new T.Mesh(new T.BoxGeometry(1.1,0.3,1.2), P.mat('structure', { opacity:0 })); hit.material.colorWrite = false; hit.material.depthWrite = false; hit.userData.__sh = 1; hit.castShadow = false; group.add(hit);
+  group.position.y = 0.25;
+  return { group, parts, slots:[], wings:[], hit, height:0.5, radius:0.6, open(){}, idle(){ return 0; } };
+}
+
+Object.assign(P.deskModels, { building, bricks, scale, suitcase, rack, robot, map, book, frame, owl, bird, plane });
 })();
