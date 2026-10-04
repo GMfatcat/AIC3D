@@ -32,16 +32,23 @@ def fresh(browser, dist_url):
 
 def test_landing_shows_when_there_is_no_hash(fresh):
     assert fresh.ev("getComputedStyle(document.getElementById('landing')).display") != "none"
-    assert fresh.ev("document.querySelectorAll('#landing .tour-card').length") == 10
+    assert fresh.ev("document.querySelectorAll('#landing .tour-card').length") == 0, "tours moved onto the route map on the desk"
+    assert fresh.ev("!!document.querySelector('#landing a[href=\"#tab=tours\"]')"), "the landing links to the route map"
     assert fresh.ev("document.querySelectorAll('#landing .role-chip').length") == 8
     assert fresh.ev("!!document.querySelector('#landing a[href=\"#cnn\"]')"), "needs a 'browse all scenes' link"
-    assert fresh.ev("App.root.children.length") > 0, "landing should have a floating 3D composition behind it"
+    assert fresh.ev("App.root.children.length") > 0, "landing should have the desk behind it"
     assert fresh.ev("document.getElementById('ctrl').childElementCount") == 0
     fresh.assert_clean()
 
 
-def test_landing_tour_card_starts_the_tour(fresh):
-    fresh.page.locator("#landing .tour-card").first.click()
+def test_route_map_on_the_desk_starts_a_tour(fresh):
+    fresh.page.locator("#landing a[href=\"#tab=tours\"]").click()
+    fresh.page.wait_for_function("!App.routing && App.home && App.desk.focused === 'tours' && App.desk.ready")
+    assert fresh.ev("document.querySelectorAll('#deskbar .dlist button').length") == 10
+    fresh.page.locator("#deskbar .dlist button").first.click()
+    fresh.page.wait_for_function("App.desk.selected && App.desk.ready")
+    assert "開始路線" in fresh.ev("document.querySelector('#deskbar .dcard a.enter').textContent")
+    fresh.page.locator("#deskbar .dcard a.enter").click()
     fresh.page.wait_for_function("!App.routing && App.currentItem && App.currentItem.id === 'residual'")
     assert fresh.ev("location.hash") == "#tour=arch2026&step=1"
     assert fresh.ev("getComputedStyle(document.getElementById('landing')).display") == "none"

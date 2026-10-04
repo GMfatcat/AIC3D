@@ -11,7 +11,7 @@ const { mat, C } = P;
 function mesh(list, parent, geo, role, o={}){
   const m = new T.Mesh(geo, mat(role, { glow: o.glow ?? 0.18, extra: o.flat ? { flatShading:true } : undefined }));
   if(o.pos) m.position.set(o.pos[0], o.pos[1], o.pos[2]); if(o.rot) m.rotation.set(o.rot[0], o.rot[1], o.rot[2]); if(o.scale) m.scale.set(o.scale[0], o.scale[1], o.scale[2]);
-  parent.add(m); if(list) list.push({ mesh:m, role, step:o.step ?? 1 }); return m;
+  parent.add(m); if(list) list.push({ mesh:m, role, step:o.step ?? 1, idx:o.idx }); return m;
 }
 const lathe = (pts, seg=24) => new T.LatheGeometry(pts.map(([x,y])=>new T.Vector2(x,y)), seg);
 const cyl = (rt, rb, h, seg=20) => new T.CylinderGeometry(rt, rb, h, seg);
@@ -44,14 +44,14 @@ function chess(n){
   for(let i=0;i<n;i++){
     const [kind, col, row] = LAYOUT[i % LAYOUT.length]; const role = ROLE_OF[kind];
     const node = new T.Group(); node.position.set((col-3.5)*S, 0.2, (3.5-row)*S); if(i >= LAYOUT.length) node.position.x += 0.1; group.add(node);
-    const body = mesh(parts, node, geo(kind), role, { glow:0.15, step:i+1 });
+    const body = mesh(parts, node, geo(kind), role, { glow:0.15, step:i+1, idx:i });
     if(kind==='knight'){ // 馬頭：一塊斜放的方塊加耳朵
-      mesh(parts, node, box(0.22, 0.46, 0.3), role, { pos:[0,0.62,0.04], rot:[0.35,0,0], step:i+1 });
-      mesh(parts, node, box(0.22, 0.2, 0.34), role, { pos:[0,0.82,-0.08], rot:[-0.2,0,0], step:i+1 });
-      mesh(parts, node, box(0.06, 0.12, 0.06), role, { pos:[0,0.98,-0.14], step:i+1 });
-    } else if(kind==='king'){ mesh(parts, node, box(0.06,0.26,0.06), role, { pos:[0,1.28,0], step:i+1 }); mesh(parts, node, box(0.18,0.06,0.06), role, { pos:[0,1.32,0], step:i+1 }); }
-    else if(kind==='queen'){ mesh(parts, node, sph(0.07,12,8), role, { pos:[0,1.2,0], step:i+1 }); }
-    else if(kind==='bishop'){ mesh(parts, node, sph(0.05,10,8), role, { pos:[0,1.04,0], step:i+1 }); }
+      mesh(parts, node, box(0.22, 0.46, 0.3), role, { pos:[0,0.62,0.04], rot:[0.35,0,0], step:i+1, idx:i });
+      mesh(parts, node, box(0.22, 0.2, 0.34), role, { pos:[0,0.82,-0.08], rot:[-0.2,0,0], step:i+1, idx:i });
+      mesh(parts, node, box(0.06, 0.12, 0.06), role, { pos:[0,0.98,-0.14], step:i+1, idx:i });
+    } else if(kind==='king'){ mesh(parts, node, box(0.06,0.26,0.06), role, { pos:[0,1.28,0], step:i+1, idx:i }); mesh(parts, node, box(0.18,0.06,0.06), role, { pos:[0,1.32,0], step:i+1, idx:i }); }
+    else if(kind==='queen'){ mesh(parts, node, sph(0.07,12,8), role, { pos:[0,1.2,0], step:i+1, idx:i }); }
+    else if(kind==='bishop'){ mesh(parts, node, sph(0.05,10,8), role, { pos:[0,1.04,0], step:i+1, idx:i }); }
     body.userData.slot = i; slots.push({ hit:body, node, pos:new T.Vector3(node.position.x, node.position.y + (kind==='pawn'?1.0:1.45), node.position.z) });
   }
   group.rotation.y = -0.35; // 斜一點放，看得到整盤
@@ -62,13 +62,13 @@ function chess(n){
 
 /* ---------- 廚師公仔端著一盤菜：訓練。盤上每道菜一個場景 ---------- */
 const DISH = [
-  (p,g,step)=>{ mesh(p,g,cyl(0.22,0.16,0.14),'memory',{pos:[0,0.07,0],step}); mesh(p,g,cyl(0.19,0.19,0.03),'signal',{pos:[0,0.14,0],step,glow:0.3}); }, // 一碗湯
-  (p,g,step)=>{ mesh(p,g,sph(0.2),'signal',{pos:[0,0.14,0],scale:[1,0.72,1],step}); mesh(p,g,sph(0.05,8,6),'alert',{pos:[0,0.3,0],step}); }, // 包子
-  (p,g,step)=>{ mesh(p,g,cyl(0.2,0.2,0.18),'moe',{pos:[0,0.09,0],step}); mesh(p,g,cyl(0.21,0.21,0.04),'structure:hot',{pos:[0,0.19,0],step}); mesh(p,g,sph(0.05,8,6),'alert',{pos:[0,0.26,0],step}); }, // 蛋糕
-  (p,g,step)=>{ mesh(p,g,cyl(0.14,0.14,0.26),'structure:hot',{pos:[0,0.13,0],rot:[Math.PI/2,0,0],step}); mesh(p,g,cyl(0.15,0.15,0.1),'flow',{pos:[0,0.13,0],rot:[Math.PI/2,0,0],step}); }, // 壽司捲
-  (p,g,step)=>{ mesh(p,g,cyl(0.13,0.11,0.24),'flow',{pos:[0,0.12,0],step}); mesh(p,g,new T.TorusGeometry(0.07,0.025,8,14),'flow',{pos:[0.16,0.13,0],step}); }, // 一杯茶
-  (p,g,step)=>{ mesh(p,g,cyl(0.12,0.18,0.2),'state',{pos:[0,0.1,0],step}); mesh(p,g,cyl(0.1,0.1,0.03),'signal',{pos:[0,0.21,0],step,glow:0.3}); }, // 布丁
-  (p,g,step)=>{ mesh(p,g,cyl(0.2,0.14,0.16),'memory',{pos:[0,0.08,0],step}); for(let k=0;k<3;k++) mesh(p,g,sph(0.06,8,6),'alert',{pos:[Math.cos(k*2.1)*0.1,0.18,Math.sin(k*2.1)*0.1],step}); }, // 一碗紅豆
+  (p,g,step,idx)=>{ mesh(p,g,cyl(0.22,0.16,0.14),'memory',{pos:[0,0.07,0],step,idx}); mesh(p,g,cyl(0.19,0.19,0.03),'signal',{pos:[0,0.14,0],step,idx,glow:0.3}); }, // 一碗湯
+  (p,g,step,idx)=>{ mesh(p,g,sph(0.2),'signal',{pos:[0,0.14,0],scale:[1,0.72,1],step,idx}); mesh(p,g,sph(0.05,8,6),'alert',{pos:[0,0.3,0],step,idx}); }, // 包子
+  (p,g,step,idx)=>{ mesh(p,g,cyl(0.2,0.2,0.18),'moe',{pos:[0,0.09,0],step,idx}); mesh(p,g,cyl(0.21,0.21,0.04),'structure:hot',{pos:[0,0.19,0],step,idx}); mesh(p,g,sph(0.05,8,6),'alert',{pos:[0,0.26,0],step,idx}); }, // 蛋糕
+  (p,g,step,idx)=>{ mesh(p,g,cyl(0.14,0.14,0.26),'structure:hot',{pos:[0,0.13,0],rot:[Math.PI/2,0,0],step,idx}); mesh(p,g,cyl(0.15,0.15,0.1),'flow',{pos:[0,0.13,0],rot:[Math.PI/2,0,0],step,idx}); }, // 壽司捲
+  (p,g,step,idx)=>{ mesh(p,g,cyl(0.13,0.11,0.24),'flow',{pos:[0,0.12,0],step,idx}); mesh(p,g,new T.TorusGeometry(0.07,0.025,8,14),'flow',{pos:[0.16,0.13,0],step,idx}); }, // 一杯茶
+  (p,g,step,idx)=>{ mesh(p,g,cyl(0.12,0.18,0.2),'state',{pos:[0,0.1,0],step,idx}); mesh(p,g,cyl(0.1,0.1,0.03),'signal',{pos:[0,0.21,0],step,idx,glow:0.3}); }, // 布丁
+  (p,g,step,idx)=>{ mesh(p,g,cyl(0.2,0.14,0.16),'memory',{pos:[0,0.08,0],step,idx}); for(let k=0;k<3;k++) mesh(p,g,sph(0.06,8,6),'alert',{pos:[Math.cos(k*2.1)*0.1,0.18,Math.sin(k*2.1)*0.1],step,idx}); }, // 一碗紅豆
 ];
 function chef(n){
   const group = new T.Group(), parts = [], slots = []; const st = spread(5, n);
@@ -94,7 +94,7 @@ function chef(n){
   // 盤上的菜：每道一個場景
   const R = n > 1 ? 0.52 : 0; for(let i=0;i<n;i++){
     const a = -Math.PI/2 + i * 2 * Math.PI / n; const node = new T.Group(); node.position.set(Math.cos(a)*R, 0.03, Math.sin(a)*R); tray.add(node);
-    const before = parts.length; DISH[i % DISH.length](parts, node, i+1); const hit = parts[before].mesh; hit.userData.slot = i;
+    const before = parts.length; DISH[i % DISH.length](parts, node, i+1, i); const hit = parts[before].mesh; hit.userData.slot = i;
     slots.push({ hit, node, pos:new T.Vector3(tray.position.x + node.position.x, tray.position.y + 0.42, tray.position.z + node.position.z) });
   }
   group.rotation.y = 0.15;
@@ -110,7 +110,7 @@ function blob(n){
   mesh(parts, group, cyl(0.5,0.6,0.3), 'inactive', { pos:[0,0.15,0], step:1 });
   const roles = ['signal','memory','state','flow','alert','moe'];
   for(let i=0;i<n;i++){ const a = -Math.PI/2 + i * 2 * Math.PI / n; const node = new T.Group(); node.position.set(Math.cos(a)*1.45, 0.2, Math.sin(a)*1.45); group.add(node);
-    const m = mesh(parts, node, sph(0.17,12,8), roles[i % roles.length], { step:i+1 }); m.userData.slot = i;
+    const m = mesh(parts, node, sph(0.17,12,8), roles[i % roles.length], { step:i+1, idx:i }); m.userData.slot = i;
     slots.push({ hit:m, node, pos:new T.Vector3(node.position.x, 0.75, node.position.z) }); }
   return { group, parts, slots, height:1.9, radius:1.8,
     open(t){ slots.forEach((s,i)=>{ s.node.position.y = 0.2 + hop(t, i, n, 0.2); }); },

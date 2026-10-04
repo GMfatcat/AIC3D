@@ -140,7 +140,7 @@ def test_keyboard_activating_a_part_selects_it_then_enters(fresh):
 
 def test_wide_desk_stations_are_keyboard_reachable_and_clickable(fresh):
     btns = fresh.page.locator(FOCUS_BTN)
-    assert btns.count() == 8
+    assert btns.count() == 11, "8 toys + route map + dictionary + frame"
     assert "完整模型" in btns.nth(2).text_content()
     fresh.page.focus(f"{FOCUS_BTN} >> nth=2")
     fresh.page.keyboard.press("Enter")
@@ -244,3 +244,44 @@ def test_new_toys_focus_select_and_enter(fresh, tab):
     fresh.page.locator("#deskbar .dcard a.enter").click()
     fresh.page.wait_for_function("id => !App.routing && App.currentItem && App.currentItem.id === id", arg=first["id"])
     fresh.assert_clean()
+
+
+# ---------- P12c: fixed things on the desk ----------
+
+def test_desk_has_a_dictionary_a_route_map_and_a_picture_frame(fresh):
+    assert fresh.ev("Object.keys(App.desk.fixtures)") == ["tours", "glossary", "about"]
+    assert fresh.ev("Object.keys(App.desk.stations).length") == 8, "fixtures are not stations"
+    assert fresh.ev("App.TABS.map(t => App.desk.stations[t.id].label.el.textContent)") == fresh.ev("App.TABS.map(t => t.label)")
+    assert fresh.ev("Object.values(App.desk.fixtures).map(f => f.label.el.textContent)") == ["導覽路線", "詞彙表", "關於"]
+    btns = fresh.page.locator(FOCUS_BTN)
+    assert btns.count() == 11, "8 toys + 3 fixtures are keyboard reachable"
+    assert fresh.ev("['glossary', 'about'].every(id => App.desk.fixtures[id].parts.every(p => p.k >= 1))"), "the dictionary and the frame are always painted; the map paints per finished tour"
+    fresh.assert_clean()
+
+
+def test_dictionary_opens_the_glossary_and_frame_opens_about(fresh):
+    fresh.page.focus(f"{FOCUS_BTN} >> nth=9")
+    assert "詞彙表" in fresh.page.locator(FOCUS_BTN).nth(9).text_content()
+    fresh.page.keyboard.press("Enter")
+    fresh.page.wait_for_function("!App.routing && App.page === 'glossary'")
+    fresh.goto("home")
+    fresh.page.focus(f"{FOCUS_BTN} >> nth=10")
+    fresh.page.keyboard.press("Enter")
+    fresh.page.wait_for_function("App.about.isOpen()")
+    assert fresh.ev("App.home"), "the about card opens over the desk"
+
+
+def test_route_map_lists_tours_and_paints_completed_ones(fresh):
+    _focus(fresh, "tours")
+    ids = fresh.ev("App.desk.slots.map(s => s.id)")
+    assert ids == fresh.ev("App.tours.map(t => 'tour=' + t.id + '&step=1')")
+    titles = fresh.ev("App.desk.slots.map(s => s.li.textContent)")
+    for t, title in zip(fresh.ev("App.tours.map(t => t.title)"), titles):
+        assert t in title
+    assert "10" in fresh.ev("document.getElementById('deskbar').textContent")
+    assert fresh.ev("App.desk.painted('tours')") == 0
+    fresh.ev("const t = App.tours[0]; App.visited = new Set(t.steps.map(s => s[0])); App.desk.repaint()")
+    fresh.page.wait_for_function("!App.desk.painting")
+    p = fresh.ev("App.desk.painted('tours')")
+    assert 0 < p < fresh.ev("App.desk.parts('tours')"), "finishing one tour paints the map and its pin, not everything"
+    assert re.search(r"1\s*/\s*10", fresh.ev("document.getElementById('deskbar').textContent"))

@@ -180,7 +180,7 @@ const App = {
     let id=location.hash.replace('#','') || 'home';
     if(id==='home'){ this._inTour=false; this.hideTour && this.hideTour(); this._goFull('home'); return; }
     { const gm=id.match(/^(glossary|term=([\w-]+))$/); if(gm){ this._inTour=false; this.hideTour && this.hideTour(); this._goFull('glossary', gm[2]||null); return; } } // 詞彙頁
-    { const tb=id.match(/^tab=(\w+)$/); if(tb && TABS.some(t=>t.id===tb[1])){ this._inTour=false; this.hideTour && this.hideTour(); this._goFull('home', tb[1]); return; } } // 工作桌上聚焦一件物件
+    { const tb=id.match(/^tab=(\w+)$/); if(tb && (TABS.some(t=>t.id===tb[1]) || tb[1]==='tours')){ this._inTour=false; this.hideTour && this.hideTour(); this._goFull('home', tb[1]); return; } } // 工作桌上聚焦一件物件
     const tm=id.match(/^tour=([\w-]+)&step=(\d+)$/);
     if(tm && this.renderTour){ const sid=this.renderTour(tm[1],+tm[2]); if(sid){ id=sid; this._inTour=true; } else { this._inTour=false; } }
     else { this._inTour=false; this.hideTour && this.hideTour(); }
@@ -247,19 +247,18 @@ const App = {
     if(kind==='home'){ this._buildLanding(); this._landingFoot(); } else { this.glossary.render(arg); }
     // 背景：工作桌（開場頁的 3D 目錄，也是詞彙頁的背景）
     this.desk.build(this.root); this.autoSpin=false;
-    this.setCamera({theta:0.3,phi:1.02,zoom:1.0}); this.ctx=null; this._resize(); // 舞台變滿版
+    this.setCamera({theta:0.3,phi:0.95,zoom:1.12}); this.ctx=null; this._resize(); // 舞台變滿版
     this.current={ update:(dt)=>this.desk.update(dt), dispose:()=>this.desk.dispose() };
     this.root.updateMatrixWorld(true); this.fit();
-    if(kind==='home' && !matchMedia('(max-width:900px)').matches){ this._pan(230,0); this.camHome.target.copy(this.cam.target); } // 開場文字在左欄：桌子往右讓開
+    if(kind==='home' && !matchMedia('(max-width:900px)').matches){ this._pan(170,0); this.camHome.target.copy(this.cam.target); } // 開場文字在左欄：桌子往右讓開
     this.desk.focus(kind==='home' ? (arg||null) : null);
   },
   _buildLanding(){ let el=document.getElementById('landing'); if(el.dataset.built) return; el.dataset.built='1';
     const roles=Object.entries(P.ROLE).map(([k,r])=>`<span class="role-chip"><i style="background:${r.base}"></i>${r.label}</span>`).join('');
-    const tours=(this.tours||[]).map(t=>{ const first=catalog.find(x=>x.id===t.steps[0][0]); return `<a class="tour-card" href="#tour=${t.id}&step=1"><b>${t.title}</b><span>${t.steps.length} 步 · 約 ${t.minutes} 分鐘</span><small>從「${first?first.title:t.steps[0][0]}」開始</small></a>`; }).join('');
     el.innerHTML=`<div class="land-in"><h1>AI 概念 3D 教學</h1><p class="lead">${catalog.length} 個互動 3D 場景，每個只回答一個問題：從 CNN 到 Agent，看懂概念，不追數值。</p>
+      <p class="desk-hint">桌上八件玩具就是八個主題。點一件，鏡頭會飛過去；看過的場景越多，它的顏色就越完整。路線圖上有 ${(this.tours||[]).length} 條導覽路線，字典是詞彙表。</p>
+      <div class="land-acts"><a class="btn browse" href="#${catalog[0].id}">直接瀏覽 ${catalog.length} 個場景 →</a> <a class="btn" href="#tab=tours">導覽路線（${(this.tours||[]).length} 條）</a> <a class="btn" href="#glossary">詞彙表</a></div>
       <p class="roles-cap">整站只用八種顏色，每種代表一個角色：</p><div class="roles">${roles}</div>
-      <h2>挑一條路線，按順序看</h2><div class="tours">${tours}</div>
-      <a class="btn browse" href="#${catalog[0].id}">或直接瀏覽 ${catalog.length} 個場景 →</a> <a class="btn" href="#glossary">詞彙表</a>
       <p class="land-foot"><span class="seen btn"></span><button type="button" class="btn">重設看過的紀錄</button></p></div>`;
     el.querySelector('.land-foot button').addEventListener('click',()=>{ this.visited=new Set(); try{ localStorage.removeItem('visited'); localStorage.removeItem('prefs'); }catch(e){} this._landingFoot(); this.desk && this.desk.repaint(); }); },
   /* 開場頁最底下：看過幾個、重設（看過與否只存在這個瀏覽器的 localStorage） */
