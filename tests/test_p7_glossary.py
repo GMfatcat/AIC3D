@@ -26,7 +26,7 @@ def _goto_scene(s, hash_, settle=300):
 
 def _goto_glossary(s, hash_):
     s.page.evaluate("h => { location.hash = h; }", hash_)
-    s.page.wait_for_function("App.page === 'glossary' && !App.routing")
+    s.page.wait_for_function("App.page === 'glossary' && !App.routing && App.glossary.ready")  # the camera flies to the book first
     s.page.wait_for_timeout(200)
 
 
@@ -103,7 +103,7 @@ def test_back_restores_the_scene_and_the_guide_step(site):
     site.ev("App.guide.start(); App.guide.go(2)")
     site.page.wait_for_timeout(300)
     site.page.locator("#guidebar a.term").first.click()
-    site.page.wait_for_function("App.page === 'glossary' && !App.routing")
+    site.page.wait_for_function("App.page === 'glossary' && !App.routing && App.glossary.ready")
     site.page.locator("#glossary button", has_text="回上一步").click()
     site.page.wait_for_function("App.currentItem && App.currentItem.id === 'residual' && !App.routing")
     site.page.wait_for_timeout(400)
@@ -114,7 +114,7 @@ def test_back_restores_the_scene_and_the_guide_step(site):
 def test_back_reopens_the_intro_card_without_starting_autoplay(raw):
     _goto_scene(raw, "cnn")
     raw.page.locator("#intro a.term", has_text="感受野").click()
-    raw.page.wait_for_function("App.page === 'glossary' && !App.routing")
+    raw.page.wait_for_function("App.page === 'glossary' && !App.routing && App.glossary.ready")
     raw.page.locator("#glossary button", has_text="回上一步").click()
     raw.page.wait_for_function("App.currentItem && App.currentItem.id === 'cnn' && !App.routing")
     raw.page.wait_for_timeout(1200)
@@ -142,3 +142,60 @@ def test_landing_glossary_link_seen_count_and_reset_share_the_browse_button_back
     for sel in ("#landing a[href=\"#glossary\"]", "#landing .land-foot .seen", "#landing .land-foot button"):
         assert raw.ev("sel => getComputedStyle(document.querySelector(sel)).backgroundColor", sel) == bg, sel
         assert raw.ev("sel => getComputedStyle(document.querySelector(sel)).borderTopWidth", sel) != "0px", sel
+
+
+# ---------- P13c: the glossary is a book on the desk ----------
+
+def test_glossary_flies_to_the_book_which_opens_into_two_pages(raw):
+    raw.page.evaluate("location.hash = 'glossary'")
+    raw.page.wait_for_function("App.page === 'glossary' && !App.routing")
+    assert not raw.ev("App.glossary.ready"), "the book shows after the camera gets there"
+    raw.page.wait_for_function("App.glossary.ready")
+    assert raw.ev("App.desk.focused") == "glossary"
+    assert raw.ev("App.desk._st('glossary').open") == 1, "the cover is open"
+    assert raw.ev("document.body.classList.contains('book-open')")
+    assert raw.ev("!!document.querySelector('#glossary .book .page.left .gl-list') && !!document.querySelector('#glossary .book .page.right')")
+    assert raw.ev("!!document.querySelector('#glossary .page.right .gl-empty')"), "nothing picked yet: the right page is the empty state"
+    assert raw.ev("App.desk.decorCount()") > 0, "floating pieces decorate the empty page"
+    assert raw.ev("[...document.querySelectorAll('#glossary .gl-list ul')].every(ul => ul.hidden)"), "sections start collapsed"
+    toggles = raw.ev("[...document.querySelectorAll('#glossary .gl-list h3 button')].map(b => b.textContent)")
+    assert len(toggles) >= 8 and all(t.strip().startswith("+") for t in toggles), toggles
+    raw.page.locator("#glossary .gl-list h3 button").first.click()
+    assert raw.ev("document.querySelector('#glossary .gl-list ul').hidden") is False
+    assert raw.ev("document.querySelector('#glossary .gl-list h3 button').getAttribute('aria-expanded')") == "true"
+    assert raw.ev("document.querySelector('#glossary .gl-list h3 button').textContent").strip().startswith("−")
+    raw.page.locator("#glossary .gl-list ul:not([hidden]) li a").first.click()
+    raw.page.wait_for_function("!!document.querySelector('#glossary .page.right .gl-term')")
+    assert raw.ev("location.hash").startswith("#term=")
+    assert not raw.ev("!!document.querySelector('#glossary .gl-empty')")
+    assert raw.ev("App.desk.decorCount()") == 0, "the decoration goes once a term fills the page"
+    assert raw.ev("document.querySelector('#glossary .gl-list li.cur').closest('ul').hidden") is False, "the chosen term's section stays open"
+    raw.assert_clean()
+
+
+def test_glossary_search_opens_only_the_sections_with_matches(raw):
+    _goto_glossary(raw, "glossary")
+    raw.page.fill("#glossary input[type=search]", "KV")
+    raw.page.wait_for_timeout(100)
+    secs = raw.ev("[...document.querySelectorAll('#glossary .gl-list section')].map(s => ({ shown: s.style.display !== 'none', open: !s.querySelector('ul').hidden }))")
+    assert any(x["shown"] for x in secs) and all(x["open"] for x in secs if x["shown"]) and not all(x["shown"] for x in secs)
+    raw.page.fill("#glossary input[type=search]", "")
+    raw.page.wait_for_timeout(100)
+    assert raw.ev("[...document.querySelectorAll('#glossary .gl-list section')].every(s => s.style.display !== 'none' && s.querySelector('ul').hidden)"), "cleared: all sections back, collapsed"
+
+
+def test_escape_on_the_glossary_goes_back(raw):
+    _goto_scene(raw, "mamba")
+    raw.ev("App.intro.enter('free')")
+    raw.page.locator("#top button", has_text="詞彙").click()
+    raw.page.wait_for_function("App.page === 'glossary' && !App.routing && App.glossary.ready")
+    raw.page.keyboard.press("Escape")
+    raw.page.wait_for_function("App.currentItem && App.currentItem.id === 'mamba' && !App.routing")
+
+
+def test_book_pages_stack_on_a_phone(phone_site):
+    phone_site.page.evaluate("location.hash = 'term=moe'")
+    phone_site.page.wait_for_function("App.page === 'glossary' && !App.routing && App.glossary.ready")
+    r = phone_site.ev("(() => { const l = document.querySelector('#glossary .page.left').getBoundingClientRect(), rr = document.querySelector('#glossary .page.right').getBoundingClientRect(); return { lw: l.width, rw: rr.width, below: rr.top >= l.bottom - 1 }; })()")
+    assert r["lw"] > 300 and r["rw"] > 300 and r["below"], r
+    assert phone_site.ev("document.documentElement.scrollWidth") <= 390

@@ -209,7 +209,7 @@ const App = {
     this.canvas.setAttribute('aria-label',`3D 場景：${item.title}。${item.question||''} 文字說明在右側面板。`);
     this.autoSpin = true; this.cam.zoom = 1; this.currentItem=item; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML='';
     const first=!this.visited.has(item.id); this.entered=false; this.enterMode=null; this._enterQ=[]; this.guide && this.guide.clear(); // 進場卡 / 導讀的狀態每頁重來
-    document.body.classList.remove('home','glossary'); this.home=false; this.page='scene'; this._hoverWatch=[]; this._dragTargets=[]; this._clickTargets=[]; this._drag3d=null; this.canvas.style.cursor='';
+    document.body.classList.remove('home','glossary','book-open'); if(this.glossary) this.glossary.ready=false; this.home=false; this.page='scene'; this._hoverWatch=[]; this._dragTargets=[]; this._clickTargets=[]; this._drag3d=null; this.canvas.style.cursor='';
     if(!this.visited.has(item.id)){ this.visited.add(item.id); try{ localStorage.setItem('visited',JSON.stringify([...this.visited])); }catch(e){} document.querySelectorAll('#items a').forEach(a=>{ if(a.getAttribute('href')==='#'+item.id) a.parentElement.classList.add('visited'); }); }
     const def = scenes[item.id];
     this._resize(); this._sideScroll(); // 從開場頁進來時 side / ctrl 欄剛出現：舞台寬度變了，取景前先同步相機 aspect，側欄也才量得到寬度
@@ -244,14 +244,14 @@ const App = {
     document.getElementById('i-title').textContent=''; document.getElementById('i-q').textContent=''; this.canvas.setAttribute('aria-label','開場：漂浮的語意色原件');
     if(this.intro){ if(this.intro.isOpen()) this.intro.close(); this.intro._clearBanner(); document.getElementById('i-actions').innerHTML=''; } this.guide && this.guide.clear();
     this.currentItem=null; this.keyFocus=null; if(this._focusList) this._focusList.innerHTML=''; this.page=kind; this.home=kind==='home'; document.body.classList.remove('home','glossary'); document.body.classList.add(kind); this._hoverWatch=[]; this._dragTargets=[]; this._clickTargets=[];
-    if(kind==='home'){ this._buildLanding(); this._landingFoot(); } else { this.glossary.render(arg); }
+    if(kind==='home'){ this._buildLanding(); this._landingFoot(); } else { this.glossary.ready=false; document.body.classList.remove('book-open'); document.getElementById('glossary').innerHTML=''; } // 詞彙頁：等鏡頭飛到字典、翻開之後才畫
     // 背景：工作桌（開場頁的 3D 目錄，也是詞彙頁的背景）
     this.desk.build(this.root); this.autoSpin=false;
     this.setCamera({theta:0.3,phi:0.95,zoom:1.12}); this.ctx=null; this._resize(); // 舞台變滿版
     this.current={ update:(dt)=>this.desk.update(dt), dispose:()=>this.desk.dispose() };
     this.root.updateMatrixWorld(true); this.fit();
     if(kind==='home' && !matchMedia('(max-width:900px)').matches){ this._pan(170,0); this.camHome.target.copy(this.cam.target); } // 開場文字在左欄：桌子往右讓開
-    this.desk.focus(kind==='home' ? (arg||null) : null);
+    if(kind==='home') this.desk.focus(arg||null); else this.desk.focus('glossary', ()=>this.glossary.render(arg));
   },
   _buildLanding(){ let el=document.getElementById('landing'); if(el.dataset.built) return; el.dataset.built='1';
     const roles=Object.entries(P.ROLE).map(([k,r])=>`<span class="role-chip"><i style="background:${r.base}"></i>${r.label}</span>`).join('');

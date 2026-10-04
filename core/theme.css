@@ -189,16 +189,24 @@ a.term{color:inherit;text-decoration:none;border-bottom:1px dotted var(--signal)
 #glossbtn{margin-left:auto;margin-right:8px;white-space:nowrap;} #glossbtn + #tourbtn{margin-left:0;}
 /* 詞彙頁 */
 #glossary{position:absolute;inset:0;display:none;overflow:auto;pointer-events:none;} body.glossary #glossary{display:block;}
-#glossary .gl-in{pointer-events:auto;max-width:760px;margin:0 auto;padding:clamp(20px,5vh,48px) 24px 60px;}
-#glossary .gl-head{display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;} #glossary .gl-head h1{margin:0;font-size:22px;flex:1;text-shadow:0 2px 12px rgba(0,0,0,.6);}
-#glossary .gl-head input{font:inherit;font-size:13px;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:6px 14px;width:min(260px,100%);backdrop-filter:blur(8px);} #glossary .gl-head input:focus-visible{outline:2px solid var(--signal);}
-#glossary .gl-term{background:var(--panel);border:1px solid var(--signal);border-radius:14px;padding:18px 22px 16px;margin-bottom:26px;backdrop-filter:blur(10px);box-shadow:0 12px 32px rgba(0,0,0,.4);}
+/* 翻開的書：左右兩頁。鏡頭飛到字典並翻開後才淡入 */
+#glossary .book{pointer-events:auto;display:grid;grid-template-columns:1fr 1fr;max-width:1060px;margin:0 auto;padding:clamp(14px,3vh,36px) 24px 40px;opacity:0;transform:translateY(10px);transition:opacity .45s,transform .45s;} body.book-open #glossary .book{opacity:1;transform:none;}
+#glossary .page{min-height:calc(100vh - 150px);padding:22px 24px 28px;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(10px);min-width:0;}
+#glossary .page.left{border-radius:14px 3px 3px 14px;box-shadow:inset -22px 0 26px -22px rgba(0,0,0,.65);}
+#glossary .page.right{border-radius:3px 14px 14px 3px;border-left:0;box-shadow:inset 22px 0 26px -22px rgba(0,0,0,.65);}
+#glossary .page.right.empty{background:rgba(21,29,44,.3);backdrop-filter:none;} /* 空頁半透明：看得到後面漂浮的小東西 */
+#glossary .gl-empty{height:100%;min-height:50vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;color:var(--fg2);} #glossary .gl-empty p{margin:0;font-size:15px;color:var(--fg);background:rgba(9,14,23,.6);padding:6px 14px;border-radius:999px;} #glossary .gl-empty small{font-family:var(--mono);font-size:11.5px;color:var(--fg2);background:rgba(9,14,23,.6);padding:3px 10px;border-radius:999px;}
+#glossary .gl-head{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;} #glossary .gl-head h1{margin:0;font-size:22px;flex:1;}
+#glossary input[type=search]{font:inherit;font-size:13px;background:var(--bg2);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:7px 14px;width:100%;margin-bottom:10px;} #glossary input[type=search]:focus-visible{outline:2px solid var(--signal);}
 #glossary .gl-term small{font-family:var(--mono);font-size:11.5px;color:var(--fg3);} #glossary .gl-term h2{margin:4px 0 2px;font-size:24px;} #glossary .gl-term .aka{margin:0 0 8px;font-size:12px;color:var(--fg3);}
 #glossary .gl-term .short{margin:0 0 10px;font-size:15px;color:var(--fg);} #glossary .gl-term .body{font-size:13.5px;line-height:1.65;color:var(--fg2);}
 #glossary .gl-term .see{margin-top:14px;font-size:12.5px;color:var(--fg3);display:flex;flex-wrap:wrap;gap:6px;align-items:center;} #glossary .chip{font-size:12px;color:var(--fg);background:var(--bg3);border:1px solid var(--line);border-radius:999px;padding:2px 10px;text-decoration:none;} #glossary .chip:hover{border-color:var(--signal);}
-#glossary .gl-list h3{font-size:12.5px;font-weight:500;color:var(--fg3);margin:22px 0 8px;} #glossary .gl-list ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px;}
-#glossary .gl-list a{display:flex;flex-direction:column;gap:2px;padding:9px 12px;background:rgba(21,29,44,.7);border:1px solid var(--line);border-radius:10px;color:var(--fg);text-decoration:none;backdrop-filter:blur(6px);} #glossary .gl-list a:hover,#glossary .gl-list li.cur a{border-color:var(--signal);}
+#glossary .gl-list h3{margin:2px 0 0;} #glossary .gl-list h3 button{appearance:none;border:0;background:transparent;color:var(--fg2);font:inherit;font-size:13.5px;display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:7px 8px;border-radius:7px;cursor:pointer;}
+#glossary .gl-list h3 button:hover,#glossary .gl-list h3 button[aria-expanded=true]{background:var(--bg3);color:var(--fg);} #glossary .gl-list h3 button:focus-visible{outline:2px solid var(--signal);outline-offset:-2px;} #glossary .gl-list h3 i{font-style:normal;font-family:var(--mono);width:12px;color:var(--signal);} #glossary .gl-list h3 span{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--fg3);}
+#glossary .gl-list ul{list-style:none;margin:2px 0 8px;padding:0 0 0 20px;display:flex;flex-direction:column;gap:3px;} #glossary .gl-list ul[hidden]{display:none;} /* 作者樣式的 display 會蓋掉 hidden，要補回來 */
+#glossary .gl-list a{display:flex;flex-direction:column;gap:1px;padding:6px 10px;border-radius:8px;color:var(--fg);text-decoration:none;} #glossary .gl-list a:hover,#glossary .gl-list li.cur a{background:var(--bg3);} #glossary .gl-list li.cur a{box-shadow:inset 2px 0 0 var(--signal);}
 #glossary .gl-list b{font-size:13.5px;font-weight:600;} #glossary .gl-list span{font-size:12px;color:var(--fg3);}
+@media (max-width:900px){ #glossary .book{grid-template-columns:1fr;padding:12px 12px 30px;} #glossary .page{min-height:0;padding:16px 14px 20px;} #glossary .page.left{border-radius:14px 14px 3px 3px;box-shadow:none;} #glossary .page.right{border-radius:3px 3px 14px 14px;border-left:1px solid var(--line);border-top:0;box-shadow:none;} #glossary .gl-empty{min-height:28vh;} }
 #landing .land-foot{margin:36px 0 0;display:flex;align-items:center;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--fg3);} #landing .land-foot .btn{font-size:12px;padding:3px 9px;} #landing .land-foot .seen{cursor:default;color:var(--fg2);} #landing .land-foot .seen:empty{display:none;}
 @media (max-width:900px){
   body{grid-template-columns:1fr;grid-template-rows:auto auto 1fr auto;grid-template-areas:"top" "side" "stage" "ctrl";}

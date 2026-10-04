@@ -161,15 +161,18 @@ function map(n){
     open(t){ slots.forEach((s,i)=>{ s.node.position.y = 0.04 + hop(t, i, n, 0.25); }); }, idle(){ return 0; } };
 }
 function book(){
-  const group = new T.Group(), parts = [];
-  mesh(parts, group, box(1.3,0.08,1.7), 'alert', { pos:[0,0.04,0], step:0 });
-  mesh(parts, group, box(1.22,0.34,1.62), 'structure:hot', { pos:[0.04,0.25,0], step:0, glow:0.05 }); // 書頁
-  mesh(parts, group, box(1.3,0.08,1.7), 'alert', { pos:[0,0.46,0], step:0 });
-  mesh(parts, group, box(0.1,0.5,1.7), 'alert', { pos:[-0.62,0.25,0], step:0 }); // 書背
-  mesh(parts, group, box(0.7,0.012,0.45), 'signal', { pos:[0.05,0.505,0.2], step:0, glow:0.3 }); // 封面標籤
-  mesh(parts, group, box(0.08,0.012,0.3), 'structure:hot', { pos:[0.3,0.505,-0.62], step:0 }); // 書籤
+  const group = new T.Group(), parts = []; const W = 1.3, D = 1.7, H = 0.42;
+  mesh(parts, group, box(W,0.08,D), 'alert', { pos:[0,0.04,0], step:0 }); // 底封面
+  mesh(parts, group, box(0.1,H+0.08,D), 'alert', { pos:[-W/2-0.03,(H+0.08)/2,0], step:0 }); // 書背
+  mesh(parts, group, box(W-0.1,H-0.08,D-0.08), 'structure:hot', { pos:[0.03,0.08+(H-0.08)/2,0], step:0, glow:0.05 }); // 右半書頁（翻開後留在右邊）
+  const cover = new T.Group(); cover.position.set(-W/2, H+0.04, 0); group.add(cover); // 上封面：樞軸在書背上緣，翻開時連左半書頁一起過去
+  mesh(parts, cover, box(W,0.08,D), 'alert', { pos:[W/2,0,0], step:0 });
+  mesh(parts, cover, box(0.7,0.012,0.45), 'signal', { pos:[W/2+0.05,0.046,0.2], step:0, glow:0.3 }); // 封面標籤
+  mesh(parts, cover, box(0.08,0.012,0.3), 'structure:hot', { pos:[W/2+0.3,0.046,-0.62], step:0 }); // 書籤
+  mesh(parts, cover, box(W-0.12,0.08,D-0.08), 'structure:hot', { pos:[W/2,-0.1,0], step:0, glow:0.05 }); // 左半書頁
   group.rotation.y = 0.25;
-  return { group, parts, slots:[], height:0.6, radius:1.1, open(){}, idle(){ return 0; } };
+  return { group, parts, slots:[], height:0.6, radius:1.1, view:{ phi:0.5, dist:5.6, ty:0.25, tx:-0.6, center:true },
+    open(t){ cover.rotation.z = t * 3.05; }, idle(){ return 0; } };
 }
 function frame(){
   const group = new T.Group(), parts = []; const f = new T.Group(); f.position.set(0,0.65,0); f.rotation.x = -0.2; f.rotation.y = 0.45; group.add(f); // 稍微轉向鏡頭那一側

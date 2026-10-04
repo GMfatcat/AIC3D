@@ -45,5 +45,5 @@ const build = desk.build, dispose = desk.dispose, update = desk.update, focus = 
 desk.build = function(root){ build.call(this, root); messenger.init(root); };
 desk.dispose = function(){ messenger._hide(); messenger.owl = null; messenger.state = 'away'; dispose.call(this); };
 desk.update = function(dt){ update.call(this, dt); messenger.update(dt); };
-desk.focus = function(id){ if(id && messenger.state !== 'away') messenger.leave(); focus.call(this, id); };
+desk.focus = function(id, cb){ if(id && messenger.state !== "away") messenger.leave(); focus.call(this, id, cb); };
 })();

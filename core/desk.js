@@ -10,7 +10,7 @@ const NAME = { building:'紙模型小樓', bricks:'一盒積木', chess:'西洋�
 const POS = [[-8.4,-3.0],[-2.8,-3.0],[2.8,-3.0],[8.4,-3.0],[-8.4,3.2],[-2.8,3.2],[2.8,3.2],[8.4,3.2]];
 const FIXTURES = [
   { id:'tours', kind:'map', name:'導覽路線', pos:[12.7, 4.0], noun:'條路線', verb:'走完', enter:'開始路線 →' },
-  { id:'glossary', kind:'book', name:'詞彙表', pos:[12.7, -0.9], go:()=>{ location.hash = 'glossary'; } },
+  { id:'glossary', kind:'book', name:'詞彙表', pos:[12.7, -0.9], go:()=>{ location.hash = 'glossary'; }, silent:true }, // 字典：詞彙頁會飛過來把它翻開，面板由 glossary.js 畫
   { id:'about', kind:'frame', name:'關於', pos:[12.7, -5.3], panel:()=>App.about.html() }, // 相框：飛過去，內容顯示在面板
 ];
 const WIDE = { theta:0.3, phi:0.95 };
@@ -66,7 +66,7 @@ const desk = {
     el.innerHTML = `<span>桌上的東西都可以點：八件玩具是八個主題，路線圖是導覽，字典是詞彙表。看過的場景越多，玩具的顏色越完整。</span><button type="button" class="btn" aria-label="關閉提示">×</button>`;
     el.querySelector('button').addEventListener('click', ()=>this._hintDone()); el.classList.add('on'); },
   _hintDone(){ const el = document.getElementById('deskhint'); if(!el || !el.classList.contains('on')) return; el.classList.remove('on'); el.innerHTML = ''; try{ localStorage.setItem('deskhint', '1'); }catch(e){} },
-  dispose(){ removeEventListener('keydown', this._key); this._unselect(); this._known = {}; this._all().forEach(st=>{ this._known[st.id] = st.visited(); }); this._anims = []; this.slots = []; this.focused = null; this.ready = true; document.body.classList.remove('desk-focus'); this._bar(null); },
+  dispose(){ removeEventListener('keydown', this._key); this._unselect(); this._decor = []; this._known = {}; this._all().forEach(st=>{ this._known[st.id] = st.visited(); }); this._anims = []; this.slots = []; this.focused = null; this.ready = true; document.body.classList.remove('desk-focus'); this._bar(null); },
 
   /* ---------- 上色：零件要嘛對應某個場景（idx：看過它就上色），要嘛是本體（step：看過 step 個才上色）。新上色的一塊塊補間；退回灰土是立即的 ---------- */
   _want(st, p, v, exact){ if(p.idx !== undefined) return (exact ? st.seenIdx(p.idx) : v > p.idx) ? 1 : 0; return v >= p.step ? 1 : 0; }, // 從上次離開時的數量推回去時只能用數量
@@ -82,19 +82,20 @@ const desk = {
   _apply(p){ const m = p.mesh.material; m.color.copy(p.clay).lerp(p.col, p.k); m.emissive.copy(m.color); m.emissiveIntensity = 0.04 + 0.2 * p.k; m.roughness = 0.9 - 0.35 * p.k; m.metalness = 0.12 * p.k; },
 
   /* ---------- 聚焦一件 / 回全景 ---------- */
-  focus(id){
-    const target = id && this._st(id) && (this._st(id).model.slots.length || this._st(id).panel) ? id : null; // 有零件的玩具、或有面板的固定物（相框）
+  focus(id, cb){
+    const target = id && this._st(id) && (this._st(id).model.slots.length || this._st(id).panel || this._st(id).silent) ? id : null; // 有零件的玩具、有面板的相框、或交給別人畫面板的字典
     const prev = this.focused; const first = this._first; this._first = false;
     if(target === prev && !first) return;
     this.focused = target; this.ready = false; this._clearSlots(); App.autoSpin = false; if(target) this._hintDone();
     document.querySelectorAll('#tabs button').forEach(b=>{ const on = b.dataset.tab === target; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
     document.body.classList.toggle('desk-focus', !!target);
     for(const st of this._all()){ st.label.material.opacity = (!target || st.id === target) ? 1 : 0.25; if(st.id !== target && st.open > 0){ Motion.tween(st, { open:0 }, { ms:300, onUpdate:()=>st.model.open(st.open) }); } }
-    const done = ()=>{ this.ready = true; };
+    const done = ()=>{ this.ready = true; cb && cb(); };
     if(!target){ this._bar(null); this._setWide(); const ms = first ? 0 : FLY_MS;
       if(App.camHome) App.flyTo(App.camHome, ms); Motion.tween({ t:0 }, { t:1 }, { ms, onDone:done }); return; }
-    const st = this._st(target); this._bar(st);
-    if(st.panel){ this._hover.set([]); this._click.set([]); } // 面板型：沒有零件可點
+    const st = this._st(target); this._bar(st.silent ? null : st);
+    if(st.panel || st.silent){ this._hover.set([]); this._click.set([]); } // 面板型 / 字典：沒有零件可點
+    if(st.silent) this.decor(true);
     // 場景 = 零件：每個 slot 一個可點的 hit，左上角列一份清單。點零件或清單 → 鏡頭靠近它、出現名字與「進入」鈕；再點一次才進場景
     const items = st.items(); const ol = document.querySelector('#deskbar ol');
     st.model.slots.forEach((s, i)=>{ const it = items[i]; if(!it) return; const seen = st.seenIdx(i);
@@ -104,9 +105,9 @@ const desk = {
       li.addEventListener('pointerenter', ()=>this._hoverCb(s.hit)); li.addEventListener('pointerleave', ()=>this._hoverCb(null)); });
     const hits = this.slots.map(s=>s.hit); this._hover.set(hits); this._click.set(hits);
     // 鏡頭：對準物件（模型可以指定看哪裡、多遠、多高），從物件所在的那一側看過去
-    const v = st.model.view || {}; const c = new T.Vector3(st.group.position.x, v.ty ?? (st.model.height * 0.5 + 0.1), st.group.position.z + (v.tz || 0));
+    const v = st.model.view || {}; const c = new T.Vector3(st.group.position.x + (v.tx || 0), v.ty ?? (st.model.height * 0.5 + 0.1), st.group.position.z + (v.tz || 0));
     const mobile = matchMedia('(max-width:900px)').matches; const dist = (v.dist || Math.max(6, st.model.radius * 3.6)) * (mobile ? 1.25 : 1); const side = st.group.position.x < 0 ? -0.18 : 0.18; const theta = WIDE.theta + side; // 手機畫面窄，退遠一點
-    if(!mobile) c.addScaledVector(new T.Vector3(Math.cos(theta), 0, -Math.sin(theta)), -dist * 0.16); // 桌機：左上角有清單，物件往右讓一點
+    if(!mobile && !v.center) c.addScaledVector(new T.Vector3(Math.cos(theta), 0, -Math.sin(theta)), -dist * 0.16); // 桌機：左上角有清單，物件往右讓一點
     st.cam = { theta, phi: v.phi || 1.05, dist, target: c }; App.flyTo(st.cam, FLY_MS);
     Motion.tween(st, { open:1 }, { ms: FLY_MS + 300, ease:'inOut', onUpdate:()=>st.model.open(st.open), onDone:done });
   },
@@ -134,7 +135,14 @@ const desk = {
     const card = document.querySelector('#deskbar .dcard'); if(card){ card.innerHTML = ''; card.classList.remove('on'); }
     if(fly){ const st = this._st(this.focused); this.ready = false; App.flyTo(st.cam, FLY_MS * 0.7); Motion.tween({ t:0 }, { t:1 }, { ms: FLY_MS * 0.7, onDone:()=>{ this.ready = true; } }); } },
   _setWide(){ const list = this.messenger && this.messenger.hit() ? [...this._wideHits, this.messenger.hit()] : this._wideHits; this._hover.set(list); this._click.set(list); }, // 全景可點的東西：八件玩具、三件固定物、停在桌上的信使
-  _clearSlots(){ this._unselect(); this.slots.forEach(s=>{ s.node.userData.lift = 0; }); this.slots = []; },
+  _clearSlots(){ this._unselect(); this.slots.forEach(s=>{ s.node.userData.lift = 0; }); this.slots = []; this.decor(false); },
+  /* 翻開的字典上方漂著幾個語意色小東西，點了詞就收掉 */
+  decor(on){ const st = this.focused && this._st(this.focused); if(!on || !st){ (this._decor||[]).forEach(o=>P.drop(o.mesh)); this._decor = []; return; } if(this._decor && this._decor.length) return;
+    const roles = Object.keys(P.ROLE); let seed = 7; const rnd = ()=>{ seed = (seed*9301+49297)%233280; return seed/233280; }; this._decor = [];
+    for(let i=0;i<12;i++){ const kind = i%3; const geo = kind===0 ? new T.BoxGeometry(0.26,0.26,0.26) : kind===1 ? new T.SphereGeometry(0.16,16,12) : new T.CylinderGeometry(0.09,0.09,0.4,12);
+      const mesh = new T.Mesh(geo, P.mat(roles[i%roles.length], { glow:0.4 })); mesh.position.set((rnd()-0.5)*3.2, 1.0 + rnd()*1.6, (rnd()-0.5)*3.0); mesh.rotation.set(rnd()*3, rnd()*3, rnd()*3); st.group.add(mesh);
+      this._decor.push({ mesh, y:mesh.position.y, p:rnd()*6.28, s:0.5+rnd()*0.6 }); } },
+  decorCount(){ return (this._decor||[]).length; },
   _hoverCb(h){
     for(const st of this._all()){ const on = !this.focused && h === st.hit; if(on === st.hov) continue; st.hov = on; Motion.tween(st, { lift: on ? 1 : 0 }, { ms:260 }); st.label.el.classList.toggle('hot', on); }
     for(const s of this.slots){ const on = s.hit === h; if(on === !!s.on) continue; s.on = on; s.li.classList.toggle('hot', on); s.node.userData.lift = (on || this.selected === s) ? 1 : 0; } },
@@ -149,6 +157,7 @@ const desk = {
   /* ---------- 每幀：待機微動作、hover 抬起、上色補間、全景時鏡頭慢慢左右擺 ---------- */
   update(dt){ this._t += dt; const t = this._t; const rm = App.reduceMotion;
     for(const st of this._all()){ const idle = rm ? 0 : (st.model.idle(t) || 0); st.model.group.position.y = (st.coaster ? 0.1 : 0) + st.lift * 0.3 + idle; }
+    for(const o of (this._decor||[])){ if(rm) continue; o.mesh.position.y = o.y + Math.sin(t*o.s + o.p)*0.18; o.mesh.rotation.y += dt*0.4; o.mesh.rotation.x += dt*0.15; }
     for(const s of this.slots){ const want = s.node.userData.lift || 0; const cur = s.node.userData.liftCur || 0; const nx = cur + (want - cur) * Math.min(1, dt * 10); s.node.userData.liftCur = nx; s.node.scale.setScalar(1 + nx * 0.18); }
     for(let i=this._anims.length-1;i>=0;i--){ const a = this._anims[i]; if(a.delay > 0){ a.delay -= dt; continue; } a.t = Math.min(1, a.t + dt * 1000 / PAINT_MS); const e = 1 - Math.pow(1 - a.t, 3); a.p.k = a.to ? e : 1 - e; this._apply(a.p); if(a.t >= 1){ a.p.k = a.to; this._apply(a.p); this._anims.splice(i, 1); } }
     if(!this.focused && this.ready && !App.dragging && !rm && App.home){ const s = Math.sin(t * 0.18) * 0.09; App.cam.theta += s - this._sway; this._sway = s; App._placeCamera(); }

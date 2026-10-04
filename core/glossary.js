@@ -159,17 +159,24 @@ document.addEventListener('click',e=>{ const a=e.target.closest('a.term'); if(a)
 const tabLabel = id => (App.TABS.find(x=>x.id===id)||{}).label||'';
 const glossary = {
   terms:T, byId,
+  ready:false,
+  /* 翻開的書：左頁目錄（分頁為章，+ 展開）與搜尋，右頁是點到的詞；還沒點就是半透明的空頁，後面漂著小東西 */
   render(termId){
     const el=document.getElementById('glossary'); const t=termId?byId[termId]:null;
     const termHtml = t ? `<section class="gl-term"><small>${tabLabel(t.tab)}</small><h2>${t.title}</h2>${t.aka.filter(a=>a!==t.title).length?`<p class="aka">也寫成：${t.aka.filter(a=>a!==t.title).join('、')}</p>`:''}<p class="short">${t.short}</p><div class="body">${App.termify(t.body,{exclude:t.id})}</div>
-        <div class="see">在這幾頁看得到：${t.see.map(id=>{ const it=App.catalog.find(x=>x.id===id); return it?`<a class="chip" href="#${id}">${it.title}</a>`:''; }).join('')}</div></section>` : '';
+        <div class="see">在這幾頁看得到：${t.see.map(id=>{ const it=App.catalog.find(x=>x.id===id); return it?`<a class="chip" href="#${id}">${it.title}</a>`:''; }).join('')}</div></section>`
+      : `<div class="gl-empty"><p>從左頁的目錄挑一個詞，或直接搜尋。</p><small>${T.length} 個詞 · 說明文字裡帶虛線的詞也都能點進來</small></div>`;
     const groups=App.TABS.map(tab=>({tab, items:T.filter(x=>x.tab===tab.id)})).filter(g=>g.items.length);
-    el.innerHTML=`<div class="gl-in"><div class="gl-head"><button type="button" class="btn" data-act="back">← 回上一步</button><h1>詞彙表</h1><input type="search" placeholder="搜尋詞彙…" aria-label="搜尋詞彙"></div>
-      ${termHtml}
-      <div class="gl-list">${groups.map(g=>`<h3>${g.tab.label}</h3><ul>${g.items.map(x=>`<li data-k="${(x.title+' '+x.aka.join(' ')+' '+x.short).toLowerCase()}"${t&&x.id===t.id?' class="cur"':''}><a href="#term=${x.id}"><b>${x.title}</b><span>${x.short}</span></a></li>`).join('')}</ul>`).join('')}</div></div>`;
+    el.innerHTML=`<div class="book"><div class="page left"><div class="gl-head"><button type="button" class="btn" data-act="back">← 回上一步</button><h1>詞彙表</h1></div><input type="search" placeholder="搜尋詞彙…" aria-label="搜尋詞彙">
+      <div class="gl-list">${groups.map(g=>{ const open=!!(t&&t.tab===g.tab.id); return `<section class="gl-sec" data-tab="${g.tab.id}"><h3><button type="button" aria-expanded="${open}"><i>${open?'−':'+'}</i>${g.tab.label}<span>${g.items.length}</span></button></h3><ul${open?'':' hidden'}>${g.items.map(x=>`<li data-k="${(x.title+' '+x.aka.join(' ')+' '+x.short).toLowerCase()}"${t&&x.id===t.id?' class="cur"':''}><a href="#term=${x.id}"><b>${x.title}</b><span>${x.short}</span></a></li>`).join('')}</ul></section>`; }).join('')}</div></div>
+      <div class="page right${t?'':' empty'}">${termHtml}</div></div>`;
     el.querySelector('[data-act=back]').addEventListener('click',()=>this.back());
-    const q=el.querySelector('input'); q.addEventListener('input',()=>{ const k=q.value.trim().toLowerCase(); el.querySelectorAll('.gl-list li').forEach(li=>{ li.style.display=!k||li.dataset.k.includes(k)?'':'none'; }); el.querySelectorAll('.gl-list h3').forEach(h=>{ const ul=h.nextElementSibling; h.style.display=[...ul.children].some(li=>li.style.display!=='none')?'':'none'; }); });
-    el.scrollTop=0;
+    const setOpen=(sec,open)=>{ const b=sec.querySelector('h3 button'); sec.querySelector('ul').hidden=!open; b.setAttribute('aria-expanded',String(open)); b.querySelector('i').textContent=open?'−':'+'; };
+    el.querySelectorAll('.gl-sec').forEach(sec=>{ sec.querySelector('h3 button').addEventListener('click',()=>setOpen(sec, sec.querySelector('ul').hidden)); });
+    const q=el.querySelector('input'); q.addEventListener('input',()=>{ const k=q.value.trim().toLowerCase();
+      el.querySelectorAll('.gl-sec').forEach(sec=>{ let any=false; sec.querySelectorAll('li').forEach(li=>{ const hit=!k||li.dataset.k.includes(k); li.style.display=hit?'':'none'; any=any||hit; });
+        sec.style.display=any?'':'none'; setOpen(sec, k ? any : !!(t && sec.dataset.tab===t.tab)); }); });
+    el.scrollTop=0; this.ready=true; document.body.classList.add('book-open'); App.desk && App.desk.decor(!t);
   },
   /* 回到點詞的地方：同一頁、同一導讀步、卡片若開著就再開；沒有紀錄就回上一頁或開場頁 */
   back(){
@@ -185,4 +192,5 @@ App.glossary = glossary;
 /* 頂欄的「詞彙」鈕；開場頁的入口在 app.js 的 landing */
 const btn=document.createElement('button'); btn.type='button'; btn.className='btn'; btn.id='glossbtn'; btn.textContent='詞彙'; btn.addEventListener('click',()=>{ remember(); location.hash='glossary'; });
 const top=document.getElementById('top'); top.insertBefore(btn, document.getElementById('tourbtn'));
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && App.page==='glossary' && glossary.ready && !e.target.closest('input')){ e.preventDefault(); glossary.back(); } }); // 書頁上按 Esc = 回上一步
 })();
