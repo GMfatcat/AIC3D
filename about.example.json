@@ -1,0 +1,17 @@
+{
+  "_說明": "頂欄「關於」鈕顯示的內容。title / description 可以改；links 每筆：name（顯示名稱）、url、type（可省略，會依網址自動判斷）。type 可用：web、git、youtube、x、instagram、threads。離線單檔版在 build 時把這個檔併進 index.html；用靜態伺服器時會改讀同目錄的 about.json，改完不用重新 build。",
+  "title": "AI 概念 3D 教學",
+  "description": [
+    "一個離線、單一 HTML 檔的互動 3D 教學網站：每個場景只回答一個問題，從 CNN、Transformer、量化、推論基礎設施到 Agent 與 RAG。",
+    "整站只用八種語意顏色；每頁有進場卡、逐步導讀、「怎麼玩」三行，說明文字裡的專有名詞可以點進詞彙表再回來。"
+  ],
+  "links": [
+    {"name": "專案原始碼（GitHub）", "url": "https://github.com/GMfatcat/AIC3D", "type": "git"},
+    {"name": "範例：自架 Gitea", "url": "https://gitea.io/"},
+    {"name": "範例：YouTube 頻道", "url": "https://www.youtube.com/"},
+    {"name": "範例：X", "url": "https://x.com/"},
+    {"name": "範例：Instagram", "url": "https://www.instagram.com/"},
+    {"name": "範例：Threads", "url": "https://www.threads.net/"},
+    {"name": "範例：個人網站", "url": "https://example.org/"}
+  ]
+}

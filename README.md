@@ -94,7 +94,7 @@ rm -rf ../site/* && cp -r dist/* ../site/ && (cd ../site && git add -A && git co
 
 ### 可以調的東西
 
-- **關於 / 外部連結**：改根目錄 `about.json`（name / url / type）。用 http(s) 時頁面會即時讀取同目錄的 `about.json`；`file://` 單檔版則用 build 時內嵌的那份。
+- **關於 / 外部連結**：改根目錄 `about.json`（name / url / type；各種 type 的範例在 `about.example.json`）。用 http(s) 時頁面會即時讀取同目錄的 `about.json`；`file://` 單檔版則用 build 時內嵌的那份。
 - **背景音樂**：`vendor/` 裡任何一個 `.mp3`，build 會複製成 `dist/music.mp3`。拿掉那個檔就沒有音樂，頂欄的 ♪ 鈕會自己隱藏。
 - **字型改用 Google Fonts**：`python build.py --cdn` → `dist-cdn/`，不帶本機字型（部署變小，但多一個外部請求）。
 

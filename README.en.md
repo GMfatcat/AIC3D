@@ -92,7 +92,7 @@ Then Settings → Pages → Source: **Deploy from a branch**, branch `gh-pages`.
 
 ### Things you can change
 
-- **About / external links**: edit `about.json` in the project root (name / url / type). Over http(s) the page reads `about.json` next to it at runtime; the `file://` single-file build uses the copy embedded at build time.
+- **About / external links**: edit `about.json` in the project root (name / url / type; `about.example.json` shows every link type). Over http(s) the page reads `about.json` next to it at runtime; the `file://` single-file build uses the copy embedded at build time.
 - **Background music**: any `.mp3` in `vendor/` is copied to `dist/music.mp3` by the build. Remove the file and there is no music; the ♪ button hides itself.
 - **Google Fonts instead of local fonts**: `python build.py --cdn` → `dist-cdn/` without the local font files (smaller deploy, one external request).
 
