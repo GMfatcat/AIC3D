@@ -6,7 +6,7 @@
     "整站只用八種語意顏色；每頁有進場卡、逐步導讀、「怎麼玩」三行，說明文字裡的專有名詞可以點進詞彙表再回來。"
   ],
   "links": [
-    {"name": "範例：專案原始碼（GitHub）", "url": "https://github.com/", "type": "git"},
+    {"name": "專案原始碼（GitHub）", "url": "https://github.com/GMfatcat/AIC3D", "type": "git"},
     {"name": "範例：自架 Gitea", "url": "https://gitea.io/"},
     {"name": "範例：YouTube 頻道", "url": "https://www.youtube.com/"},
     {"name": "範例：X", "url": "https://x.com/"},

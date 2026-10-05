@@ -222,5 +222,27 @@ function plane(){
   return { group, parts, slots:[], wings:[], hit, height:0.5, radius:0.6, open(){}, idle(){ return 0; } };
 }
 
-Object.assign(P.deskModels, { building, bricks, scale, suitcase, rack, robot, map, book, frame, owl, bird, plane });
+/* ---------- 貓：常駐桌上的住客，不代表任何分頁。body 是上下擺動的樞紐；legs / tail / head 給 desk-cat.js 擺姿勢 ---------- */
+function cat(){
+  const group = new T.Group(), parts = [];
+  const body = new T.Group(); body.position.y = 0.46; group.add(body);
+  const torso = mesh(parts, body, sph(0.3,18,12), 'inactive:hot', { scale:[1,0.85,1.6], step:0, glow:0.06 });
+  mesh(parts, body, sph(0.2,14,10), 'structure:hot', { pos:[0,-0.08,0.22], scale:[1,0.7,1.2], step:0, glow:0.04 }); // 胸口一撮白
+  const head = new T.Group(); head.position.set(0, 0.22, 0.46); body.add(head);
+  mesh(parts, head, sph(0.24,18,12), 'inactive:hot', { scale:[1.05,0.95,0.95], step:0, glow:0.06 });
+  const eyes = [];
+  [-1,1].forEach(s=>{ mesh(parts, head, cyl(0, 0.1, 0.22, 6), 'inactive:hot', { pos:[s*0.14,0.24,-0.02], rot:[-0.15,0,s*0.3], step:0, glow:0.06 }); // 耳朵
+    mesh(parts, head, cyl(0, 0.055, 0.13, 6), 'alert:dim', { pos:[s*0.14,0.23,0.02], rot:[-0.15,0,s*0.3], step:0, glow:0.1 });
+    eyes.push(mesh(parts, head, sph(0.045,10,8), 'flow:hot', { pos:[s*0.1,0.03,0.21], step:0, glow:0.7 })); // 眼睛（睡著時壓扁 = 閉上）
+    [-0.05,0.03].forEach(dy=> mesh(parts, head, box(0.3,0.006,0.006), 'structure:hot', { pos:[s*0.2,-0.05+dy,0.19], rot:[0,0,s*dy*2.5], step:0, glow:0.2 })); }); // 鬍鬚
+  mesh(parts, head, sph(0.03,8,6), 'alert', { pos:[0,-0.04,0.25], step:0 }); // 鼻子
+  const legs = [[-0.16,0.4],[0.16,0.4],[-0.16,-0.35],[0.16,-0.35]].map(([x,z])=>{ const g = new T.Group(); g.position.set(x, -0.08, z); body.add(g); // 樞紐在髖關節
+    mesh(parts, g, cyl(0.07,0.075,0.4,10), 'inactive:hot', { pos:[0,-0.18,0], step:0, glow:0.06 }); mesh(parts, g, sph(0.08,10,8), 'structure:hot', { pos:[0,-0.38,0.02], scale:[1,0.6,1.2], step:0 }); return g; });
+  const tail = []; let parent = body, p = [0, 0.1, -0.45]; // 三節，各自有樞紐，可以捲
+  for(let i=0;i<3;i++){ const g = new T.Group(); g.position.set(p[0], p[1], p[2]); parent.add(g); mesh(parts, g, cyl(0.045-i*0.008, 0.055-i*0.008, 0.3, 8), 'inactive:hot', { pos:[0,0.15,0], step:0, glow:0.06 }); tail.push(g); parent = g; p = [0, 0.3, 0]; }
+  mesh(parts, parent, sph(0.05,8,6), 'structure:hot', { pos:[0,0.3,0], step:0 });
+  return { group, parts, slots:[], hit:torso, body, torso, head, eyes, legs, tail, height:1.1, radius:0.6, open(){}, idle(){ return 0; } };
+}
+
+Object.assign(P.deskModels, { building, bricks, scale, suitcase, rack, robot, map, book, frame, owl, bird, plane, cat });
 })();

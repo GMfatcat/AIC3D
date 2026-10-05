@@ -188,6 +188,7 @@ body.home.messenger #messenger{display:flex;} #messenger small{font-family:var(-
 a.term{color:inherit;text-decoration:none;border-bottom:1px dotted var(--signal);cursor:help;} a.term:hover{color:var(--signal);border-bottom-style:solid;}
 #glossbtn{margin-left:auto;margin-right:8px;white-space:nowrap;} #glossbtn + #tourbtn{margin-left:0;}
 #langbtn{margin-left:8px;white-space:nowrap;font-family:var(--mono);font-size:12.5px;padding:6px 9px;} /* 語言切換：中 / EN */
+#musicbtn{margin-left:8px;padding:5px 9px;font-size:14px;line-height:1;color:var(--fg3);} #musicbtn.on{color:var(--signal);border-color:var(--signal);} #musicbtn.on.blocked{opacity:.6;} /* 背景音樂：開了但瀏覽器還不准播（等第一次點） */
 /* 詞彙頁 */
 #glossary{position:absolute;inset:0;display:none;overflow:auto;pointer-events:none;} body.glossary #glossary{display:block;}
 /* 翻開的書：左右兩頁。鏡頭飛到字典並翻開後才淡入 */
@@ -216,7 +217,7 @@ a.term{color:inherit;text-decoration:none;border-bottom:1px dotted var(--signal)
   #items li{flex:0 0 auto;} #items a{white-space:nowrap;padding:5px 10px;font-size:13px;}
   #ctrl{border-left:0;border-top:1px solid var(--line);max-height:42vh;}
   #info{max-width:85%;} #legend{display:none;} #camhint{display:none;} #vignette{display:none;}
-  #top{gap:10px;padding:10px 12px;} #glossbtn,#aboutbtn,#tourbtn{padding:5px 7px;font-size:12px;} #glossbtn,#aboutbtn{margin-right:0;} #tourbtn{margin-right:2px;} #langbtn{margin-left:0;padding:5px 5px;font-size:11px;} #top .brand{font-size:13.5px;padding:2px 4px;} #top .brand small{display:none;} #top{gap:6px;} /* 手機：詞彙、關於、導覽三顆鈕要塞得下 */
+  #top{gap:10px;padding:10px 12px;} #glossbtn,#aboutbtn,#tourbtn{padding:5px 7px;font-size:12px;} #glossbtn,#aboutbtn{margin-right:0;} #tourbtn{margin-right:2px;} #langbtn{margin-left:0;padding:5px 5px;font-size:11px;} #musicbtn{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 58px);z-index:3;margin:0;padding:6px 9px;font-size:15px;background:var(--panel);backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.35);} body:not(.home):not(.glossary) #musicbtn{display:none;} /* 手機：頂欄塞不下 ♪，改浮在舞台右上；音樂只在工作桌播，所以只在工作桌顯示 */ #top .brand{font-size:13.5px;padding:2px 4px;} #top .brand small{display:none;} #top{gap:6px;} /* 手機：詞彙、關於、導覽三顆鈕要塞得下 */
 }
 
 /* 導覽 */

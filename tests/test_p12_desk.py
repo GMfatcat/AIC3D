@@ -125,7 +125,7 @@ def test_keyboard_activating_a_part_selects_it_then_enters(fresh):
     _focus(fresh, "train")
     # the parts are also the keyboard focus list: the second button is the second scene of the tab
     btns = fresh.page.locator(FOCUS_BTN)
-    assert btns.count() == 6
+    assert btns.count() == 7, "6 parts + the cat (always last)"
     assert "SFT" in btns.nth(1).text_content()
     fresh.page.focus(f"{FOCUS_BTN} >> nth=1")
     fresh.page.keyboard.press("Enter")
@@ -140,7 +140,7 @@ def test_keyboard_activating_a_part_selects_it_then_enters(fresh):
 
 def test_wide_desk_stations_are_keyboard_reachable_and_clickable(fresh):
     btns = fresh.page.locator(FOCUS_BTN)
-    assert btns.count() == 11, "8 toys + route map + dictionary + frame"
+    assert btns.count() == 12, "8 toys + route map + dictionary + frame + the cat"
     assert "完整模型" in btns.nth(2).text_content()
     fresh.page.focus(f"{FOCUS_BTN} >> nth=2")
     fresh.page.keyboard.press("Enter")
@@ -254,7 +254,7 @@ def test_desk_has_a_dictionary_a_route_map_and_a_picture_frame(fresh):
     assert fresh.ev("App.TABS.map(t => App.desk.stations[t.id].label.el.textContent)") == fresh.ev("App.TABS.map(t => t.label)")
     assert fresh.ev("Object.values(App.desk.fixtures).map(f => f.label.el.textContent)") == ["導覽路線", "詞彙表", "關於"]
     btns = fresh.page.locator(FOCUS_BTN)
-    assert btns.count() == 11, "8 toys + 3 fixtures are keyboard reachable"
+    assert btns.count() == 12, "8 toys + 3 fixtures + the cat are keyboard reachable"
     assert fresh.ev("['glossary', 'about'].every(id => App.desk.fixtures[id].parts.every(p => p.k >= 1))"), "the dictionary and the frame are always painted; the map paints per finished tour"
     fresh.assert_clean()
 

@@ -361,6 +361,16 @@
 
 ---
 
+## P15 — 貓、背景音樂、部署（2026-10-05 使用者提出）
+
+- [x] **常駐的貓**：`core/desk-cat.js` + `P.deskModels.cat`。在桌上十二個空位之間走（兩點之間的直線要離玩具杯墊 ≥ 2.6 才走）、坐著東張西望、偶爾趴著睡；點牠喵一聲、伸懶腰，6 秒內連點三下就睡（再點會醒）。全景、聚焦、相框面板、字典頁都可以點；信使不會停在貓的位置。沒有別的功能
+- [x] **背景音樂**：`core/music.js`，`vendor/*.mp3` → build 複製成 `dist/music.mp3`（固定 ASCII 檔名）。預設關、頂欄 ♪ 鈕、記在 localStorage `music`；只在工作桌（開場頁、詞彙頁）播，進場景淡出 0.6 秒、回來淡入 1.2 秒；`preload=none` 所以關著不下載；自動播放被擋時等第一次點或按鍵；檔案不存在時鈕自己隱藏；「關於」面板列出出處（Sappheiros – Embrace，CC BY 3.0）。手機頂欄塞不下，♪ 改浮在舞台右上、只在工作桌顯示
+- [x] **部署**：`.github/workflows/pages.yml`（push main → build → Pages）、README 重寫（部署說明、效能數字、結構）；寫場景的慣例移到 `docs/writing-scenes.md`、場景表移到 `docs/scenes.md`
+- 效能量測（2026-10-05，本機靜態伺服器 + headless Chrome）：第一次開工作桌 30 個請求 2.9 MB（index.html 1.97 MB，gzip 後 0.62 MB；字型只載 28 塊 0.97 MB）、英文 2.5 MB、再進一個場景 3.2 MB、音樂 +4.5 MB；工作桌 420 draw calls / 27k 三角形，一般場景 35 / 0.8k；JS heap 15–18 MB。沒有後端，多人同時用只吃頻寬
+- [ ] 之後可做：貓走到被聚焦的玩具旁邊時讓一讓；`about.json` 的範例連結換成真的（GitHub 倉庫網址）；README 的授權欄位
+
+---
+
 ## 附錄：61 個場景一覽
 
 | id | 顯示內容 | 互動 |

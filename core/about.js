@@ -25,7 +25,8 @@
     html(){ const d=this.data; return `<div class="about-panel"><small class="crumb">${I18N.t('關於這個網站')}</small><h2>${esc(d.title)}</h2>
         <div class="about-desc">${d.description.map(p=>`<p>${esc(p)}</p>`).join('')}</div>
         ${d.links.length?`<h3>${I18N.t('延伸連結')}</h3><ul class="about-links">${d.links.map(l=>`<li><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" data-type="${l.type}"><span class="aicon">${svg(l.type)}</span><b>${esc(l.name)}</b><small>${esc(host(l.url)||l.url)}</small></a></li>`).join('')}</ul>`:''}
-        <p class="about-foot">${I18N.t('連結清單來自 about.json：直接編輯那個檔就能新增或修改（離線單檔版要重新 build）。')}</p></div>`; },
+        <p class="about-foot">${I18N.t('連結清單來自 about.json：直接編輯那個檔就能新增或修改（離線單檔版要重新 build）。')}</p>
+        ${App.music?`<p class="about-foot">${I18N.t('背景音樂：')}<a href="${esc(App.music.credit.url)}" target="_blank" rel="noopener noreferrer">${esc(App.music.credit.artist)} – ${esc(App.music.credit.title)}</a>（${esc(App.music.credit.license)}${I18N.t('，經 ')}${esc(App.music.credit.via)}）</p>`:''}</div>`; },
   };
   App.about=about;
   document.addEventListener('DOMContentLoaded',init); if(document.readyState!=='loading') init();

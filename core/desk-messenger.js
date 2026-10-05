@@ -23,7 +23,7 @@ const messenger = {
   arrive(id, kind){ if(!this._root) return; kind = kind || (id ? 'owl' : pickWeighted()); if(this.state === 'landed') return;
     if(!this.owl || this.kind !== kind || this.state === 'away') this._spawn(kind);
     this.item = this.pick(id); this.text = I18N.t(SAYINGS[Math.floor(Math.random() * SAYINGS.length)]);
-    const s = SPOTS[Math.floor(Math.random() * SPOTS.length)]; this._spot = new T.Vector3(s[0], s[1] + (kind === 'plane' ? 0.25 : 0), s[2]);
+    const free = SPOTS.filter(s=>!desk.cat || !desk.cat.pos() || Math.hypot(desk.cat.pos().x - s[0], desk.cat.pos().z - s[2]) > 2.0); const s = (free.length ? free : SPOTS)[Math.floor(Math.random() * (free.length || SPOTS.length))]; /* 貓在的地方不停 */ this._spot = new T.Vector3(s[0], s[1] + (kind === 'plane' ? 0.25 : 0), s[2]);
     const g = this.owl.group; const from = (this.state === 'leaving' || this.state === 'coming') && g.visible ? g.position.clone() : this._spot.clone().add(new T.Vector3(10, 7, -9));
     this._from = from; this._to = this._spot.clone(); this._ctrl = from.clone().lerp(this._to, 0.5).add(new T.Vector3(0, kind === 'plane' ? 1.5 : 3.5, 0)); this._t = 0; this.state = 'coming'; g.visible = true; g.position.copy(from);
     if(App.reduceMotion){ this._t = 1; this._land(); } },

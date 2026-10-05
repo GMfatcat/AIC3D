@@ -55,7 +55,7 @@ const desk = {
     const describe = (m)=>{ if(m.userData.msg){ return m.userData.msg; } if(m.userData.st !== undefined){ const s = this._st(m.userData.st); const n = s.items().length; return `${I18N.t(s.name)}：${I18N.t(NAME[s.kind])}${n ? `（${I18N.t(s.verb)} ${s.visited()} / ${n}）` : ''}`; }
       const st = this._st(this.focused); const it = st && st.items()[m.userData.slot]; return it ? `${m.userData.slot + 1} ${it.title}${st.seenIdx(m.userData.slot) ? I18N.t('（看過）') : ''}` : I18N.t('零件'); };
     this._hover = App.watchHover(this._wideHits, (h)=>this._hoverCb(h), describe);
-    this._click = App.clickTarget(this._wideHits, (m)=>{ this._hintDone(); if(m.userData.msg){ this.messenger && this.messenger.ask(); return; } if(m.userData.st !== undefined){ const s = this._st(m.userData.st); if(s.go) s.go(); else location.hash = 'tab=' + s.id; } else { const s = this.slots.find(x=>x.hit === m); if(s) this.select(s); } });
+    this._click = App.clickTarget(this._wideHits, (m)=>{ this._hintDone(); if(m.userData.cat){ this.cat && this.cat.poke(); return; } if(m.userData.msg){ this.messenger && this.messenger.ask(); return; } if(m.userData.st !== undefined){ const s = this._st(m.userData.st); if(s.go) s.go(); else location.hash = 'tab=' + s.id; } else { const s = this.slots.find(x=>x.hit === m); if(s) this.select(s); } });
     this._key = (e)=>{ if(e.key==='Escape' && App.home && this.focused && !(App.intro && App.intro.isOpen())){ e.preventDefault(); if(this.selected) this._unselect(true); else location.hash = 'home'; } };
     addEventListener('keydown', this._key);
     document.body.classList.remove('desk-focus'); this._bar(null); this._hint();
@@ -94,7 +94,7 @@ const desk = {
     if(!target){ this._bar(null); this._setWide(); const ms = first ? 0 : FLY_MS;
       if(App.camHome) App.flyTo(App.camHome, ms); Motion.tween({ t:0 }, { t:1 }, { ms, onDone:done }); return; }
     const st = this._st(target); this._bar(st.silent ? null : st);
-    if(st.panel || st.silent){ this._hover.set([]); this._click.set([]); } // 面板型 / 字典：沒有零件可點
+    if(st.panel || st.silent){ this._hover.set(this._guests()); this._click.set(this._guests()); } // 面板型 / 字典：沒有零件可點（桌上的貓還是可以）
     if(st.silent) this.decor(true);
     // 場景 = 零件：每個 slot 一個可點的 hit，左上角列一份清單。點零件或清單 → 鏡頭靠近它、出現名字與「進入」鈕；再點一次才進場景
     const items = st.items(); const ol = document.querySelector('#deskbar ol');
@@ -103,7 +103,7 @@ const desk = {
       const slot = { id:it.id, item:it, hit:s.hit, node:s.node, pos:s.pos, li, title:it.title, n:i+1 }; this.slots.push(slot);
       li.querySelector('button').addEventListener('click', ()=>this.select(slot));
       li.addEventListener('pointerenter', ()=>this._hoverCb(s.hit)); li.addEventListener('pointerleave', ()=>this._hoverCb(null)); });
-    const hits = this.slots.map(s=>s.hit); this._hover.set(hits); this._click.set(hits);
+    const hits = [...this.slots.map(s=>s.hit), ...this._guests()]; this._hover.set(hits); this._click.set(hits);
     // 鏡頭：對準物件（模型可以指定看哪裡、多遠、多高），從物件所在的那一側看過去
     const v = st.model.view || {}; const c = new T.Vector3(st.group.position.x + (v.tx || 0), v.ty ?? (st.model.height * 0.5 + 0.1), st.group.position.z + (v.tz || 0));
     const mobile = matchMedia('(max-width:900px)').matches; const dist = (v.dist || Math.max(6, st.model.radius * 3.6)) * (mobile ? 1.25 : 1); const side = st.group.position.x < 0 ? -0.18 : 0.18; const theta = WIDE.theta + side; // 手機畫面窄，退遠一點
@@ -134,7 +134,8 @@ const desk = {
     if(s.ring){ P.drop(s.ring); s.ring = null; }
     const card = document.querySelector('#deskbar .dcard'); if(card){ card.innerHTML = ''; card.classList.remove('on'); }
     if(fly){ const st = this._st(this.focused); this.ready = false; App.flyTo(st.cam, FLY_MS * 0.7); Motion.tween({ t:0 }, { t:1 }, { ms: FLY_MS * 0.7, onDone:()=>{ this.ready = true; } }); } },
-  _setWide(){ const list = this.messenger && this.messenger.hit() ? [...this._wideHits, this.messenger.hit()] : this._wideHits; this._hover.set(list); this._click.set(list); }, // 全景可點的東西：八件玩具、三件固定物、停在桌上的信使
+  _setWide(){ const list = [...this._wideHits, ...this._guests()]; this._hover.set(list); this._click.set(list); }, // 全景可點的東西：八件玩具、三件固定物、桌上的訪客
+  _guests(){ return [this.messenger && this.messenger.hit(), this.cat && this.cat.hit()].filter(Boolean); }, // 停在桌上的信使、常駐的貓
   _clearSlots(){ this._unselect(); this.slots.forEach(s=>{ s.node.userData.lift = 0; }); this.slots = []; this.decor(false); },
   /* 翻開的字典上方漂著幾個語意色小東西，點了詞就收掉 */
   decor(on){ const st = this.focused && this._st(this.focused); if(!on || !st){ (this._decor||[]).forEach(o=>P.drop(o.mesh)); this._decor = []; return; } if(this._decor && this._decor.length) return;
