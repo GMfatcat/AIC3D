@@ -39,7 +39,10 @@ def test_links_get_an_icon_by_type_and_types_are_inferred_from_the_url(site):
     site.goto("residual")
     _open(site)
     types = site.ev("[...document.querySelectorAll('#deskbar .about-links a')].map(a => [a.dataset.type, !!a.querySelector('.aicon svg')])")
-    assert types == [["git", True], ["git", True], ["youtube", True], ["x", True], ["instagram", True], ["threads", True], ["web", True]], types
+    want = [[site.ev("([u, t]) => App.about.typeOf(u, t)", [l["url"], l.get("type")]), True] for l in ABOUT["links"]]  # whatever about.json ships
+    assert types == want, types
+    example = json.loads((ROOT / "about.example.json").read_text(encoding="utf-8"))  # the sample file covers every link type
+    assert sorted({site.ev("([u, t]) => App.about.typeOf(u, t)", [l["url"], l.get("type")]) for l in example["links"]}) == ["git", "instagram", "threads", "web", "x", "youtube"]
     cases = {"https://gitea.example.com/me/repo": "git", "https://gitlab.com/x": "git", "https://codeberg.org/x": "git", "https://youtu.be/abc": "youtube",
              "https://www.youtube.com/@c": "youtube", "https://x.com/me": "x", "https://twitter.com/me": "x", "https://www.instagram.com/me": "instagram",
              "https://www.threads.net/@me": "threads", "https://www.threads.com/@me": "threads", "https://example.org/": "web", "not a url": "web"}
