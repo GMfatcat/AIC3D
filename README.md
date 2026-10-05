@@ -1,8 +1,10 @@
+[English](README.en.md) · **繁體中文**
+
 # AI 概念 3D 教學 · AI Concepts in 3D
 
 **61 個互動 3D 場景，每個只回答一個問題：從 CNN、Transformer、量化、推論基礎設施到 Agent 與 RAG。看懂概念，不追數值。**
 
-*An offline, single-file, bilingual (繁中 / English) site of 61 interactive 3D scenes that each answer one question about modern AI: architectures, building blocks, full models, training, evaluation, compression, inference infrastructure and agents. No backend, no external requests.*
+*An offline, single-file, bilingual site of 61 interactive 3D scenes that each answer one question about modern AI. English README: [README.en.md](README.en.md).*
 
 ![工作桌：八件玩具就是八個主題](docs/img/desk.png)
 
@@ -13,6 +15,8 @@
 | **技術** | 純前端：three.js r128 + 原生 JS / CSS，**不需要任何伺服器程式** |
 | **部署** | `python build.py` → `dist/`，丟上任何靜態主機（GitHub Pages 有現成 workflow） |
 | **離線** | 單一 `index.html` 內嵌所有程式；字型與音樂放旁邊，零外部請求 |
+
+線上版：<https://gmfatcat.github.io/AIC3D/>
 
 ---
 
@@ -170,7 +174,7 @@ python smoke.py                    # 61 張截圖 + console 錯誤（--mobile �
 
 ## 授權與致謝
 
-- 程式與內容：（請填上授權，例如 MIT）
+- 程式與內容：[MIT](LICENSE)
 - [three.js](https://threejs.org/) r128 — MIT
 - [Noto Sans TC](https://fonts.google.com/noto/specimen/Noto+Sans+TC)、[IBM Plex Mono](https://github.com/IBM/plex) — SIL Open Font License
 - 背景音樂：Sappheiros – *Embrace*（[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)，經 [BreakingCopyright](https://www.youtube.com/watch?v=DzYp5uqixz0)）
